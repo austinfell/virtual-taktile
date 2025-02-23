@@ -79,7 +79,7 @@
              :align-items "center"
              :padding 0
              :justify-content "center"
-             :color (if (nil? note) :black :blue)
+             :color (if (or (nil? note) (= n 1)) :black :blue)
              :text-decoration "underline solid black 1px"
              :height "40px"}
      :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
@@ -88,112 +88,51 @@
 
 
 ;; Representation of sequential scales as they appear on the DT and associated flat/sharp mappings.
-(def naturals [:a :b :c :d :e :f :g])
-(def accidentals [:gsaf :asbf :csdf :dsef :fsgf])
-(def notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
-(def flat-mappings
-  {
-   :a :gsaf
-   :b :asbf
-   :d :csdf
-   :e :dsef
-   :g :fsgf
-   })
+(def sharp-notes [nil :csdf :dsef nil :fsgf :gsaf :asbf])
+(def natural-notes [:c :d :e :f :g :a :b ])
+(def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
+(def chromatic-breakpoint-natural :c)
+(def chromatic-breakpoint-accidental :csdf)
 
-(defn generate-sharps [naturals]
-  "Takes a list of natural notes and maps them to their associated flats...
-   Except for the first element... See below.
+(defn scale-filter-generator [notes scale-degrees]
+  (fn [scale]
+    (let [offset (.indexOf notes scale)
+          buff-size (+ 1 (apply max scale-degrees))
+          buff (into [] (take buff-size (drop offset (cycle notes))))]
+      (set (mapv buff scale-degrees)))))
 
-   Implements a fun little quirk of the Digitone's midi input keyboard: basically,
-   Digitone functions by mapping flats in parallel with their natural notes...
-   Except the first note in the row, which when being used as a chromatic keyboard
-   always is empty (nil).
-
-   Looks funky - but this is how the physical hardware behaves."
-  (into [nil] (map flat-mappings (rest naturals))))
-
-(defn shift-list [l n]
-  "Takes a given ordered collection 'l' and shifts the elements right by 'n'.
-   This also has wrapping behavior such that if n > (count l), then it will
-   loop back (aka use modulo arithmetic). It also accepts negative values which
-   will cause the shift to occur in a leftwards direction.
-
-   Example: (shift-right [1 2 3 4], 1) => [4 1 2 3]
-   Example: (shift-right [1 2 3 4], 3) => [2 3 4 1]
-   Example: (shift-right [1 2 3 4], 4) => [2 3 4 1]
-   Example: (shift-right [1 2 3 4], 5) => [4 1 2 3]
-  "
-  (let [sl1 (take (- (count l) (mod n (count l))) l)
-        sl2 (take-last (mod n (count l)) l)]
-    (concat sl2 sl1)))
-
-;; TODO - We will want the sequencer to take a root note and an octave and then
-;; using that, determine how to render the keyboard. 
-;;
-;; It should also generate a data structure for each note on each key... maybe something like
-;; {
-;;   :note :gsaf
-;;   :octave 5
-;; },
+(def chromatic-scales (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [1 2 3 4 5 6 7 8 9 10 11 12]) n)]) chromatic-notes)))
+(def major-scales (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [0 2 4 5 7 9 11]) n)]) chromatic-notes)))
+(def minor-scales (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [0 2 3 5 7 8 10]) n)]) chromatic-notes)))
+;; TODO - Generate all scales.
 ;; ...
-;; This could then trivially be converted to a websocket async message and then
-;; ultimately to midi.
-;;
-;; ---------
-;; Fold will be interesting... I think my favorite way of doing it is to
-;; Create a method that can generate a scale "loop" lazily, then get rid
-;; of all the weird "conj" "into" stuff in the view logic, and instead call
-;; (def all-notes (take 12 (get-notes :a)))
-;; (def naturals (map keep-natural (take 12 (get-notes :a))))
-;; (def accidentals (map keep-accidental (take 12 (get-notes :a))))
-;;
-;; Then if you wanna do modes, other things....
-;; (def all-notes (take 12 (get-notes :a)))
-;; (def naturals (map (keep-dorian :a) (map keep-natural (take 12 (get-notes :a)))))
-;; (def accidentals (map (keep-dorian :a) (map keep-accidental (take 12 (get-notes :a)))))
-;; ^ This will nil out anything that isn't Dorian, just like the behavior of the hardware.
-;;
-;; Probably makes more sense to just make a higher order function "keep". That way we can work
-;; purely in terms of boolean functions
-;;
-;; Back to fold - how would we do it?
-;; Now we have an easy way to generate notes:
-;; (def all-notes (get-notes :a))
-;; ^ This is Lazy. So we can map and filter how we want:
-;; First, just get a chromatic keyboard:
-;; (def all-notes (take 24 (get-notes :a)))
-;; Now just split the vector.
-;;
-;; Only problem... We really need to know the octaves... It is super hard with
-;; all this filtering possibility to calculate that downstream: we can make assumptions
-;; with chromatic keyboard, but not with the various scales that DT lets us use...
-;;
-;; So lets add an extra param to represent octave...
-;; (def all-notes (take 24 (get-notes :a 5)))
-;; Now, we can retain state some way so that loops into the B->C boundary trigger
-;; an increment on the octave.
-;;
-;; Once we do all of this, implementing fold is ez pz
-;; (def all-notes (take 16 (get-notes :a 5)))
-;; Now just split the vector, 8 8
-;;
-;; Wanna make it only C Dorian notes?
-;; (def all-notes (take 16 (filter (keep (dorian :c)) (get-notes :a 5))))
-;; Again, split it up 8 8 again.
 
-;; This will interact with a server running on the machine using websocket and Ring.
-;; It will transmit a message, on click, to the server which will asyncronously send a
-;; message back when it can to update the view state of the sequencer.
+(defn generate-octaves [notes octave inc-kw]
+  (let [h (first notes)
+        r (rest notes)
+        new-octave (if (= h inc-kw) (inc octave) octave)]
+    (if (empty? r)
+      (list {:octave new-octave :note h})
+      (lazy-seq (cons {:octave new-octave :note h} (generate-octaves r new-octave inc-kw))))))
+
+(defn chromatic-keyboard [offset scale-filter]
+  (let [sharps (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle sharp-notes) 0 :csdf))))
+        naturals (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle natural-notes) 0 :c))))]
+    [sharps naturals]))
+
+;; TODO - Generate folding keyboard generation algorithm.
+;; TODO - Generate chord mode.
+
 (defn sequencer []
-  (let [natural-notes (conj (into [] (shift-list naturals -8)) (first (shift-list naturals -8)))]
+  (let [ck (chromatic-keyboard 25 (chromatic-scales :c))]
   [re-com/v-box
    :children [
               ;; TODO - We should really just use CSS to do the wrapping of 8 8 instead of defining it structurally.
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (generate-sharps natural-notes))]
+               :children [(map seq-btn (range 1 9) (first ck))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) natural-notes)]
+               :children [(map seq-btn (range 9 17) (second ck))]
                ]
               ]]))
 
