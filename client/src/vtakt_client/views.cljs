@@ -115,16 +115,23 @@
       (list {:octave new-octave :note h})
       (lazy-seq (cons {:octave new-octave :note h} (generate-octaves r new-octave inc-kw))))))
 
+
 (defn chromatic-keyboard [offset scale-filter]
   (let [sharps (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle sharp-notes) 0 :csdf))))
         naturals (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle natural-notes) 0 :c))))]
     [sharps naturals]))
 
+(defn folding-keyboard [offset scale-filter]
+  (let [top-row (take 8 (drop (+ offset 7) (filter #(scale-filter (:note %)) (generate-octaves (cycle chromatic-notes) 0 :csdf))))
+        bottom-row (take 8 (drop offset (filter #(scale-filter (:note %)) (generate-octaves (cycle chromatic-notes) 0 :c))))]
+    [top-row bottom-row]))
+
+
 ;; TODO - Generate folding keyboard generation algorithm.
 ;; TODO - Generate chord mode.
 
 (defn sequencer []
-  (let [ck (chromatic-keyboard 25 (chromatic-scales :c))]
+  (let [ck (folding-keyboard 25 (chromatic-scales :c))]
   [re-com/v-box
    :children [
               ;; TODO - We should really just use CSS to do the wrapping of 8 8 instead of defining it structurally.
