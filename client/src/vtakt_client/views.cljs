@@ -94,10 +94,10 @@
    :children [
               ;; TODO - We should really just use CSS to do the wrapping of 8 8 instead of defining it structurally.
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (first ck))]
+               :children [(map seq-btn (range 1 9) (:top-row ck))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (second ck))]
+               :children [(map seq-btn (range 9 17) (:bottom-row ck))]
                ]
               ]]))
 

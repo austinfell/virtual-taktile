@@ -75,15 +75,26 @@
   `offset` aligns the keyboard starting point to a given root note and octave.
   `scale-filter` is a function that filters the notes; notes that don't match the filter will be replaced with nil."
   [offset scale-filter]
-  (let [generate-notes (fn [layout octave]
+  (let [generate-notes (fn [layout split-point]
                          (map #(if (scale-filter (:name %)) % nil)
-                              (take 8 (drop offset (generate-octaves (cycle layout) octave)))))]
-    (->Keyboard (generate-notes sharp-note-layout :csdf) (generate-notes natural-note-layout :c))))
+                              (take 8 (drop offset (generate-octaves (cycle layout) split-point)))))]
+    (->Keyboard
+     (generate-notes sharp-note-layout :csdf)
+     (generate-notes natural-note-layout :c))))
 
-(defn folding-keyboard [offset scale-filter]
-  (let [top-row (take 8 (drop (+ offset 7) (filter #(scale-filter (:name %)) (generate-octaves (cycle chromatic-notes) :csdf))))
-        bottom-row (take 8 (drop offset (filter #(scale-filter (:name %)) (generate-octaves (cycle chromatic-notes) :c))))]
-    [top-row bottom-row]))
+(defn folding-keyboard
+  "Generates a folding keyboard where each column corresponds to a valid note in the given scale.
+
+  `offset` aligns the keyboard starting point to a given root note and octave.
+  `scale-filter` is a function that filters the notes; only notes that match the filter will be included."
+  [offset scale-filter]
+  (let [generate-row (fn [offset]
+                       (take 8 (drop offset
+                                     (filter #(scale-filter (:name %))
+                                             (generate-octaves (cycle chromatic-notes) :c)))))]
+    (->Keyboard
+     (generate-row (+ offset 8))  ; Top row with offset shifted by 8
+     (generate-row offset))))     ; Bottom row with original offset
 
 ;; ----------
 ;; TODO - Keyboards can have chords applied to them: different scale selections often alter
