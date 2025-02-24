@@ -47,22 +47,33 @@
 ;; Algorithms used to generate the structure of various keyboards 
 ;; (folding, chromatic) on the DT.
 ;; ----------
-(defn generate-octaves [notes octave inc-kw]
-  (let [h (first notes)
-        r (rest notes)
-        new-octave (if (= h inc-kw) (inc octave) octave)]
-    (if (empty? r)
-      (list {:octave new-octave :note h})
-      (lazy-seq (cons {:octave new-octave :note h} (generate-octaves r new-octave inc-kw))))))
+
+(defrecord Note [name octave])
+(defn- generate-octaves
+  "Generates an infinite sequence of ascending octaves from a set of cyclical notes.
+
+  Takes a sequence of `notes`, an `octave-split-point`, and an optional starting `octave`.
+  The sequence of notes starts at `octave` and will cycle through the notes, returning
+  a sequence of `Note` objects with a name and the octave they belong to.
+
+  If no `octave` is provided, it defaults to 0."
+  [notes octave-split-point & [octave]]
+  (let [octave (or octave 0)
+        [note & remaining-notes] notes
+        new-octave (if (= note octave-split-point) (inc octave) octave)
+        new-note (map->Note {:octave new-octave :name note})]
+    (if (seq remaining-notes)
+      (lazy-seq (cons new-note (generate-octaves remaining-notes octave-split-point new-octave)))
+      new-note)))
 
 (defn chromatic-keyboard [offset scale-filter]
-  (let [sharps (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle sharp-note-layout) 0 :csdf))))
-        naturals (map #(if (scale-filter (:note %)) % nil) (take 8 (drop offset (generate-octaves (cycle natural-note-layout) 0 :c))))]
+  (let [sharps (map #(if (scale-filter (:name %)) % nil) (take 8 (drop offset (generate-octaves (cycle sharp-note-layout) :csdf))))
+        naturals (map #(if (scale-filter (:name %)) % nil) (take 8 (drop offset (generate-octaves (cycle natural-note-layout) :c))))]
     [sharps naturals]))
 
 (defn folding-keyboard [offset scale-filter]
-  (let [top-row (take 8 (drop (+ offset 7) (filter #(scale-filter (:note %)) (generate-octaves (cycle chromatic-notes) 0 :csdf))))
-        bottom-row (take 8 (drop offset (filter #(scale-filter (:note %)) (generate-octaves (cycle chromatic-notes) 0 :c))))]
+  (let [top-row (take 8 (drop (+ offset 7) (filter #(scale-filter (:name %)) (generate-octaves (cycle chromatic-notes) :csdf))))
+        bottom-row (take 8 (drop offset (filter #(scale-filter (:name %)) (generate-octaves (cycle chromatic-notes) :c))))]
     [top-row bottom-row]))
 
 ;; ----------
