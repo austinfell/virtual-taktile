@@ -66,10 +66,19 @@
       (lazy-seq (cons new-note (generate-octaves remaining-notes octave-split-point new-octave)))
       new-note)))
 
-(defn chromatic-keyboard [offset scale-filter]
-  (let [sharps (map #(if (scale-filter (:name %)) % nil) (take 8 (drop offset (generate-octaves (cycle sharp-note-layout) :csdf))))
-        naturals (map #(if (scale-filter (:name %)) % nil) (take 8 (drop offset (generate-octaves (cycle natural-note-layout) :c))))]
-    [sharps naturals]))
+(defrecord Keyboard [top-row bottom-row])
+(defn chromatic-keyboard
+  "Generates a standard chromatic keyboard with sharp notes on the top row and natural notes on the bottom row.
+   The top row will contain 8 notes, some of which are potentially nil to represent lack of a value, as will
+   the bottom row.
+
+  `offset` aligns the keyboard starting point to a given root note and octave.
+  `scale-filter` is a function that filters the notes; notes that don't match the filter will be replaced with nil."
+  [offset scale-filter]
+  (let [generate-notes (fn [layout octave]
+                         (map #(if (scale-filter (:name %)) % nil)
+                              (take 8 (drop offset (generate-octaves (cycle layout) octave)))))]
+    (->Keyboard (generate-notes sharp-note-layout :csdf) (generate-notes natural-note-layout :c))))
 
 (defn folding-keyboard [offset scale-filter]
   (let [top-row (take 8 (drop (+ offset 7) (filter #(scale-filter (:name %)) (generate-octaves (cycle chromatic-notes) :csdf))))
