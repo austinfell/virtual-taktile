@@ -1,0 +1,23 @@
+* Raw Note Data
+   #+BEGIN_SRC OCaml
+     type ChromaticScaleDegree = A | AsBf | B | C | CsDf | D | DsBf | E | F | FsGf | G | GsAf
+     type Note = {degree: ChromaticScaleDegree; octave: int}
+     let c2 = {degree: A; octave: 5}
+   #+END_SRC
+** These get generated in 8 length vectors.
+** Once they are generated, they simply represent a playable note.
+** DT will do a few extra things at the view layer, though...
+*** On non-folding keyboard, removes LED alltogether if a note is "nil".
+*** On folding keyboard, octave points from root are highlighted.
+
+* Key Representation Data
+   #+BEGIN_SRC OCaml
+     type KeyRepresentation = {note: Note?, level: OFF | ON | EXTRA}
+
+     f_1: (offset: int, filter: (note) -> boolean) -> Pair<Vec<Note, 8>>
+     f_2: (offset: int, filter: (note) -> boolean) -> Pair<Vec<Note, 8>>
+     g: Pair<Vec<Note, 8>> -> Pair<Vec<KeyRepresentation>, 8>
+
+   #+END_SRC
+
+
