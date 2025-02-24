@@ -89,10 +89,16 @@
 
 
 (defn sequencer []
-  (let [ck (kb/chromatic-keyboard 25 (kb/chromatic-scales :c))]
+  (let [keyboard-shift (re-frame/subscribe [::subs/keyboard-shift])
+        ck (kb/chromatic-keyboard @keyboard-shift (kb/chromatic-scales :c))]
   [re-com/v-box
    :children [
-              ;; TODO - We should really just use CSS to do the wrapping of 8 8 instead of defining it structurally.
+              [re-com/h-box
+               :children [
+                          [re-com/button :label "<-" :on-click #(re-frame/dispatch [::events/dec-keyboard-shift])]
+                          [re-com/button :label "->" :on-click #(re-frame/dispatch [::events/inc-keyboard-shift])]
+                          ]
+               ]
               [re-com/h-box
                :children [(map seq-btn (range 1 9) (:top-row ck))]
                ]

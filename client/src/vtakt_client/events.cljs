@@ -18,3 +18,13 @@
  ::set-active-panel
  (fn [{:keys [db]} [_ active-panel]]
    {:db (assoc db :active-panel active-panel)}))
+
+(re-frame/reg-event-fx
+ ::inc-keyboard-shift
+ (fn [{:keys [db]} [_ keyboard-shift]]
+   {:db (update db :keyboard-shift inc)}))
+
+(re-frame/reg-event-fx
+ ::dec-keyboard-shift
+ (fn [{:keys [db]} [_ keyboard-shift]]
+   {:db (update db :keyboard-shift dec)}))
