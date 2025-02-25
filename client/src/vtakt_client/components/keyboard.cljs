@@ -34,14 +34,53 @@
           buff (into [] (take buff-size (drop offset (cycle notes))))]
       (set (mapv buff scale-degrees)))))
 
-(def chromatic-scales
-  (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [1 2 3 4 5 6 7 8 9 10 11 12]) n)]) chromatic-notes)))
-(def major-scales
-  (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [0 2 4 5 7 9 11]) n)]) chromatic-notes)))
-(def minor-scales
-  (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes [0 2 3 5 7 8 10]) n)]) chromatic-notes)))
-;; TODO - Get feature parity with DT here - need some extra scales...
+(def scales
+  {:chromatic (create-scale [0 1 2 3 4 5 6 7 8 9 10 11])
+   :ionian (create-scale [0 2 4 5 7 9 11])
+   :dorian (create-scale [0 2 3 5 7 9 10])
+   :phrygian (create-scale [0 1 3 5 7 8 10])
+   :lydian (create-scale [0 2 4 6 7 9 11])
+   :mixolydian (create-scale [0 2 4 5 7 9 10])
+   :aeolian (create-scale [0 2 3 5 7 8 10])
+   :locrian (create-scale [0 1 3 5 6 8 10])
+   :minor-pentatonic (create-scale [0 3 5 7 10])
+   :major-pentatonic (create-scale [0 2 4 7 9])
+   :melodic-minor (create-scale [0 2 3 5 7 9 11])
+   :harmonic-minor (create-scale [0 2 3 5 7 8 11])
+   :whole-tone (create-scale [0 2 4 6 8 10])
+   :blues (create-scale [0 3 5 6 7 10])
+   :combo-minor (create-scale [0 2 3 5 7 9 10])
+   :persian (create-scale [0 1 4 5 7 8 11])
+   :iwato (create-scale [0 1 5 6 10])
+   :in-sen (create-scale [0 1 5 7 10])
+   :hirajoshi (create-scale [0 2 3 5 7])
+   :pelog (create-scale [0 1 3 4 7])
+   :phrygian-dominant (create-scale [0 1 4 5 7 8 10])
+   :whole-half-diminished (create-scale [0 1 3 4 6 7 9 10])
+   :half-whole-diminished (create-scale [0 1 3 4 6 7 9 10])
+   :spanish (create-scale [0 1 4 5 7 8 11])
+   :major-locrian (create-scale [0 1 3 5 6 8 10])
+   :super-locrian (create-scale [0 1 3 4 6 8 10])
+   :dorian-b2 (create-scale [0 1 3 5 7 9 10])
+   :lydian-augmented (create-scale [0 2 4 6 8 9 11])
+   :lydian-dominant (create-scale [0 2 4 6 7 9 10])
+   :double-harmonic-major (create-scale [0 1 4 5 7 8 11])
+   :lydian-#2-#6 (create-scale [0 2 4 6 8 10 11])
+   :ultraphrygian (create-scale [0 1 3 5 7 8 9])
+   :hungarian-minor (create-scale [0 2 3 6 7 8 11])
+   :oriental (create-scale [0 1 4 5 7 8 10])
+   :ionian-#2-#5 (create-scale [0 2 4 6 7 8 11])
+   :locrian-bb3-bb7 (create-scale [0 1 3 5 6 8 9])})
 
+(def chords
+  {:major (create-scale [0 4 7])          ;; Root, Major 3rd, Perfect 5th
+   :minor (create-scale [0 3 7])          ;; Root, Minor 3rd, Perfect 5th
+   :dom7 (create-scale [0 4 7 10])        ;; Root, Major 3rd, Perfect 5th, Minor 7th
+   :minor-7 (create-scale [0 3 7 10])     ;; Root, Minor 3rd, Perfect 5th, Minor 7th
+   :major-7 (create-scale [0 4 7 11])     ;; Root, Major 3rd, Perfect 5th, Major 7th
+   :diminished (create-scale [0 3 6])     ;; Root, Minor 3rd, Diminished 5th
+   :diminished-7 (create-scale [0 3 6 9]) ;; Root, Minor 3rd, Diminished 5th, Diminished 7th
+   })
 
 ;; ----------
 ;; Algorithms used to generate the structure of various keyboards 
