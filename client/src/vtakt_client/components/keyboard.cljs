@@ -137,11 +137,20 @@
 (def chords
   {:major (create-note-group [0 4 7])          ;; Root, Major 3rd, Perfect 5th
    :minor (create-note-group [0 3 7])          ;; Root, Minor 3rd, Perfect 5th
-   :dom7 (create-note-group [0 4 7 10])        ;; Root, Major 3rd, Perfect 5th, Minor 7th
+   :dominant-7 (create-note-group [0 4 7 10])  ;; Root, Major 3rd, Perfect 5th, Minor 7th
    :minor-7 (create-note-group [0 3 7 10])     ;; Root, Minor 3rd, Perfect 5th, Minor 7th
    :major-7 (create-note-group [0 4 7 11])     ;; Root, Major 3rd, Perfect 5th, Major 7th
    :diminished (create-note-group [0 3 6])     ;; Root, Minor 3rd, Diminished 5th
    :diminished-7 (create-note-group [0 3 6 9]) ;; Root, Minor 3rd, Diminished 5th, Diminished 7th
    })
+
+(defn get-chord-notes
+  [note octave chord]
+  (take (count ((chords chord) note))
+        (filter
+         #(if (contains? ((chords chord) note) (:name %)) % nil)
+         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave))
+                     (generate-octaves (cycle chromatic-notes) 0 :c)))))
+
 
 ;; TODO -  Implement individual chord generator.
