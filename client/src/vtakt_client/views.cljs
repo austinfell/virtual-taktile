@@ -90,7 +90,7 @@
 
 (defn sequencer []
   (let [keyboard-shift (re-frame/subscribe [::subs/keyboard-shift])
-        ck (kb/chromatic-keyboard @keyboard-shift (kb/chromatic-scales :c))]
+        ck (kb/chromatic-keyboard @keyboard-shift ((kb/scales :chromatic) :c))]
   [re-com/v-box
    :children [
               [re-com/h-box
