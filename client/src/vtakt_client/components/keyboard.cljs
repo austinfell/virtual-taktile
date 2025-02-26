@@ -1,87 +1,106 @@
 (ns vtakt-client.components.keyboard
   (:require [clojure.walk :refer [postwalk]]))
 
-;; ----------
-;; General musical scale data that is useful for generating
-;; keyboards.
-;; ----------
-;; Layouts as the appear on the keyboard of natural and sharps.
+;; Music theory.
 (def sharp-note-layout [nil :csdf :dsef nil :fsgf :gsaf :asbf])
 (def natural-note-layout [:c :d :e :f :g :a :b ])
-;; Chromatic notes and some extra metadata about them.
 (def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
 (def chromatic-breakpoint-natural :c)
 (def chromatic-breakpoint-accidental :csdf)
 
-(defn scale-filter-generator
+(defn scale-generator
   "Given a vector of sequential notes and associated scale degrees, returns
   another function that given one of the notes in that list will generate
   a scale with degrees using that note as a starting point.
 
   For example:
-      ((scale-filter-generator chromatic-notes [0 2 4 5 7 9 11]) :c)
+      ((scale-generator chromatic-notes [0 2 4 5 7 9 11]) :c)
       => [:c :d :e :f :g :a :b]
-      ((scale-filter-generator chromatic-notes [0 2 4 5 7 9 11]) :d)
+      ((scale-generator chromatic-notes [0 2 4 5 7 9 11]) :d)
       => [:d :e :fsgf :g :a :b :csdf]
-
-   A few limitations: don't pass nil in. Don't pass scale-degrees that
-   are negative or greater than the given list, don't pass a value into
-   the resulting method that isn't in the scale you are using.
-   "
+  "
   [notes scale-degrees]
   (fn [scale]
     (let [offset (.indexOf notes scale)
-          buff-size (+ 1 (apply max scale-degrees))
-          buff (into [] (take buff-size (drop offset (cycle notes))))]
-      (set (mapv buff scale-degrees)))))
+          buff-size (inc (apply max scale-degrees))
+          buff (->> notes
+                    cycle
+                    (drop offset)
+                    (take buff-size)
+                    (into []))]
+      (mapv buff scale-degrees))))
 
-(defn create-note-group [intervals]
-  (into {} (map (fn [n] [n ((scale-filter-generator chromatic-notes intervals) n)]) chromatic-notes)))
+(defn create-scale-group
+  "Given a set of intervals, generates a scale for each chromatic note,
+  with a root as the initial note and subsequent notes matching the intervals provided."
+  [intervals]
+  (let [scale-gen (scale-generator chromatic-notes intervals)]
+    (into {} (map (fn [root-note] [root-note (scale-gen root-note)]) chromatic-notes))))
 
 (def scales
-  {:chromatic (create-note-group [0 1 2 3 4 5 6 7 8 9 10 11])
-   :ionian (create-note-group [0 2 4 5 7 9 11])
-   :dorian (create-note-group [0 2 3 5 7 9 10])
-   :phrygian (create-note-group [0 1 3 5 7 8 10])
-   :lydian (create-note-group [0 2 4 6 7 9 11])
-   :mixolydian (create-note-group [0 2 4 5 7 9 10])
-   :aeolian (create-note-group [0 2 3 5 7 8 10])
-   :locrian (create-note-group [0 1 3 5 6 8 10])
-   :minor-pentatonic (create-note-group [0 3 5 7 10])
-   :major-pentatonic (create-note-group [0 2 4 7 9])
-   :melodic-minor (create-note-group [0 2 3 5 7 9 11])
-   :harmonic-minor (create-note-group [0 2 3 5 7 8 11])
-   :whole-tone (create-note-group [0 2 4 6 8 10])
-   :blues (create-note-group [0 3 5 6 7 10])
-   :combo-minor (create-note-group [0 2 3 5 7 9 10])
-   :persian (create-note-group [0 1 4 5 7 8 11])
-   :iwato (create-note-group [0 1 5 6 10])
-   :in-sen (create-note-group [0 1 5 7 10])
-   :hirajoshi (create-note-group [0 2 3 5 7])
-   :pelog (create-note-group [0 1 3 4 7])
-   :phrygian-dominant (create-note-group [0 1 4 5 7 8 10])
-   :whole-half-diminished (create-note-group [0 1 3 4 6 7 9 10])
-   :half-whole-diminished (create-note-group [0 1 3 4 6 7 9 10])
-   :spanish (create-note-group [0 1 4 5 7 8 11])
-   :major-locrian (create-note-group [0 1 3 5 6 8 10])
-   :super-locrian (create-note-group [0 1 3 4 6 8 10])
-   :dorian-b2 (create-note-group [0 1 3 5 7 9 10])
-   :lydian-augmented (create-note-group [0 2 4 6 8 9 11])
-   :lydian-dominant (create-note-group [0 2 4 6 7 9 10])
-   :double-harmonic-major (create-note-group [0 1 4 5 7 8 11])
-   :lydian-#2-#6 (create-note-group [0 2 4 6 8 10 11])
-   :ultraphrygian (create-note-group [0 1 3 5 7 8 9])
-   :hungarian-minor (create-note-group [0 2 3 6 7 8 11])
-   :oriental (create-note-group [0 1 4 5 7 8 10])
-   :ionian-#2-#5 (create-note-group [0 2 4 6 7 8 11])
-   :locrian-bb3-bb7 (create-note-group [0 1 3 5 6 8 9])})
+  {:chromatic (create-scale-group [0 1 2 3 4 5 6 7 8 9 10 11])
+   :ionian (create-scale-group [0 2 4 5 7 9 11])
+   :dorian (create-scale-group [0 2 3 5 7 9 10])
+   :phrygian (create-scale-group [0 1 3 5 7 8 10])
+   :lydian (create-scale-group [0 2 4 6 7 9 11])
+   :mixolydian (create-scale-group [0 2 4 5 7 9 10])
+   :aeolian (create-scale-group [0 2 3 5 7 8 10])
+   :locrian (create-scale-group [0 1 3 5 6 8 10])
+   :minor-pentatonic (create-scale-group [0 3 5 7 10])
+   :major-pentatonic (create-scale-group [0 2 4 7 9])
+   :melodic-minor (create-scale-group [0 2 3 5 7 9 11])
+   :harmonic-minor (create-scale-group [0 2 3 5 7 8 11])
+   :whole-tone (create-scale-group [0 2 4 6 8 10])
+   :blues (create-scale-group [0 3 5 6 7 10])
+   :combo-minor (create-scale-group [0 2 3 5 7 9 10])
+   :persian (create-scale-group [0 1 4 5 7 8 11])
+   :iwato (create-scale-group [0 1 5 6 10])
+   :in-sen (create-scale-group [0 1 5 7 10])
+   :hirajoshi (create-scale-group [0 2 3 5 7])
+   :pelog (create-scale-group [0 1 3 4 7])
+   :phrygian-dominant (create-scale-group [0 1 4 5 7 8 10])
+   :whole-half-diminished (create-scale-group [0 1 3 4 6 7 9 10])
+   :half-whole-diminished (create-scale-group [0 1 3 4 6 7 9 10])
+   :spanish (create-scale-group [0 1 4 5 7 8 11])
+   :major-locrian (create-scale-group [0 1 3 5 6 8 10])
+   :super-locrian (create-scale-group [0 1 3 4 6 8 10])
+   :dorian-b2 (create-scale-group [0 1 3 5 7 9 10])
+   :lydian-augmented (create-scale-group [0 2 4 6 8 9 11])
+   :lydian-dominant (create-scale-group [0 2 4 6 7 9 10])
+   :double-harmonic-major (create-scale-group [0 1 4 5 7 8 11])
+   :lydian-#2-#6 (create-scale-group [0 2 4 6 8 10 11])
+   :ultraphrygian (create-scale-group [0 1 3 5 7 8 9])
+   :hungarian-minor (create-scale-group [0 2 3 6 7 8 11])
+   :oriental (create-scale-group [0 1 4 5 7 8 10])
+   :ionian-#2-#5 (create-scale-group [0 2 4 6 7 8 11])
+   :locrian-bb3-bb7 (create-scale-group [0 1 3 5 6 8 9])})
 
-;; ----------
-;; Algorithms used to generate the structure of various keyboards
-;; (folding, chromatic) on the DT.
-;; ----------
+(def chords
+  {:major (create-scale-group [0 4 7])
+   :minor (create-scale-group [0 3 7])
+   :dominant-7 (create-scale-group [0 4 7 10])
+   :minor-7 (create-scale-group [0 3 7 10])
+   :major-7 (create-scale-group [0 4 7 11])
+   :diminished (create-scale-group [0 3 6])
+   :diminished-7 (create-scale-group [0 3 6 9])
+   })
 
+(defn get-chord-notes
+  "Returns a set of notes from the specified chord that match the given note and octave.
+
+  Takes a `note` (keyword), an `octave` (non-negative integer), and a `chord` (keyword)
+  to filter and return the corresponding notes from the chromatic scale."
+  [note octave chord]
+  (let [chord-notes (set ((chords chord) note))]
+    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
+         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave)))
+         (filter #(chord-notes (:name %)))
+         (take (count chord-notes))
+         set)))
+
+;; Notes and corresponding algorithms.
 (defrecord Note [name octave])
+
 (defn transpose-note
   "Transposes a Note by the given number of semitones.
 
@@ -94,8 +113,7 @@
          (drop semitones)
          first)))
 
-
-(defn- generate-octaves
+(defn generate-octaves
   "Generates an infinite sequence of ascending octaves from a set of cyclical notes.
 
   Takes a sequence of `notes`, an `octave-split-point`, and an optional starting `octave`.
@@ -112,7 +130,9 @@
       (lazy-seq (cons new-note (generate-octaves remaining-notes octave-split-point new-octave)))
       new-note)))
 
+;; Keyboard data structure and creation & manipulation algorithms.
 (defrecord Keyboard [top-row bottom-row])
+
 (defn chromatic-keyboard
   "Generates a standard chromatic keyboard with sharp notes on the top row and natural notes on the bottom row.
    The top row will contain 8 notes, some of which are potentially nil to represent lack of a value, as will
@@ -162,32 +182,3 @@
   "Transposes all Notes in a Keyboard by the given number of semitones."
   [kb semitones]
   (modify-notes-on-keyboard kb #(transpose-note % semitones)))
-
-;; ----------
-;; Keyboards can have chords applied to them: different scale selections often alter
-;; the end choices the user has. This implements both a base way to generate chord data
-;; as well as a way to generate bitmaps across the Keyboard data structure defined above
-;; that can be used by the presentation layer.
-;; ----------
-(def chords
-  {:major (create-note-group [0 4 7])          ;; Root, Major 3rd, Perfect 5th
-   :minor (create-note-group [0 3 7])          ;; Root, Minor 3rd, Perfect 5th
-   :dominant-7 (create-note-group [0 4 7 10])  ;; Root, Major 3rd, Perfect 5th, Minor 7th
-   :minor-7 (create-note-group [0 3 7 10])     ;; Root, Minor 3rd, Perfect 5th, Minor 7th
-   :major-7 (create-note-group [0 4 7 11])     ;; Root, Major 3rd, Perfect 5th, Major 7th
-   :diminished (create-note-group [0 3 6])     ;; Root, Minor 3rd, Diminished 5th
-   :diminished-7 (create-note-group [0 3 6 9]) ;; Root, Minor 3rd, Diminished 5th, Diminished 7th
-   })
-
-(defn get-chord-notes
-  "Returns a set of notes from the specified chord that match the given note and octave.
-
-  Takes a `note` (keyword), an `octave` (non-negative integer), and a `chord` (keyword)
-  to filter and return the corresponding notes from the chromatic scale."
-  [note octave chord]
-  (let [chord-notes (set ((chords chord) note))]
-    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
-         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave)))
-         (filter #(chord-notes (:name %)))
-         (take (count chord-notes))
-         set)))
