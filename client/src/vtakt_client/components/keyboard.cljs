@@ -82,6 +82,19 @@
 ;; ----------
 
 (defrecord Note [name octave])
+(defn transpose-note
+  "Transposes a Note by the given number of semitones.
+
+  Takes a `Note` (a record with `:name` and `:octave` keys) and a `semitones` (number of
+  semitones to transpose). Returns the transposed Note, or `nil` if the input Note is `nil`."
+  [note semitones]
+  (when note
+    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
+         (drop-while #(not= % note))
+         (drop semitones)
+         first)))
+
+
 (defn- generate-octaves
   "Generates an infinite sequence of ascending octaves from a set of cyclical notes.
 
@@ -129,6 +142,27 @@
      (generate-row (+ offset 8))  ; Top row with offset shifted by 8
      (generate-row offset))))     ; Bottom row with original offset
 
+(defn modify-notes-on-keyboard
+  "Applies a function to all `Note` objects in a Keyboard.
+
+  Takes a `Keyboard` (a record with `:top-row` and `:bottom-row` keys, each containing
+  sequences of `Note` records) and a `f` (a function to apply to each `Note`).
+  Returns a new Keyboard with the function applied to each `Note`, preserving the
+  original structure."
+  [kb f]
+  (postwalk #(if (instance? Note %) (f %) %) kb))
+
+(defn retain-notes-on-keyboard
+  "Returns a modified keyboard with only the notes present in the provided `notes` set.
+   Notes is expected to be the Note record type."
+  [kb notes
+  (modify-notes-on-keyboard kb #(if (notes %) % nil))])
+
+(defn transpose-keyboard
+  "Transposes all Notes in a Keyboard by the given number of semitones."
+  [kb semitones]
+  (modify-notes-on-keyboard kb #(transpose-note % semitones)))
+
 ;; ----------
 ;; Keyboards can have chords applied to them: different scale selections often alter
 ;; the end choices the user has. This implements both a base way to generate chord data
@@ -145,48 +179,15 @@
    :diminished-7 (create-note-group [0 3 6 9]) ;; Root, Minor 3rd, Diminished 5th, Diminished 7th
    })
 
-;; TODO - Refactor
 (defn get-chord-notes
+  "Returns a set of notes from the specified chord that match the given note and octave.
+
+  Takes a `note` (keyword), an `octave` (non-negative integer), and a `chord` (keyword)
+  to filter and return the corresponding notes from the chromatic scale."
   [note octave chord]
-  (set (take (count ((chords chord) note))
-        (filter
-         #(if (contains? ((chords chord) note) (:name %)) % nil)
-         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave))
-                     (generate-octaves (cycle chromatic-notes) 0 :c))))))
-
-;; TODO - Refactor
-(defn retain-notes-on-keyboard
-  [keyboard notes]
-  (update-vals
-   keyboard
-   #(map notes %)))
-
-
-;; ----------
-;; There is transpose functionality on the DT. We implement that ability here as
-;; a utility function that the view layer can use - This is the last function we
-;; will want to run in any chain of operations because the UI on the DT doesn't
-;; even really consider this as "changing notes", it just ultimately drives midi
-;; and the internal sound engine with a different global offset.
-;; ----------
-(defn transpose-note
-  "Transposes a Note by the given number of semitones.
-
-  Takes a `Note` (a record with `:name` and `:octave` keys) and a `semitones` (number of
-  semitones to transpose). Returns the transposed Note, or `nil` if the input Note is `nil`."
-  [note semitones]
-  (when note
+  (let [chord-notes (set ((chords chord) note))]
     (->> (generate-octaves (cycle chromatic-notes) 0 :c)
-         (drop-while #(not= % note))
-         (drop semitones)
-         first)))
-
-(defn transpose-keyboard
-  "Transposes all Notes in a Keyboard by the given number of semitones.
-
-  Takes a `Keyboard` (a record with `:top-row` and `:bottom-row` keys, each containing
-  sequences of `Note` records) and a `semitones` (number of semitones to transpose
-  each note). Returns a new Keyboard with all Notes transposed, preserving the
-  original structure."
-  [kb semitones]
-  (postwalk #(if (instance? Note %) (transpose-note % semitones) %) kb))
+         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave)))
+         (filter #(chord-notes (:name %)))
+         (take (count chord-notes))
+         set)))
