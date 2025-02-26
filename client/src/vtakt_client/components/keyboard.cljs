@@ -170,17 +170,23 @@
 ;; and the internal sound engine with a different global offset.
 ;; ----------
 (defn transpose-note
-  [note value]
-  (if (nil? note)
-    nil
-    (first
-     (drop value
-           (drop-while #(not= % note) (generate-octaves (cycle chromatic-notes) 0 :c))))))
+  "Transposes a Note by the given number of semitones.
+
+  Takes a `Note` (a record with `:name` and `:octave` keys) and a `semitones` (number of
+  semitones to transpose). Returns the transposed Note, or `nil` if the input Note is `nil`."
+  [note semitones]
+  (when note
+    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
+         (drop-while #(not= % note))
+         (drop semitones)
+         first)))
 
 (defn transpose-keyboard
-  [kb value]
-  (postwalk
-   #(if (and (map? %) (% :name) (% :octave))
-      (transpose-note % value)
-      %)
-   kb))
+  "Transposes all Notes in a Keyboard by the given number of semitones.
+
+  Takes a `Keyboard` (a record with `:top-row` and `:bottom-row` keys, each containing
+  sequences of `Note` records) and a `semitones` (number of semitones to transpose
+  each note). Returns a new Keyboard with all Notes transposed, preserving the
+  original structure."
+  [kb semitones]
+  (postwalk #(if (instance? Note %) (transpose-note % semitones) %) kb))
