@@ -1,4 +1,5 @@
-(ns vtakt-client.components.keyboard)
+(ns vtakt-client.components.keyboard
+  (:require [clojure.walk :refer [postwalk]]))
 
 ;; ----------
 ;; General musical scale data that is useful for generating
@@ -159,3 +160,27 @@
   (update-vals
    keyboard
    #(map notes %)))
+
+
+;; ----------
+;; There is transpose functionality on the DT. We implement that ability here as
+;; a utility function that the view layer can use - This is the last function we
+;; will want to run in any chain of operations because the UI on the DT doesn't
+;; even really consider this as "changing notes", it just ultimately drives midi
+;; and the internal sound engine with a different global offset.
+;; ----------
+(defn transpose-note
+  [note value]
+  (if (nil? note)
+    nil
+    (first
+     (drop value
+           (drop-while #(not= % note) (generate-octaves (cycle chromatic-notes) 0 :c))))))
+
+(defn transpose-keyboard
+  [kb value]
+  (postwalk
+   #(if (and (map? %) (% :name) (% :octave))
+      (transpose-note % value)
+      %)
+   kb))
