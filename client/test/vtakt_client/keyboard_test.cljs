@@ -1,4 +1,4 @@
-(ns vtakt-client.core-test
+(ns vtakt-client.keyboard-test
   (:require [cljs.test :refer-macros [deftest testing is]]
             [vtakt-client.components.keyboard :as kb]))
 
