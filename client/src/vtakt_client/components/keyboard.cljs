@@ -1,14 +1,15 @@
 (ns vtakt-client.components.keyboard
-  (:require [clojure.walk :refer [postwalk]]))
+  (:require [clojure.walk :refer [postwalk]]
+            [clojure.spec.alpha :as s]))
 
 ;; Music theory.
+(def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
 (def sharp-note-layout [nil :csdf :dsef nil :fsgf :gsaf :asbf])
 (def natural-note-layout [:c :d :e :f :g :a :b ])
-(def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
 (def chromatic-breakpoint-natural :c)
 (def chromatic-breakpoint-accidental :csdf)
 
-(defn scale-generator
+(defn- scale-generator
   "Given a vector of sequential notes and associated scale degrees, returns
   another function that given one of the notes in that list will generate
   a scale with degrees using that note as a starting point.
@@ -30,10 +31,19 @@
                     (into []))]
       (mapv buff scale-degrees))))
 
+(s/def ::intervals (s/coll-of nat-int? :kind vector?))
+(s/def ::chromatic-note (into #{} chromatic-notes))
+(s/def ::parallel-scale-mapping (s/map-of ::chromatic-note (s/coll-of ::chromatic-note :kind vector?)))
+
+(s/fdef create-scale-group
+  :args (s/cat :intervals ::intervals)
+  :ret ::parallel-scale-mapping)
 (defn create-scale-group
   "Given a set of intervals, generates a scale for each chromatic note,
   with a root as the initial note and subsequent notes matching the intervals provided."
   [intervals]
+  {:pre [(s/valid? ::intervals intervals)]
+   :post [(s/valid? ::parallel-scale-mapping %)]}
   (let [scale-gen (scale-generator chromatic-notes intervals)]
     (into {} (map (fn [root-note] [root-note (scale-gen root-note)]) chromatic-notes))))
 
@@ -92,7 +102,7 @@
   to filter and return the corresponding notes from the chromatic scale."
   [note octave chord]
   (let [chord-notes (set ((chords chord) note))]
-    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
+    (->> (scale-generator (cycle chromatic-notes) 0)
          (drop-while #(or (not= (:name %) note) (not= (:octave %) octave)))
          (filter #(chord-notes (:name %)))
          (take (count chord-notes))
@@ -108,12 +118,12 @@
   semitones to transpose). Returns the transposed Note, or `nil` if the input Note is `nil`."
   [note semitones]
   (when note
-    (->> (generate-octaves (cycle chromatic-notes) 0 :c)
+    (->> (scale-generator (cycle chromatic-notes) 0)
          (drop-while #(not= % note))
          (drop semitones)
          first)))
 
-(defn generate-octaves
+(defn note-generator
   "Generates an infinite sequence of ascending octaves from a set of cyclical notes.
 
   Takes a sequence of `notes`, an `octave-split-point`, and an optional starting `octave`.
@@ -127,7 +137,7 @@
         new-octave (if (= note octave-split-point) (inc octave) octave)
         new-note (map->Note {:octave new-octave :name note})]
     (if (seq remaining-notes)
-      (lazy-seq (cons new-note (generate-octaves remaining-notes octave-split-point new-octave)))
+      (lazy-seq (cons new-note (note-generator remaining-notes octave-split-point new-octave)))
       new-note)))
 
 ;; Keyboard data structure and creation & manipulation algorithms.
@@ -143,7 +153,7 @@
   [offset scale-filter]
   (let [generate-notes (fn [layout split-point]
                          (map #(if (scale-filter (:name %)) % nil)
-                              (take 8 (drop offset (generate-octaves (cycle layout) split-point)))))]
+                              (take 8 (drop offset (note-generator (cycle layout) split-point)))))]
     (->Keyboard
      (generate-notes sharp-note-layout :csdf)
      (generate-notes natural-note-layout :c))))
@@ -157,7 +167,7 @@
   (let [generate-row (fn [offset]
                        (take 8 (drop offset
                                      (filter #(scale-filter (:name %))
-                                             (generate-octaves (cycle chromatic-notes) :c)))))]
+                                             (note-generator (cycle chromatic-notes) :c)))))]
     (->Keyboard
      (generate-row (+ offset 8))  ; Top row with offset shifted by 8
      (generate-row offset))))     ; Bottom row with original offset
@@ -175,8 +185,8 @@
 (defn retain-notes-on-keyboard
   "Returns a modified keyboard with only the notes present in the provided `notes` set.
    Notes is expected to be the Note record type."
-  [kb notes
-  (modify-notes-on-keyboard kb #(if (notes %) % nil))])
+  [kb notes]
+  (modify-notes-on-keyboard kb #(if (notes %) % nil)))
 
 (defn transpose-keyboard
   "Transposes all Notes in a Keyboard by the given number of semitones."
