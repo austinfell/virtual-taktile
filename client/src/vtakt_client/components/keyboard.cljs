@@ -95,6 +95,7 @@
    :diminished-7 (create-scale-group [0 3 6 9])
    })
 
+;; TODO - Consider how to decouple this from global chord map.
 (defn get-chord-notes
   "Returns a set of notes from the specified chord that match the given note and octave.
 
