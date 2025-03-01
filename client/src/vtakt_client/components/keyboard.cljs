@@ -5,7 +5,7 @@
 ;; Music theory.
 (def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
 (def sharp-note-layout [nil :csdf :dsef nil :fsgf :gsaf :asbf])
-(def natural-note-layout [:c :d :e :f :g :a :b ])
+(def natural-note-layout [:c :d :e :f :g :a :b])
 (def chromatic-breakpoint-natural :c)
 (def chromatic-breakpoint-accidental :csdf)
 
@@ -34,17 +34,16 @@
 (s/def ::intervals (s/coll-of nat-int? :kind vector?))
 (s/def ::chromatic-note (into #{} chromatic-notes))
 (s/def ::parallel-scale-mapping (s/map-of ::chromatic-note (s/coll-of ::chromatic-note :kind vector?)))
-
 (s/fdef create-scale-group
-  :args (s/cat :intervals ::intervals)
+  :args (s/nilable (s/cat :intervals ::intervals))
   :ret ::parallel-scale-mapping)
 (defn create-scale-group
   "Given a set of intervals, generates a scale for each chromatic note,
   with a root as the initial note and subsequent notes matching the intervals provided."
   [intervals]
-  {:pre [(s/valid? ::intervals intervals)]
-   :post [(s/valid? ::parallel-scale-mapping %)]}
-  (let [scale-gen (scale-generator chromatic-notes intervals)]
+  {:pre [(or (nil? intervals) 
+             (s/valid? ::intervals intervals))]}
+  (let [scale-gen (scale-generator chromatic-notes (if (nil? intervals) [] intervals))]
     (into {} (map (fn [root-note] [root-note (scale-gen root-note)]) chromatic-notes))))
 
 (def scales
@@ -85,61 +84,50 @@
    :ionian-#2-#5 (create-scale-group [0 2 4 6 7 8 11])
    :locrian-bb3-bb7 (create-scale-group [0 1 3 5 6 8 9])})
 
-(def chords
-  {:major (create-scale-group [0 4 7])
-   :minor (create-scale-group [0 3 7])
-   :dominant-7 (create-scale-group [0 4 7 10])
-   :minor-7 (create-scale-group [0 3 7 10])
-   :major-7 (create-scale-group [0 4 7 11])
-   :diminished (create-scale-group [0 3 6])
-   :diminished-7 (create-scale-group [0 3 6 9])
-   })
-
-;; TODO - Consider how to decouple this from global chord map.
-(defn get-chord-notes
-  "Returns a set of notes from the specified chord that match the given note and octave.
-
-  Takes a `note` (keyword), an `octave` (non-negative integer), and a `chord` (keyword)
-  to filter and return the corresponding notes from the chromatic scale."
-  [note octave chord]
-  (let [chord-notes (set ((chords chord) note))]
-    (->> (scale-generator (cycle chromatic-notes) 0)
-         (drop-while #(or (not= (:name %) note) (not= (:octave %) octave)))
-         (filter #(chord-notes (:name %)))
-         (take (count chord-notes))
-         set)))
-
 ;; Notes and corresponding algorithms.
 (defrecord Note [name octave])
 
-(defn transpose-note
-  "Transposes a Note by the given number of semitones.
-
-  Takes a `Note` (a record with `:name` and `:octave` keys) and a `semitones` (number of
-  semitones to transpose). Returns the transposed Note, or `nil` if the input Note is `nil`."
-  [note semitones]
+(defn- shift-note
+  "Shifts a note up or down by the specified delta.
+   For delta=1, increments the note.
+   For delta=-1, decrements the note."
+  [note direction]
   (when note
-    (->> (scale-generator (cycle chromatic-notes) 0)
-         (drop-while #(not= % note))
-         (drop semitones)
-         first)))
+    (let [note-pos (.indexOf chromatic-notes (:name note))
+          delta (case direction
+                  :up 1
+                  :down -1)
+          next-note-pos (mod (+ note-pos delta) 12)
+          next-note-name (get chromatic-notes next-note-pos)
+          octave-change (cond
+                          ;; When going up and moving from B to C
+                          (and (= delta 1) (= (:name note) :b)) 1
+                          ;; When going down and moving from C to B
+                          (and (= delta -1) (= (:name note) :c)) -1
+                          ;; Should not be hit as spec only allows -1 or 1.
+                          :else 0)]
+      (->Note
+       next-note-name
+       (+ (:octave note) octave-change)))))
 
-(defn note-generator
-  "Generates an infinite sequence of ascending octaves from a set of cyclical notes.
-
-  Takes a sequence of `notes`, an `octave-split-point`, and an optional starting `octave`.
-  The sequence of notes starts at `octave` and will cycle through the notes, returning
-  a sequence of `Note` objects with a name and the octave they belong to.
-
-  If no `octave` is provided, it defaults to 0."
-  [notes octave-split-point & [octave]]
-  (let [octave (or octave 0)
-        [note & remaining-notes] notes
-        new-octave (if (= note octave-split-point) (inc octave) octave)
-        new-note (map->Note {:octave new-octave :name note})]
-    (if (seq remaining-notes)
-      (lazy-seq (cons new-note (note-generator remaining-notes octave-split-point new-octave)))
-      new-note)))
+(s/def ::name keyword?)
+(s/def ::octave (s/int-in -2 9))
+(s/def ::note (s/keys :req-un [::name ::octave]))
+(s/def ::transposition-amount (s/int-in -2000 2000))
+(s/fdef transpose-note
+  :args (s/cat :note ::note :n ::transposition-amount)
+  :ret ::note)
+(defn transpose-note
+  "Shifts a note by n semitones. Positive n shifts up, negative shifts down."
+  [note n]
+  (if (zero? n)
+    note
+    (let [direction (if (pos? n) :up :down)
+          remaining-transposition (if (pos? n) (dec n) (inc n))
+          shifted-note (shift-note note direction)]
+      (if (zero? remaining-transposition)
+        shifted-note
+        (recur shifted-note remaining-transposition)))))
 
 ;; Keyboard data structure and creation & manipulation algorithms.
 (defrecord Keyboard [top-row bottom-row])
@@ -154,7 +142,7 @@
   [offset scale-filter]
   (let [generate-notes (fn [layout split-point]
                          (map #(if (scale-filter (:name %)) % nil)
-                              (take 8 (drop offset (note-generator (cycle layout) split-point)))))]
+                              (take 8 (drop offset (scale-generator chromatic-notes (into [] (range 12)))))))]
     (->Keyboard
      (generate-notes sharp-note-layout :csdf)
      (generate-notes natural-note-layout :c))))
@@ -168,7 +156,7 @@
   (let [generate-row (fn [offset]
                        (take 8 (drop offset
                                      (filter #(scale-filter (:name %))
-                                             (note-generator (cycle chromatic-notes) :c)))))]
+                                             (scale-generator chromatic-notes (into [] (range 12)))))))]
     (->Keyboard
      (generate-row (+ offset 8))  ; Top row with offset shifted by 8
      (generate-row offset))))     ; Bottom row with original offset
@@ -193,3 +181,33 @@
   "Transposes all Notes in a Keyboard by the given number of semitones."
   [kb semitones]
   (modify-notes-on-keyboard kb #(transpose-note % semitones)))
+
+;; Chords
+(def chords
+  {:major (create-scale-group [0 4 7])
+   :minor (create-scale-group [0 3 7])
+   :dominant-7 (create-scale-group [0 4 7 10])
+   :minor-7 (create-scale-group [0 3 7 10])
+   :major-7 (create-scale-group [0 4 7 11])
+   :diminished (create-scale-group [0 3 6])
+   :diminished-7 (create-scale-group [0 3 6 9])})
+
+(chords :diminished-7)
+
+(defn build-chord
+  "Builds a chord with the given note names starting at the specified octave.
+   Optional inversion parameter defaults to 0 (root position)."
+  ([note-names octave]
+   (build-chord note-names octave 0))
+  ([note-names octave inversion]
+   (let [num-notes (count note-names)
+         shift (mod inversion num-notes)
+         rotated-notes (vec (take num-notes (drop shift (cycle note-names))))]
+     (loop [result []
+            remaining-notes rotated-notes
+            current-note (->Note (first rotated-notes) octave)]
+       (if (empty? remaining-notes)
+         result
+         (if (= (first remaining-notes) (:name current-note))
+           (recur (conj result current-note) (rest remaining-notes) (shift-note current-note :up))
+           (recur result remaining-notes (shift-note current-note :up))))))))
