@@ -15,9 +15,9 @@
    :blues [0 3 5 6 7 10]
    :chromatic [0 1 2 3 4 5 6 7 8 9 10 11]})
 
-(s/def ::tintervals (s/coll-of nat-int? :kind vector?))
-(s/def ::tmusical-intervals
-  (s/with-gen ::tintervals
+(s/def ::intervals (s/coll-of nat-int? :kind vector?))
+(s/def ::musical-intervals
+  (s/with-gen ::intervals
     (fn []
       (gen/frequency
        [[10 (gen/elements (vals common-scales))]
@@ -26,7 +26,7 @@
 
 (deftest test-expected-attributes-of-create-scale-group
   (testing "Make sure across random sample of input that attributes apply."
-    (let [samples (gen/sample (s/gen ::tmusical-intervals) 10)]
+    (let [samples (gen/sample (s/gen ::musical-intervals) 10000)]
       (doseq [[i sample] (map-indexed vector samples)]
         (let [result (kb/create-scale-group sample)]
           ;; 1. Octave Equivalence Property
@@ -48,9 +48,9 @@
           ;; gcd(3,12)=3, creating a cycle of only 4 unique transpositions.
           (if (< (count sample) 12)
             (doseq [coprime [1 5 7 11]]
-            (is (not=
-                 (update-vals result set)
-                 (update-vals (kb/create-scale-group (map #(+ % coprime) sample)) set)))))
+              (is (not=
+                   (update-vals result set)
+                   (update-vals (kb/create-scale-group (map #(+ % coprime) sample)) set)))))
           ;; TODO 3.) Interval Vector Inversion Equivalence Property
           ;; TODO 4.) Balzano Property - All Diatonic Like Scales Are Unique
           ;; TODO 5.) Z-Relation Property - This is interesting.. Not sure if applicable for this test, but I'd like to learn more about it.
@@ -75,11 +75,8 @@
            (kb/create-scale-group []))))
 
   (testing "Nil interval list throws an error"
-    (is
-     (=
-      (into {} (map (fn [root] [root []]) all-notes))
-      (kb/create-scale-group nil)))))
-(clojure.test/test-vars [#'test-empty-and-nil-inputs])
+    (is (= (into {} (map (fn [root] [root []]) all-notes))
+           (kb/create-scale-group nil)))))
 
 (deftest test-single-element-scales
   (testing "Single interval [0] creates a map with single-element vectors for all roots"
@@ -104,17 +101,17 @@
 (deftest test-standard-scales
   (testing "Major scale structure is correctly generated"
     (let [expected {:c [:c :d :e :f :g :a :b],
-                   :csdf [:csdf :dsef :f :fsgf :gsaf :asbf :c],
-                   :d [:d :e :fsgf :g :a :b :csdf],
-                   :dsef [:dsef :f :g :gsaf :asbf :c :d],
-                   :e [:e :fsgf :gsaf :a :b :csdf :dsef],
-                   :f [:f :g :a :asbf :c :d :e],
-                   :fsgf [:fsgf :gsaf :asbf :b :csdf :dsef :f],
-                   :g [:g :a :b :c :d :e :fsgf],
-                   :gsaf [:gsaf :asbf :c :csdf :dsef :f :g],
-                   :a [:a :b :csdf :d :e :fsgf :gsaf],
-                   :asbf [:asbf :c :d :dsef :f :g :a],
-                   :b [:b :csdf :dsef :e :fsgf :gsaf :asbf]}]
+                    :csdf [:csdf :dsef :f :fsgf :gsaf :asbf :c],
+                    :d [:d :e :fsgf :g :a :b :csdf],
+                    :dsef [:dsef :f :g :gsaf :asbf :c :d],
+                    :e [:e :fsgf :gsaf :a :b :csdf :dsef],
+                    :f [:f :g :a :asbf :c :d :e],
+                    :fsgf [:fsgf :gsaf :asbf :b :csdf :dsef :f],
+                    :g [:g :a :b :c :d :e :fsgf],
+                    :gsaf [:gsaf :asbf :c :csdf :dsef :f :g],
+                    :a [:a :b :csdf :d :e :fsgf :gsaf],
+                    :asbf [:asbf :c :d :dsef :f :g :a],
+                    :b [:b :csdf :dsef :e :fsgf :gsaf :asbf]}]
       (is (= expected (kb/create-scale-group major-scale-intervals)))
       (is (= expected (kb/create-scale-group [0 2 4 5 7 9 11])))
       (is (= expected (kb/create-scale-group [0 14 4 17 7 21 11])))
@@ -137,17 +134,17 @@
 
   (testing "Chromatic scale includes all twelve notes"
     (let [expected {:c [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b],
-                   :csdf [:csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b :c],
-                   :d [:d :dsef :e :f :fsgf :g :gsaf :a :asbf :b :c :csdf],
-                   :dsef [:dsef :e :f :fsgf :g :gsaf :a :asbf :b :c :csdf :d],
-                   :e [:e :f :fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef],
-                   :f [:f :fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef :e],
-                   :fsgf [:fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef :e :f],
-                   :g [:g :gsaf :a :asbf :b :c :csdf :d :dsef :e :f :fsgf],
-                   :gsaf [:gsaf :a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g],
-                   :a [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf],
-                   :asbf [:asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf :a],
-                   :b [:b :c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf]}]
+                    :csdf [:csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b :c],
+                    :d [:d :dsef :e :f :fsgf :g :gsaf :a :asbf :b :c :csdf],
+                    :dsef [:dsef :e :f :fsgf :g :gsaf :a :asbf :b :c :csdf :d],
+                    :e [:e :f :fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef],
+                    :f [:f :fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef :e],
+                    :fsgf [:fsgf :g :gsaf :a :asbf :b :c :csdf :d :dsef :e :f],
+                    :g [:g :gsaf :a :asbf :b :c :csdf :d :dsef :e :f :fsgf],
+                    :gsaf [:gsaf :a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g],
+                    :a [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf],
+                    :asbf [:asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf :a],
+                    :b [:b :c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf]}]
       (is (= expected (kb/create-scale-group chromatic-intervals))))))
 
 (deftest test-scale-properties
@@ -171,7 +168,6 @@
       (is (true? (get-in (first check-results) [:clojure.spec.test.check/ret :pass?]))
           (str "Failed with: " (-> check-results first :failure))))))
 
-
 (deftest test-error-handling
   (testing "Negative numbers throw error"
     (is (thrown? js/Error (kb/create-scale-group [-1]))))
@@ -184,6 +180,117 @@
 
   (testing "Non-numerics"
     (is (thrown? js/Error (kb/create-scale-group ["a" "b" "c"])))))
+
+(kb/transpose-note (kb/->Note :c 4) nil)
+
+(deftest transpose-note-test
+  ;; Base cases
+  (testing "nil inputs"
+    (is (nil? (kb/transpose-note nil 1)))
+    (is (= (kb/transpose-note (kb/->Note :c 4) nil) (kb/->Note :c 4))))
+  (testing "zero transposition"
+    (let [note (kb/->Note :c 4)]
+      (is (= note (kb/transpose-note note 0)))))
+  ;; Single-step transpositions
+  (testing "transposing up by 1"
+    (is (= (kb/->Note :csdf 4) (kb/transpose-note (kb/->Note :c 4) 1)))
+    (is (= (kb/->Note :d 4) (kb/transpose-note (kb/->Note :csdf 4) 1)))
+    (is (= (kb/->Note :c 5) (kb/transpose-note (kb/->Note :b 4) 1))))
+  (testing "transposing down by 1"
+    (is (= (kb/->Note :b 3) (kb/transpose-note (kb/->Note :c 4) -1)))
+    (is (= (kb/->Note :asbf 3) (kb/transpose-note (kb/->Note :b 3) -1)))
+    (is (= (kb/->Note :c 3) (kb/transpose-note (kb/->Note :csdf 3) -1))))
+  ;; Multi-step transpositions
+  (testing "transposing up by multiple steps"
+    (is (= (kb/->Note :e 4) (kb/transpose-note (kb/->Note :c 4) 4)))
+    (is (= (kb/->Note :c 5) (kb/transpose-note (kb/->Note :c 4) 12)))
+    (is (= (kb/->Note :fsgf 4) (kb/transpose-note (kb/->Note :c 4) 6))))
+  (testing "transposing down by multiple steps"
+    (is (= (kb/->Note :a 3) (kb/transpose-note (kb/->Note :c 4) -3)))
+    (is (= (kb/->Note :c 3) (kb/transpose-note (kb/->Note :c 4) -12)))
+    (is (= (kb/->Note :fsgf 3) (kb/transpose-note (kb/->Note :c 4) -6))))
+  ;; Octave changes
+  (testing "octave changes when crossing B-C boundary"
+    ;; Moving up from B to C increases octave
+    (is (= (kb/->Note :c 5) (kb/transpose-note (kb/->Note :b 4) 1)))
+    ;; Moving down from C to B decreases octave
+    (is (= (kb/->Note :b 3) (kb/transpose-note (kb/->Note :c 4) -1)))
+    ;; Multiple crossings up
+    (is (= (kb/->Note :d 5) (kb/transpose-note (kb/->Note :b 3) 15)))
+    ;; Multiple crossings down
+    (is (= (kb/->Note :a 2) (kb/transpose-note (kb/->Note :c 4) -15))))
+  ;; Extreme cases
+  (testing "large transpositions"
+    ;; Up 100 octaves (1200 semitones)
+    (is (= (kb/->Note :c 104) (kb/transpose-note (kb/->Note :c 4) 1200)))
+    ;; Down 100 octaves
+    (is (= (kb/->Note :c -96) (kb/transpose-note (kb/->Note :c 4) -1200))))
+  ;; Edge cases
+  (testing "edge cases for octaves"
+    ;; From lowest octave down
+    (is (= (kb/->Note :b -3) (kb/transpose-note (kb/->Note :c -2) -1)))
+    ;; From highest octave up
+    (is (= (kb/->Note :c 10) (kb/transpose-note (kb/->Note :b 9) 1))))
+  ;; Property-based tests
+  (testing "property: transposing by n then by -n returns the original note"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)
+          transposition-samples (gen/sample (s/gen ::kb/transposition-amount) 10)]
+      (doseq [note note-samples
+              n transposition-samples]
+        (is (= (kb/map->Note note) (kb/transpose-note (kb/transpose-note (kb/map->Note note) n) (- n)))
+            (str "Failed roundtrip test for note " note " with transposition " n)))))
+  (testing "property: transposing by 12 changes octave but preserves note name"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 50)]
+      (doseq [note note-samples]
+        (let [note-obj (kb/map->Note note)
+              trans-up (kb/transpose-note note-obj 12)
+              trans-down (kb/transpose-note note-obj -12)]
+          (is (= (:name note) (:name trans-up))
+              "Transposing up by 12 should preserve note name")
+          (is (= (:name note) (:name trans-down))
+              "Transposing down by 12 should preserve note name")
+          (is (= (+ (:octave note) 1) (:octave trans-up))
+              "Transposing up by 12 should increase octave by 1")
+          (is (= (- (:octave note) 1) (:octave trans-down))
+              "Transposing down by 12 should decrease octave by 1")))))
+  (testing "property: composable transpositions"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 20)
+          trans-pairs (take 40000 (gen/sample
+                                   (s/gen (s/tuple
+                                           (s/int-in -100 100)
+                                           (s/int-in -100 100)))))]
+      (doseq [note note-samples
+              [t1 t2] trans-pairs]
+        (let [note-obj (kb/map->Note note)
+              direct (kb/transpose-note note-obj (+ t1 t2))
+              sequential (-> note-obj
+                             (kb/transpose-note t1)
+                             (kb/transpose-note t2))]
+          (is (= direct sequential)
+              (str "Transposing by " t1 " then " t2 " should equal direct transposition by " (+ t1 t2)))))))
+  (testing "property: modulo 12 transposition equivalence for note names"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 40)
+          large-trans (gen/sample (s/gen (s/int-in 12 500)) 40)
+          chromatic-notes [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b]]
+      (doseq [note note-samples
+              trans large-trans]
+        (let [note-obj (kb/map->Note note)
+              full-trans (kb/transpose-note note-obj trans)
+              mod-trans (kb/transpose-note note-obj (mod trans 12))
+              octave-diff (quot trans 12)]
+          (is (= (:name full-trans) (:name mod-trans))
+              "Note name should be the same for full and modulo transposition")
+          (is (= (:octave full-trans) (+ (:octave mod-trans) octave-diff))
+              "Octave should differ by the expected amount")))))
+  (testing "full chromatic scale transposition"
+    ;; Test every note in the scale
+    (let [chromatic-notes [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b]]
+      (doseq [i (range 12)]
+        (let [current-note (kb/->Note (nth chromatic-notes i) 4)
+              next-idx (mod (inc i) 12)
+              next-octave (if (= next-idx 0) 5 4)
+              next-note (kb/->Note (nth chromatic-notes next-idx) next-octave)]
+          (is (= next-note (kb/transpose-note current-note 1))))))))
 
 (run-tests)
 

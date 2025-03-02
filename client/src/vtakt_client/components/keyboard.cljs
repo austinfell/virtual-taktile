@@ -9,7 +9,7 @@
 (def chromatic-breakpoint-natural :c)
 (def chromatic-breakpoint-accidental :csdf)
 
-(defn- scale-generator
+(defn- pscale-generator
   "Given a vector of sequential notes and associated scale degrees, returns
   another function that given one of the notes in that list will generate
   a scale with degrees using that note as a starting point.
@@ -30,21 +30,23 @@
                     (take buff-size)
                     (into []))]
       (mapv buff scale-degrees))))
+(def scale-generator (memoize pscale-generator))
 
-(s/def ::intervals (s/coll-of nat-int? :kind vector?))
-(s/def ::chromatic-note (into #{} chromatic-notes))
-(s/def ::parallel-scale-mapping (s/map-of ::chromatic-note (s/coll-of ::chromatic-note :kind vector?)))
-(s/fdef create-scale-group
-  :args (s/nilable (s/cat :intervals ::intervals))
-  :ret ::parallel-scale-mapping)
-(defn create-scale-group
+(s/def ::intervals (s/nilable (s/coll-of nat-int? :kind sequential?)))
+(defn- pcreate-scale-group
   "Given a set of intervals, generates a scale for each chromatic note,
   with a root as the initial note and subsequent notes matching the intervals provided."
   [intervals]
-  {:pre [(or (nil? intervals) 
+  {:pre [(or (nil? intervals)
              (s/valid? ::intervals intervals))]}
   (let [scale-gen (scale-generator chromatic-notes (if (nil? intervals) [] intervals))]
     (into {} (map (fn [root-note] [root-note (scale-gen root-note)]) chromatic-notes))))
+(s/def ::chromatic-note (into #{} chromatic-notes))
+(s/def ::parallel-scale-mapping (s/map-of ::chromatic-note (s/coll-of ::chromatic-note :kind sequential?)))
+(s/fdef create-scale-group
+  :args (s/nilable (s/cat :intervals ::intervals))
+  :ret ::parallel-scale-mapping)
+(def create-scale-group (memoize pcreate-scale-group))
 
 (def scales
   {:chromatic (create-scale-group [0 1 2 3 4 5 6 7 8 9 10 11])
@@ -87,7 +89,7 @@
 ;; Notes and corresponding algorithms.
 (defrecord Note [name octave])
 
-(defn- shift-note
+(defn- pshift-note
   "Shifts a note up or down by the specified delta.
    For delta=1, increments the note.
    For delta=-1, decrements the note."
@@ -109,25 +111,30 @@
       (->Note
        next-note-name
        (+ (:octave note) octave-change)))))
+(def shift-note (memoize pshift-note))
 
-(s/def ::name keyword?)
-(s/def ::octave (s/int-in -2 9))
+(s/def ::octave int?)
+(s/def ::transposition-amount (s/int-in -2000 2001))
+(s/def ::name ::chromatic-note)
 (s/def ::note (s/keys :req-un [::name ::octave]))
-(s/def ::transposition-amount (s/int-in -2000 2000))
-(s/fdef transpose-note
-  :args (s/cat :note ::note :n ::transposition-amount)
-  :ret ::note)
-(defn transpose-note
+(defn- ptranspose-note
   "Shifts a note by n semitones. Positive n shifts up, negative shifts down."
   [note n]
-  (if (zero? n)
-    note
-    (let [direction (if (pos? n) :up :down)
-          remaining-transposition (if (pos? n) (dec n) (inc n))
-          shifted-note (shift-note note direction)]
-      (if (zero? remaining-transposition)
-        shifted-note
-        (recur shifted-note remaining-transposition)))))
+  {:pre [(and (s/valid? (s/nilable ::note) note) (s/valid? (s/nilable ::transposition-amount) n))]}
+  (when (not (nil? note))
+    (if (zero? n)
+      note
+      (let [direction (if (pos? n) :up :down)
+            remaining-transposition (if (pos? n) (dec n) (inc n))
+            shifted-note (shift-note note direction)]
+        (if (zero? remaining-transposition)
+          (map->Note shifted-note)
+          (recur shifted-note remaining-transposition))))))
+
+(s/fdef transpose-note
+  :args (s/cat :note (s/nilable ::note) :n (s/nilable ::transposition-amount))
+  :ret (s/nilable ::note))
+(def transpose-note (memoize ptranspose-note))
 
 ;; Keyboard data structure and creation & manipulation algorithms.
 (defrecord Keyboard [top-row bottom-row])
@@ -191,8 +198,6 @@
    :major-7 (create-scale-group [0 4 7 11])
    :diminished (create-scale-group [0 3 6])
    :diminished-7 (create-scale-group [0 3 6 9])})
-
-(chords :diminished-7)
 
 (defn build-chord
   "Builds a chord with the given note names starting at the specified octave.
