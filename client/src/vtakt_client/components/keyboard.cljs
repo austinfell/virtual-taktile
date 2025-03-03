@@ -137,57 +137,195 @@
 (def transpose-note (memoize ptranspose-note))
 
 ;; Keyboard data structure and creation & manipulation algorithms.
-(defrecord Keyboard [top-row bottom-row])
+(defprotocol Keyboard
+  (shift-left [this] "Shift the keyboard one step to the left")
+  (shift-right [this] "Shift the keyboard one step to the right")
+  (set-root [this root-note] "Construct a keyboard with the given root note")
+  (display [this] "Return a normalized representation of the keyboard")
+  (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
+  (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
 
-(defn chromatic-keyboard
-  "Generates a standard chromatic keyboard with sharp notes on the top row and natural notes on the bottom row.
-   The top row will contain 8 notes, some of which are potentially nil to represent lack of a value, as will
-   the bottom row.
+;; Define a more descriptive constant name
+(def natural-note-to-flat-mapping
+  {:c nil
+   :d :csdf
+   :e :dsef
+   :f nil
+   :g :fsgf
+   :a :gsaf
+   :b :asbf})
 
-  `offset` aligns the keyboard starting point to a given root note and octave.
-  `scale-filter` is a function that filters the notes; notes that don't match the filter will be replaced with nil."
-  [offset scale-filter]
-  (let [generate-notes (fn [layout split-point]
-                         (map #(if (scale-filter (:name %)) % nil)
-                              (take 8 (drop offset (scale-generator chromatic-notes (into [] (range 12)))))))]
-    (->Keyboard
-     (generate-notes sharp-note-layout :csdf)
-     (generate-notes natural-note-layout :c))))
+(defn create-filtered-chromatic-note-generator
+  [first-note filter-fn]
+  (if filter-fn
+    (filter filter-fn (iterate #(shift-note % :up) first-note))
+    (iterate #(shift-note % :up) first-note)))
 
-(defn folding-keyboard
-  "Generates a folding keyboard where each column corresponds to a valid note in the given scale.
+(defn create-note-filter-from-collection [c] (fn [n] (contains? (set c) (:name n))))
 
-  `offset` aligns the keyboard starting point to a given root note and octave.
-  `scale-filter` is a function that filters the notes; only notes that match the filter will be included."
-  [offset scale-filter]
-  (let [generate-row (fn [offset]
-                       (take 8 (drop offset
-                                     (filter #(scale-filter (:name %))
-                                             (scale-generator chromatic-notes (into [] (range 12)))))))]
-    (->Keyboard
-     (generate-row (+ offset 8))  ; Top row with offset shifted by 8
-     (generate-row offset))))     ; Bottom row with original offset
+(defn create-chromatic-note-generator
+  [first-note]
+  (iterate #(shift-note % :up) first-note))
 
-(defn modify-notes-on-keyboard
-  "Applies a function to all `Note` objects in a Keyboard.
+(defn natural-note?
+  "Returns true if the note is a natural note (not sharp/flat)"
+  [note]
+  (not (clojure.string/includes? (name (:name note)) "s")))
 
-  Takes a `Keyboard` (a record with `:top-row` and `:bottom-row` keys, each containing
-  sequences of `Note` records) and a `f` (a function to apply to each `Note`).
-  Returns a new Keyboard with the function applied to each `Note`, preserving the
-  original structure."
-  [kb f]
-  (postwalk #(if (instance? Note %) (f %) %) kb))
+(defn get-flat-equivalent
+  "Returns a new note with the flat equivalent name, or nil if no flat exists"
+  [note]
+  (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
+    (assoc note :name flat-name)))
 
-(defn retain-notes-on-keyboard
-  "Returns a modified keyboard with only the notes present in the provided `notes` set.
-   Notes is expected to be the Note record type."
-  [kb notes]
-  (modify-notes-on-keyboard kb #(if (notes %) % nil)))
 
-(defn transpose-keyboard
-  "Transposes all Notes in a Keyboard by the given number of semitones."
-  [kb semitones]
-  (modify-notes-on-keyboard kb #(transpose-note % semitones)))
+(defn generate-chromatic-layout
+  "Generates a chromatic keyboard layout with natural notes on bottom row
+   and their corresponding flats on the top row, with optional filtering"
+  ([root-note]
+   (generate-chromatic-layout root-note nil))
+  ([root-note filter-fn]
+   (let [all-notes (create-chromatic-note-generator root-note)
+         natural-notes (filter natural-note? all-notes)
+         bottom-row (take 8 natural-notes)
+         filtered-bottom (if filter-fn (mapv #(if (filter-fn %) % nil) bottom-row) bottom-row)
+         top-row (take 8 (map get-flat-equivalent bottom-row))
+         filtered-top (if filter-fn (mapv #(if (filter-fn %) % nil) top-row) top-row)]
+     {:bottom filtered-bottom
+      :top filtered-top})))
+
+(defn apply-map-to-layout
+  "Apply a mapping function to all non-nil notes in a keyboard layout"
+  [layout map-fn]
+  {:bottom (mapv #(when % (map-fn %)) (:bottom layout))
+   :top (mapv #(when % (map-fn %)) (:top layout))})
+
+(defrecord ChromaticKeyboard [root-note layout filter-fn map-fn]
+  Keyboard
+  (shift-left [this]
+    (let [new-root (shift-note root-note :down)]
+      (ChromaticKeyboard. new-root
+                           (-> (generate-chromatic-layout new-root filter-fn)
+                               (cond-> map-fn (apply-map-to-layout map-fn)))
+                           filter-fn
+                           map-fn)))
+
+  (shift-right [this]
+    (let [new-root (shift-note root-note :up)]
+      (ChromaticKeyboard. new-root
+                           (-> (generate-chromatic-layout new-root filter-fn)
+                               (cond-> map-fn (apply-map-to-layout map-fn)))
+                           filter-fn
+                           map-fn)))
+
+  (set-root [this new-root]
+    (ChromaticKeyboard. new-root
+                         (-> (generate-chromatic-layout new-root filter-fn)
+                             (cond-> map-fn (apply-map-to-layout map-fn)))
+                         filter-fn
+                         map-fn))
+
+  (display [this]
+    (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
+
+  (filter-notes [this new-filter-fn]
+    (ChromaticKeyboard. root-note
+                         (-> (generate-chromatic-layout root-note new-filter-fn)
+                             (cond-> map-fn (apply-map-to-layout map-fn)))
+                         new-filter-fn
+                         map-fn))
+
+  (map-notes [this new-map-fn]
+    (let [combined-fn (if map-fn
+                         (comp new-map-fn map-fn)
+                         new-map-fn)]
+      (ChromaticKeyboard. root-note
+                          (-> (generate-chromatic-layout root-note filter-fn)
+                              (apply-map-to-layout combined-fn))
+                          filter-fn
+                          combined-fn))))
+
+(defn create-chromatic-keyboard
+  "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
+  ([root-note]
+   (create-chromatic-keyboard root-note nil))
+  ([root-note filter-fn]
+   (create-chromatic-keyboard root-note filter-fn nil))
+  ([root-note filter-fn map-fn]
+   (let [layout (-> (generate-chromatic-layout root-note filter-fn)
+                    (cond-> map-fn (apply-map-to-layout map-fn)))]
+     (->ChromaticKeyboard root-note layout filter-fn map-fn))))
+
+(defn generate-folding-layout
+  "Generates a simple sequential layout of 16 notes starting from root-note,
+   with optional filtering that skips filtered notes"
+  ([root-note]
+   (generate-folding-layout root-note nil))
+  ([root-note filter-fn]
+   (if filter-fn
+     (vec (take 16 (filter filter-fn (create-chromatic-note-generator root-note))))
+     (vec (take 16 (create-chromatic-note-generator root-note))))))
+
+(defn apply-map-to-notes
+  "Apply a mapping function to all notes in a vector"
+  [notes map-fn]
+  (mapv map-fn notes))
+
+(defrecord FoldingKeyboard [root-note notes filter-fn map-fn]
+  Keyboard
+  (shift-left [this]
+    (let [new-root (shift-note root-note :down)
+          new-notes (generate-folding-layout new-root filter-fn)]
+      (FoldingKeyboard. new-root
+                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
+                        filter-fn
+                        map-fn)))
+
+  (shift-right [this]
+    (let [new-root (shift-note root-note :up)
+          new-notes (generate-folding-layout new-root filter-fn)]
+      (FoldingKeyboard. new-root
+                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
+                        filter-fn
+                        map-fn)))
+
+  (set-root [this new-root]
+    (let [new-notes (generate-folding-layout new-root filter-fn)]
+      (FoldingKeyboard. new-root
+                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
+                        filter-fn
+                        map-fn)))
+
+  (display [this]
+    {:bottom (subvec notes 0 8)
+     :top (subvec notes 8 16)})
+
+  (filter-notes [this new-filter-fn]
+    (let [new-notes (generate-folding-layout root-note new-filter-fn)]
+      (FoldingKeyboard. root-note
+                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
+                        new-filter-fn
+                        map-fn)))
+
+  (map-notes [this new-map-fn]
+    (let [combined-fn (if map-fn
+                         (comp new-map-fn map-fn)
+                         new-map-fn)]
+      (FoldingKeyboard. root-note
+                        (apply-map-to-notes notes combined-fn)
+                        filter-fn
+                        combined-fn))))
+
+(defn create-folding-keyboard
+  "Creates a folding keyboard starting with the given root note, with optional filtering and mapping"
+  ([root-note]
+   (create-folding-keyboard root-note nil))
+  ([root-note filter-fn]
+   (create-folding-keyboard root-note filter-fn nil))
+  ([root-note filter-fn map-fn]
+   (let [notes (generate-folding-layout root-note filter-fn)
+         mapped-notes (if map-fn (apply-map-to-notes notes map-fn) notes)]
+     (FoldingKeyboard. root-note mapped-notes filter-fn map-fn))))
 
 ;; Chords
 (def chords
