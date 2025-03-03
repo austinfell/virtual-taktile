@@ -229,11 +229,14 @@
     (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
 
   (filter-notes [this new-filter-fn]
+    (let [combined-fn (if filter-fn
+                        #(and (new-filter-fn %) (filter-fn %))
+                        new-filter-fn)]
     (ChromaticKeyboard. root-note
-                         (-> (generate-chromatic-layout root-note new-filter-fn)
+                         (-> (generate-chromatic-layout root-note combined-fn)
                              (cond-> map-fn (apply-map-to-layout map-fn)))
                          new-filter-fn
-                         map-fn))
+                         map-fn)))
 
   (map-notes [this new-map-fn]
     (let [combined-fn (if map-fn
@@ -301,11 +304,14 @@
      :top (subvec notes 8 16)})
 
   (filter-notes [this new-filter-fn]
-    (let [new-notes (generate-folding-layout root-note new-filter-fn)]
+    (let [combined-fn (if filter-fn
+                        #(and (new-filter-fn %) (filter-fn %))
+                        new-filter-fn)]
+    (let [new-notes (generate-folding-layout root-note combined-fn)]
       (FoldingKeyboard. root-note
                         (cond-> new-notes map-fn (apply-map-to-notes map-fn))
-                        new-filter-fn
-                        map-fn)))
+                        combined-fn
+                        map-fn))))
 
   (map-notes [this new-map-fn]
     (let [combined-fn (if map-fn
