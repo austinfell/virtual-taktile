@@ -136,16 +136,26 @@
   :ret (s/nilable ::note))
 (def transpose-note (memoize ptranspose-note))
 
-;; Keyboard data structure and creation & manipulation algorithms.
+;; Keyboard Protocol and general utilities useful for all types of keyboards.
 (defprotocol Keyboard
   (shift-left [this] "Shift the keyboard one step to the left")
   (shift-right [this] "Shift the keyboard one step to the right")
-  (set-root [this root-note] "Construct a keyboard with the given root note")
   (display [this] "Return a normalized representation of the keyboard")
   (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
   (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
 
-;; Define a more descriptive constant name
+(defn create-note-filter-from-collection [c] (fn [n] (contains? (set c) (:name n))))
+
+(defn create-chromatic-note-generator
+  [first-note]
+  (iterate #(shift-note % :up) first-note))
+
+;; Implementation of ChromaticKeyboard.
+(defn natural-note?
+  "Returns true if the note is a natural note (not sharp/flat)"
+  [note]
+  (not (clojure.string/includes? (name (:name note)) "s")))
+
 (def natural-note-to-flat-mapping
   {:c nil
    :d :csdf
@@ -155,109 +165,59 @@
    :a :gsaf
    :b :asbf})
 
-(defn create-filtered-chromatic-note-generator
-  [first-note filter-fn]
-  (if filter-fn
-    (filter filter-fn (iterate #(shift-note % :up) first-note))
-    (iterate #(shift-note % :up) first-note)))
-
-(defn create-note-filter-from-collection [c] (fn [n] (contains? (set c) (:name n))))
-
-(defn create-chromatic-note-generator
-  [first-note]
-  (iterate #(shift-note % :up) first-note))
-
-(defn natural-note?
-  "Returns true if the note is a natural note (not sharp/flat)"
-  [note]
-  (not (clojure.string/includes? (name (:name note)) "s")))
-
 (defn get-flat-equivalent
   "Returns a new note with the flat equivalent name, or nil if no flat exists"
   [note]
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
 
-
 (defn generate-chromatic-layout
   "Generates a chromatic keyboard layout with natural notes on bottom row
    and their corresponding flats on the top row, with optional filtering"
   ([root-note]
    (generate-chromatic-layout root-note nil))
-  ([root-note filter-fn]
+  ([root-note map-fn]
    (let [all-notes (create-chromatic-note-generator root-note)
          natural-notes (filter natural-note? all-notes)
          bottom-row (take 8 natural-notes)
-         filtered-bottom (if filter-fn (mapv #(if (filter-fn %) % nil) bottom-row) bottom-row)
+         filtered-bottom (if map-fn (mapv map-fn bottom-row) bottom-row)
          top-row (take 8 (map get-flat-equivalent bottom-row))
-         filtered-top (if filter-fn (mapv #(if (filter-fn %) % nil) top-row) top-row)]
+         filtered-top (if map-fn (mapv map-fn top-row) top-row)]
      {:bottom filtered-bottom
       :top filtered-top})))
 
-(defn apply-map-to-layout
-  "Apply a mapping function to all non-nil notes in a keyboard layout"
-  [layout map-fn]
-  {:bottom (mapv #(when % (map-fn %)) (:bottom layout))
-   :top (mapv #(when % (map-fn %)) (:top layout))})
-
-(defrecord ChromaticKeyboard [root-note layout filter-fn map-fn]
+(defrecord ChromaticKeyboard [root-note layout map-fn]
   Keyboard
   (shift-left [this]
     (let [new-root (shift-note root-note :down)]
-      (ChromaticKeyboard. new-root
-                           (-> (generate-chromatic-layout new-root filter-fn)
-                               (cond-> map-fn (apply-map-to-layout map-fn)))
-                           filter-fn
-                           map-fn)))
+      (ChromaticKeyboard. new-root (generate-chromatic-layout new-root map-fn) map-fn)))
 
   (shift-right [this]
     (let [new-root (shift-note root-note :up)]
-      (ChromaticKeyboard. new-root
-                           (-> (generate-chromatic-layout new-root filter-fn)
-                               (cond-> map-fn (apply-map-to-layout map-fn)))
-                           filter-fn
-                           map-fn)))
-
-  (set-root [this new-root]
-    (ChromaticKeyboard. new-root
-                         (-> (generate-chromatic-layout new-root filter-fn)
-                             (cond-> map-fn (apply-map-to-layout map-fn)))
-                         filter-fn
-                         map-fn))
+      (ChromaticKeyboard. new-root (generate-chromatic-layout new-root map-fn) map-fn)))
 
   (display [this]
     (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
 
   (filter-notes [this new-filter-fn]
-    (let [combined-fn (if filter-fn
-                        #(and (new-filter-fn %) (filter-fn %))
-                        new-filter-fn)]
-    (ChromaticKeyboard. root-note
-                         (-> (generate-chromatic-layout root-note combined-fn)
-                             (cond-> map-fn (apply-map-to-layout map-fn)))
-                         new-filter-fn
-                         map-fn)))
+    (let [new-map-fn (if (some? new-filter-fn) #(if (new-filter-fn %) % nil) identity)
+          combined-fn (if map-fn
+                        (comp new-map-fn map-fn)
+                        new-map-fn)]
+      (ChromaticKeyboard. root-note (generate-chromatic-layout root-note combined-fn) combined-fn)))
 
   (map-notes [this new-map-fn]
-    (let [combined-fn (if map-fn
-                         (comp new-map-fn map-fn)
-                         new-map-fn)]
-      (ChromaticKeyboard. root-note
-                          (-> (generate-chromatic-layout root-note filter-fn)
-                              (apply-map-to-layout combined-fn))
-                          filter-fn
-                          combined-fn))))
+    (let [guaranteed-new-map-fn (if (some? new-map-fn) new-map-fn identity)
+          combined-fn (if map-fn
+                        (comp guaranteed-new-map-fn map-fn)
+                         guaranteed-new-map-fn)]
+      (ChromaticKeyboard. root-note (generate-chromatic-layout root-note combined-fn) combined-fn))))
 
 (defn create-chromatic-keyboard
   "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
   ([root-note]
-   (create-chromatic-keyboard root-note nil))
-  ([root-note filter-fn]
-   (create-chromatic-keyboard root-note filter-fn nil))
-  ([root-note filter-fn map-fn]
-   (let [layout (-> (generate-chromatic-layout root-note filter-fn)
-                    (cond-> map-fn (apply-map-to-layout map-fn)))]
-     (->ChromaticKeyboard root-note layout filter-fn map-fn))))
+   (let [layout (generate-chromatic-layout root-note)]
+     (->ChromaticKeyboard root-note layout nil))))
 
 (defn generate-folding-layout
   "Generates a simple sequential layout of 16 notes starting from root-note,
@@ -287,13 +247,6 @@
   (shift-right [this]
     (let [new-root (shift-note root-note :up)
           new-notes (generate-folding-layout new-root filter-fn)]
-      (FoldingKeyboard. new-root
-                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
-                        filter-fn
-                        map-fn)))
-
-  (set-root [this new-root]
-    (let [new-notes (generate-folding-layout new-root filter-fn)]
       (FoldingKeyboard. new-root
                         (cond-> new-notes map-fn (apply-map-to-notes map-fn))
                         filter-fn
