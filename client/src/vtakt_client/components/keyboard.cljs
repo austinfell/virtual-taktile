@@ -220,71 +220,42 @@
      (->ChromaticKeyboard root-note layout nil))))
 
 (defn generate-folding-layout
-  "Generates a simple sequential layout of 16 notes starting from root-note,
-   with optional filtering that skips filtered notes"
   ([root-note]
    (generate-folding-layout root-note nil))
-  ([root-note filter-fn]
-   (if filter-fn
-     (vec (take 16 (filter filter-fn (create-chromatic-note-generator root-note))))
-     (vec (take 16 (create-chromatic-note-generator root-note))))))
+  ([root-note transformations]
+   (let [all-notes (create-chromatic-note-generator root-note)
+         transformed-notes (reduce (fn [acc f] (f acc)) all-notes (if transformations transformations []))]
+     (vec (take 16 transformed-notes)))))
 
-(defn apply-map-to-notes
-  "Apply a mapping function to all notes in a vector"
-  [notes map-fn]
-  (mapv map-fn notes))
-
-(defrecord FoldingKeyboard [root-note notes filter-fn map-fn]
+(defrecord FoldingKeyboard [root-note notes transformations]
   Keyboard
   (shift-left [this]
-    (let [new-root (shift-note root-note :down)
-          new-notes (generate-folding-layout new-root filter-fn)]
-      (FoldingKeyboard. new-root
-                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
-                        filter-fn
-                        map-fn)))
+    (let [new-root (shift-note root-note :down)]
+      (FoldingKeyboard. new-root (generate-folding-layout new-root transformations) transformations)))
 
   (shift-right [this]
-    (let [new-root (shift-note root-note :up)
-          new-notes (generate-folding-layout new-root filter-fn)]
-      (FoldingKeyboard. new-root
-                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
-                        filter-fn
-                        map-fn)))
+    (let [new-root (shift-note root-note :up)]
+      (FoldingKeyboard. new-root (generate-folding-layout new-root transformations) transformations)))
 
   (display [this]
     {:bottom (subvec notes 0 8)
      :top (subvec notes 8 16)})
 
   (filter-notes [this new-filter-fn]
-    (let [combined-fn (if filter-fn
-                        #(and (new-filter-fn %) (filter-fn %))
-                        new-filter-fn)]
-    (let [new-notes (generate-folding-layout root-note combined-fn)]
-      (FoldingKeyboard. root-note
-                        (cond-> new-notes map-fn (apply-map-to-notes map-fn))
-                        combined-fn
-                        map-fn))))
+    (let [filter-impl (if new-filter-fn #(filter new-filter-fn %) #(filter (constantly true) %))
+          new-transformations (if transformations (conj transformations filter-impl) [filter-impl])]
+      (FoldingKeyboard. root-note (generate-folding-layout root-note new-transformations) new-transformations)))
 
   (map-notes [this new-map-fn]
-    (let [combined-fn (if map-fn
-                         (comp new-map-fn map-fn)
-                         new-map-fn)]
-      (FoldingKeyboard. root-note
-                        (apply-map-to-notes notes combined-fn)
-                        filter-fn
-                        combined-fn))))
+    (let [map-impl (if new-map-fn #(map new-map-fn %) #(map identity %))
+          new-transformations (if transformations (conj transformations map-impl) [map-impl])]
+      (FoldingKeyboard. root-note (generate-folding-layout root-note new-transformations) new-transformations))))
 
 (defn create-folding-keyboard
-  "Creates a folding keyboard starting with the given root note, with optional filtering and mapping"
+  "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
   ([root-note]
-   (create-folding-keyboard root-note nil))
-  ([root-note filter-fn]
-   (create-folding-keyboard root-note filter-fn nil))
-  ([root-note filter-fn map-fn]
-   (let [notes (generate-folding-layout root-note filter-fn)
-         mapped-notes (if map-fn (apply-map-to-notes notes map-fn) notes)]
-     (FoldingKeyboard. root-note mapped-notes filter-fn map-fn))))
+   (let [layout (generate-folding-layout root-note)]
+     (->FoldingKeyboard root-note layout nil))))
 
 ;; Chords
 (def chords
