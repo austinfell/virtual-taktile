@@ -187,7 +187,7 @@
 (defprotocol Keyboard
   (shift-left [this] "Shift the keyboard one step to the left")
   (shift-right [this] "Shift the keyboard one step to the right")
-  (display [this] "Return a normalized representation of the keyboard")
+  (get-rows [this] "Return a normalized representation of the keyboard")
   (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
   (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
 
@@ -216,7 +216,7 @@
     (let [new-root (shift-note root-note :up)]
       (ChromaticKeyboard. new-root (generate-chromatic-layout new-root map-fn) map-fn)))
 
-  (display [this]
+  (get-rows [this]
     (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
 
   (filter-notes [this new-filter-fn]
@@ -257,7 +257,7 @@
     (let [new-root (shift-note root-note :up)]
       (FoldingKeyboard. new-root (generate-folding-layout new-root transformations) transformations)))
 
-  (display [this]
+  (get-rows [this]
     {:bottom (subvec notes 0 8)
      :top (subvec notes 8 16)})
 
