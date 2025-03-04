@@ -136,21 +136,24 @@
   :ret (s/nilable ::note))
 (def transpose-note (memoize ptranspose-note))
 
-;; Keyboard Protocol and general utilities useful for all types of keyboards.
-(defprotocol Keyboard
-  (shift-left [this] "Shift the keyboard one step to the left")
-  (shift-right [this] "Shift the keyboard one step to the right")
-  (display [this] "Return a normalized representation of the keyboard")
-  (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
-  (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
-
-(defn create-note-filter-from-collection [c] (fn [n] (contains? (set c) (:name n))))
-
-(defn create-chromatic-note-generator
+(defn- create-chromatic-note-generator
   [first-note]
   (iterate #(shift-note % :up) first-note))
 
-;; Implementation of ChromaticKeyboard.
+
+(s/def ::note-name-collection (s/coll-of ::chromatic-note))
+(s/def ::note-predicate-fn (s/fspec :args (s/cat :note ::note)
+                                    :ret boolean?))
+(s/fdef create-note-predicate-from-collection
+  :args (s/cat :collection ::note-name-collection)
+  :ret ::note-predicate-fn)
+(defn create-note-predicate-from-collection [c]
+  (fn [n]
+    (contains? (set c) (:name n))))
+
+(s/fdef natural-note?
+  :args (s/cat :note ::note)
+  :ret boolean?)
 (defn natural-note?
   "Returns true if the note is a natural note (not sharp/flat)"
   [note]
@@ -165,11 +168,28 @@
    :a :gsaf
    :b :asbf})
 
+(s/fdef get-flat-equivalent
+  :args (s/cat :note ::note)
+  :ret (s/nilable ::note)
+  :fn (fn [{:keys [args ret]}]
+        (if (contains? natural-note-to-flat-mapping (-> args :note :name))
+          (and (some? ret)
+               (= (:octave ret) (-> args :note :octave))
+               (= (:name ret) (natural-note-to-flat-mapping (-> args :note :name))))
+          (nil? ret))))
 (defn get-flat-equivalent
   "Returns a new note with the flat equivalent name, or nil if no flat exists"
   [note]
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
+
+;; Keyboard Protocol and general utilities useful for all types of keyboards.
+(defprotocol Keyboard
+  (shift-left [this] "Shift the keyboard one step to the left")
+  (shift-right [this] "Shift the keyboard one step to the right")
+  (display [this] "Return a normalized representation of the keyboard")
+  (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
+  (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
 
 (defn generate-chromatic-layout
   "Generates a chromatic keyboard layout with natural notes on bottom row
