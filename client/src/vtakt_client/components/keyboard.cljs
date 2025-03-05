@@ -87,7 +87,18 @@
    :locrian-bb3-bb7 (create-scale-group [0 1 3 5 6 8 9])})
 
 ;; Notes and corresponding algorithms.
-(defrecord Note [name octave])
+(s/def ::octave int?)
+(s/def ::name ::chromatic-note)
+(s/def ::note (s/keys :req-un [::name ::octave]))
+(s/fdef create-note
+  :args (s/cat :name ::chromatic-note :octave int?)
+  :ret ::note)
+(defn create-note
+  "Creates a note map with the given name and octave."
+  [name octave]
+  {:pre [(s/valid? ::chromatic-note name)
+         (s/valid? int? octave)]}
+  {:name name :octave octave})
 
 (defn- pshift-note
   "Shifts a note up or down by the specified delta.
@@ -108,7 +119,7 @@
                           (and (= delta -1) (= (:name note) :c)) -1
                           ;; Should not be hit as spec only allows -1 or 1.
                           :else 0)]
-      (->Note
+      (create-note
        next-note-name
        (+ (:octave note) octave-change)))))
 (def shift-note (memoize pshift-note))
@@ -128,7 +139,7 @@
             remaining-transposition (if (pos? n) (dec n) (inc n))
             shifted-note (shift-note note direction)]
         (if (zero? remaining-transposition)
-          (map->Note shifted-note)
+          shifted-note
           (recur shifted-note remaining-transposition))))))
 
 (s/fdef transpose-note
@@ -178,18 +189,38 @@
                (= (:name ret) (natural-note-to-flat-mapping (-> args :note :name))))
           (nil? ret))))
 (defn get-flat-equivalent
-  "Returns a new note with the flat equivalent name, or nil if no flat exists"
+  "Returns a new note with the flat equivalent as its name, or nil as its name if no
+   flat is found."
   [note]
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
 
-;; Keyboard Protocol and general utilities useful for all types of keyboards.
 (defprotocol Keyboard
-  (shift-left [this] "Shift the keyboard one step to the left")
-  (shift-right [this] "Shift the keyboard one step to the right")
-  (get-rows [this] "Return a normalized representation of the keyboard")
-  (filter-notes [this filter-fn] "Filter notes based on the provided predicate function")
-  (map-notes [this map-fn] "Apply a transformation function to all notes on the keyboard."))
+  "A protocol that defines the common operations for keyboard-like interfaces.
+   Implementations represent different keyboard layouts and behaviors for
+   navigating and manipulating musical notes."
+
+  (shift-left [this]
+    "Shifts the keyboard one step to the left, typically moving to lower notes.
+     Returns a new Keyboard instance with updated state.")
+
+  (shift-right [this]
+    "Shifts the keyboard one step to the right, typically moving to higher notes.
+     Returns a new Keyboard instance with updated state.")
+
+  (get-rows [this]
+    "Returns a normalized representation of the keyboard as a map with :top and :bottom keys,
+     where each key maps to a vector of notes. Corresponds to the physical bottom and top
+     row of the devices keyboard.")
+
+  (filter-notes [this filter-fn]
+    "Returns a new Keyboard with notes filtered based on the provided predicate function.
+     The filter-fn should accept a note and return a boolean value.")
+
+  (map-notes [this map-fn]
+    "Returns a new Keyboard with notes transformed by the provided mapping function.
+     The map-fn should accept a note and return a transformed note or nil.
+     This can be used to apply visual styles, transpositions, or other transformations."))
 
 (defn generate-chromatic-layout
   "Generates a chromatic keyboard layout with natural notes on bottom row
@@ -200,11 +231,11 @@
    (let [all-notes (create-chromatic-note-generator root-note)
          natural-notes (filter natural-note? all-notes)
          bottom-row (take 8 natural-notes)
-         filtered-bottom (if map-fn (mapv map-fn bottom-row) bottom-row)
+         filtered-bottom (if map-fn (map map-fn bottom-row) bottom-row)
          top-row (take 8 (map get-flat-equivalent bottom-row))
-         filtered-top (if map-fn (mapv map-fn top-row) top-row)]
-     {:bottom filtered-bottom
-      :top filtered-top})))
+         filtered-top (if map-fn (map map-fn top-row) top-row)]
+     {:bottom (into [] filtered-bottom)
+      :top (into [] filtered-top)})))
 
 (defrecord ChromaticKeyboard [root-note layout map-fn]
   Keyboard
@@ -298,7 +329,7 @@
          rotated-notes (vec (take num-notes (drop shift (cycle note-names))))]
      (loop [result []
             remaining-notes rotated-notes
-            current-note (->Note (first rotated-notes) octave)]
+            current-note (create-note (first rotated-notes) octave)]
        (if (empty? remaining-notes)
          result
          (if (= (first remaining-notes) (:name current-note))

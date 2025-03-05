@@ -196,124 +196,124 @@
     (is (nil? (kb/transpose-note nil nil))
         "Nil note and nil transposition should return nil")
 
-    (is (= (kb/->Note :c 4)
-           (kb/transpose-note (kb/->Note :c 4) nil))
+    (is (= (kb/create-note :c 4)
+           (kb/transpose-note (kb/create-note :c 4) nil))
         "Nil transposition should return original note")
 
-    (is (= (kb/->Note :c 4)
-           (kb/transpose-note (kb/->Note :c 4) 0))
+    (is (= (kb/create-note :c 4)
+           (kb/transpose-note (kb/create-note :c 4) 0))
         "Zero transposition should return original note")))
 
 (deftest test-transpose-note-single-steps
   (testing "Transposing up by single step"
-    (is (= (kb/->Note :c 5)
-           (kb/transpose-note (kb/->Note :b 4) 1))
+    (is (= (kb/create-note :c 5)
+           (kb/transpose-note (kb/create-note :b 4) 1))
         "B → C (octave boundary crossing up)")
-    (is (= (kb/->Note :csdf 4)
-           (kb/transpose-note (kb/->Note :c 4) 1))
+    (is (= (kb/create-note :csdf 4)
+           (kb/transpose-note (kb/create-note :c 4) 1))
         "C → C#/Db")
-    (is (= (kb/->Note :d 4)
-           (kb/transpose-note (kb/->Note :csdf 4) 1))
+    (is (= (kb/create-note :d 4)
+           (kb/transpose-note (kb/create-note :csdf 4) 1))
         "C#/Db → D")
-    (is (= (kb/->Note :dsef 4)
-           (kb/transpose-note (kb/->Note :d 4) 1))
+    (is (= (kb/create-note :dsef 4)
+           (kb/transpose-note (kb/create-note :d 4) 1))
         "D → D#/Eb")
-    (is (= (kb/->Note :e 4)
-           (kb/transpose-note (kb/->Note :dsef 4) 1))
+    (is (= (kb/create-note :e 4)
+           (kb/transpose-note (kb/create-note :dsef 4) 1))
         "D#/Eb → E")
-    (is (= (kb/->Note :f 4)
-           (kb/transpose-note (kb/->Note :e 4) 1))
+    (is (= (kb/create-note :f 4)
+           (kb/transpose-note (kb/create-note :e 4) 1))
         "E → F")
-    (is (= (kb/->Note :fsgf 4)
-           (kb/transpose-note (kb/->Note :f 4) 1))
+    (is (= (kb/create-note :fsgf 4)
+           (kb/transpose-note (kb/create-note :f 4) 1))
         "F → F#/Gb")
-    (is (= (kb/->Note :g 4)
-           (kb/transpose-note (kb/->Note :fsgf 4) 1))
+    (is (= (kb/create-note :g 4)
+           (kb/transpose-note (kb/create-note :fsgf 4) 1))
         "F#/Gb → G")
-    (is (= (kb/->Note :gsaf 4)
-           (kb/transpose-note (kb/->Note :g 4) 1))
+    (is (= (kb/create-note :gsaf 4)
+           (kb/transpose-note (kb/create-note :g 4) 1))
         "G → G#/Ab")
-    (is (= (kb/->Note :a 4)
-           (kb/transpose-note (kb/->Note :gsaf 4) 1))
+    (is (= (kb/create-note :a 4)
+           (kb/transpose-note (kb/create-note :gsaf 4) 1))
         "G#/Ab → A")
-    (is (= (kb/->Note :asbf 4)
-           (kb/transpose-note (kb/->Note :a 4) 1))
+    (is (= (kb/create-note :asbf 4)
+           (kb/transpose-note (kb/create-note :a 4) 1))
         "A → A#/Bb")
-    (is (= (kb/->Note :b 4)
-           (kb/transpose-note (kb/->Note :asbf 4) 1))
+    (is (= (kb/create-note :b 4)
+           (kb/transpose-note (kb/create-note :asbf 4) 1))
         "A#/Bb → B")))
 
 (deftest test-transpose-note-multi-steps
   (testing "Transposing up by multiple steps"
-    (is (= (kb/->Note :e 4)
-           (kb/transpose-note (kb/->Note :c 4) 4))
+    (is (= (kb/create-note :e 4)
+           (kb/transpose-note (kb/create-note :c 4) 4))
         "C → E (up 4 semitones)")
 
-    (is (= (kb/->Note :c 5)
-           (kb/transpose-note (kb/->Note :c 4) 12))
+    (is (= (kb/create-note :c 5)
+           (kb/transpose-note (kb/create-note :c 4) 12))
         "C → C (up 1 octave)")
 
-    (is (= (kb/->Note :fsgf 4)
-           (kb/transpose-note (kb/->Note :c 4) 6))
+    (is (= (kb/create-note :fsgf 4)
+           (kb/transpose-note (kb/create-note :c 4) 6))
         "C → F#/Gb (up tritone)"))
 
   (testing "Transposing down by multiple steps"
-    (is (= (kb/->Note :a 3)
-           (kb/transpose-note (kb/->Note :c 4) -3))
+    (is (= (kb/create-note :a 3)
+           (kb/transpose-note (kb/create-note :c 4) -3))
         "C → A (down 3 semitones)")
 
-    (is (= (kb/->Note :c 3)
-           (kb/transpose-note (kb/->Note :c 4) -12))
+    (is (= (kb/create-note :c 3)
+           (kb/transpose-note (kb/create-note :c 4) -12))
         "C → C (down 1 octave)")
 
-    (is (= (kb/->Note :fsgf 3)
-           (kb/transpose-note (kb/->Note :c 4) -6))
+    (is (= (kb/create-note :fsgf 3)
+           (kb/transpose-note (kb/create-note :c 4) -6))
         "C → F#/Gb (down tritone)")))
 
 (deftest test-transpose-note-octave-changes
   (testing "Octave changes when crossing B-C boundary"
-    (is (= (kb/->Note :c 5)
-           (kb/transpose-note (kb/->Note :b 4) 1))
+    (is (= (kb/create-note :c 5)
+           (kb/transpose-note (kb/create-note :b 4) 1))
         "B4 → C5 (up, crossing octave)")
 
-    (is (= (kb/->Note :b 3)
-           (kb/transpose-note (kb/->Note :c 4) -1))
+    (is (= (kb/create-note :b 3)
+           (kb/transpose-note (kb/create-note :c 4) -1))
         "C4 → B3 (down, crossing octave)")
 
-    (is (= (kb/->Note :d 5)
-           (kb/transpose-note (kb/->Note :b 3) 15))
+    (is (= (kb/create-note :d 5)
+           (kb/transpose-note (kb/create-note :b 3) 15))
         "B3 → D5 (up 15 semitones, multiple octave crossings)")
 
-    (is (= (kb/->Note :a 2)
-           (kb/transpose-note (kb/->Note :c 4) -15))
+    (is (= (kb/create-note :a 2)
+           (kb/transpose-note (kb/create-note :c 4) -15))
         "C4 → A2 (down 15 semitones, multiple octave crossings)")))
 
 (deftest test-transpose-note-edge-cases
   (testing "Extreme transpositions"
-    (is (= (kb/->Note :c 104)
-           (kb/transpose-note (kb/->Note :c 4) 1200))
+    (is (= (kb/create-note :c 104)
+           (kb/transpose-note (kb/create-note :c 4) 1200))
         "C4 → C104 (up 100 octaves)")
 
-    (is (= (kb/->Note :c -96)
-           (kb/transpose-note (kb/->Note :c 4) -1200))
+    (is (= (kb/create-note :c -96)
+           (kb/transpose-note (kb/create-note :c 4) -1200))
         "C4 → C-96 (down 100 octaves)"))
 
   (testing "Edge cases for octaves"
-    (is (= (kb/->Note :b -3)
-           (kb/transpose-note (kb/->Note :c -2) -1))
+    (is (= (kb/create-note :b -3)
+           (kb/transpose-note (kb/create-note :c -2) -1))
         "C-2 → B-3 (from low octave down)")
 
-    (is (= (kb/->Note :c 10)
-           (kb/transpose-note (kb/->Note :b 9) 1))
+    (is (= (kb/create-note :c 10)
+           (kb/transpose-note (kb/create-note :b 9) 1))
         "B9 → C10 (from high octave up)")))
 
 (deftest test-transpose-note-properties
   (testing "Full chromatic scale transposition"
     (doseq [i (range 12)]
-      (let [current-note (kb/->Note (nth all-notes i) 4)
+      (let [current-note (kb/create-note (nth all-notes i) 4)
             next-idx (mod (inc i) 12)
             next-octave (if (= next-idx 0) 5 4)
-            next-note (kb/->Note (nth all-notes next-idx) next-octave)]
+            next-note (kb/create-note (nth all-notes next-idx) next-octave)]
         (is (= next-note (kb/transpose-note current-note 1))
             (str (nth all-notes i) "4 → " (nth all-notes next-idx) next-octave)))))
 
@@ -322,7 +322,7 @@
           transposition-samples (gen/sample (s/gen ::kb/transposition-amount) 10)]
       (doseq [note note-samples
               n transposition-samples]
-        (let [note-obj (kb/map->Note note)]
+        (let [note-obj (kb/create-note (:name note) (:octave note))]
           (is (= note-obj
                  (kb/transpose-note (kb/transpose-note note-obj n) (- n)))
               (str "Transposing " note " by " n " then by " (- n)
@@ -331,7 +331,7 @@
   (testing "Property: octave preservation with 12-semitone transposition"
     (let [note-samples (gen/sample (s/gen ::kb/note) 20)]
       (doseq [note note-samples]
-        (let [note-obj (kb/map->Note note)
+        (let [note-obj (kb/create-note (:name note) (:octave note))
               trans-up (kb/transpose-note note-obj 12)
               trans-down (kb/transpose-note note-obj -12)]
           (is (= (:name note) (:name trans-up))
@@ -351,7 +351,7 @@
                                        (s/int-in -20 20)))))]
       (doseq [note note-samples
               [t1 t2] trans-pairs]
-        (let [note-obj (kb/map->Note note)
+        (let [note-obj (kb/create-note (:name note) (:octave note))
               direct (kb/transpose-note note-obj (+ t1 t2))
               sequential (-> note-obj
                              (kb/transpose-note t1)
@@ -366,7 +366,7 @@
           large-trans (take 10 (gen/sample (s/gen (s/int-in 12 100))))]
       (doseq [note note-samples
               trans large-trans]
-        (let [note-obj (kb/map->Note note)
+        (let [note-obj (kb/create-note (:name note) (:octave note))
               full-trans (kb/transpose-note note-obj trans)
               mod-trans (kb/transpose-note note-obj (mod trans 12))
               octave-diff (quot trans 12)]
@@ -374,6 +374,255 @@
               "Note name should be the same for full and modulo transposition")
           (is (= (:octave full-trans) (+ (:octave mod-trans) octave-diff))
               "Octave should differ by the expected amount"))))))
+
+(deftest test-natural-note
+  (testing "Natural note identification"
+    (is (true? (kb/natural-note? (kb/create-note :c 4)))
+        "C should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :d 4)))
+        "D should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :e 4)))
+        "E should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :f 4)))
+        "F should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :g 4)))
+        "G should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :a 4)))
+        "A should be identified as a natural note")
+    (is (true? (kb/natural-note? (kb/create-note :b 4)))
+        "B should be identified as a natural note")
+    (is (false? (kb/natural-note? (kb/create-note :csdf 4)))
+        "C#/Db should not be identified as a natural note")
+    (is (false? (kb/natural-note? (kb/create-note :dsef 4)))
+        "D#/Eb should not be identified as a natural note")
+    (is (false? (kb/natural-note? (kb/create-note :fsgf 4)))
+        "F#/Gb should not be identified as a natural note")
+    (is (false? (kb/natural-note? (kb/create-note :gsaf 4)))
+        "G#/Ab should not be identified as a natural note")
+    (is (false? (kb/natural-note? (kb/create-note :asbf 4)))
+        "A#/Bb should not be identified as a natural note")))
+
+(deftest test-get-flat-equivalent
+  (testing "Get flat equivalent of nil"
+    (is (nil? (kb/get-flat-equivalent nil))
+        "Nils flat equivalent is nil."))
+
+    (testing "Get flat equivalent of incomplete data structure"
+      (is (nil? (kb/get-flat-equivalent {:name :c}))
+          "C has no flat equivalent")
+      (is (= {:name :csdf} (kb/get-flat-equivalent {:name :d}))
+          "D's flat equivalent is C#/Db")
+      (is (= nil (kb/get-flat-equivalent {:octave 2}))
+          "No available mappings yields nil")
+      (is (= nil (kb/get-flat-equivalent {}))
+          "No data at all should yield nil."))
+
+  (testing "Get flat equivalent of natural notes"
+    (is (nil? (kb/get-flat-equivalent (kb/create-note :c 4)))
+        "C has no flat equivalent")
+    (is (= (kb/create-note :csdf 4)
+           (kb/get-flat-equivalent (kb/create-note :d 4)))
+        "D's flat equivalent is C#/Db")
+    (is (= (kb/create-note :dsef 4)
+           (kb/get-flat-equivalent (kb/create-note :e 4)))
+        "E's flat equivalent is D#/Eb")
+    (is (nil? (kb/get-flat-equivalent (kb/create-note :f 4)))
+        "F has no flat equivalent")
+    (is (= (kb/create-note :fsgf 4)
+           (kb/get-flat-equivalent (kb/create-note :g 4)))
+        "G's flat equivalent is F#/Gb")
+    (is (= (kb/create-note :gsaf 4)
+           (kb/get-flat-equivalent (kb/create-note :a 4)))
+        "A's flat equivalent is G#/Ab")
+    (is (= (kb/create-note :asbf 4)
+           (kb/get-flat-equivalent (kb/create-note :b 4)))
+        "B's flat equivalent is A#/Bb"))
+
+  (testing "Property: get-flat-equivalent preserves octave for all natural notes with mappings"
+    (let [natural-notes-with-mappings [:d :e :g :a :b]
+          octaves (range -3 8)]
+      (doseq [note-name natural-notes-with-mappings
+              octave octaves]
+        (let [note (kb/create-note note-name octave)
+              flat-equiv (kb/get-flat-equivalent note)]
+          (is (= octave (:octave flat-equiv))
+              (str note-name octave " flat equivalent should preserve octave"))))))
+
+  (testing "Property: get-flat-equivalent always returns nil for notes without mappings"
+    (let [natural-notes-without-mappings [:c :f :csdf :dsef :fsgf :gsaf :asbf]
+          octaves (range -3 8)]
+      (doseq [note-name natural-notes-without-mappings
+              octave octaves]
+        (let [note (kb/create-note note-name octave)
+              flat-equiv (kb/get-flat-equivalent note)]
+          (is (nil? flat-equiv))))))
+
+  (testing "Property: get-flat-equivalent handles non-note inputs gracefully"
+    (let [non-notes [nil
+                     42
+                     "string"
+                     []
+                     {}
+                     {:not-a-note true}
+                     {:name "not-a-keyword"}]]
+      (doseq [input non-notes]
+        (is (nil? (kb/get-flat-equivalent input))
+            (str "Non-note input " input " should be nil"))))))
+
+(deftest test-create-note-predicate-from-collection
+  (testing "Edge case: note passed into predicate is nil"
+    (let [c-major-notes [:c :e :g]
+          predicate (kb/create-note-predicate-from-collection c-major-notes)]
+      (is (false? (predicate nil))
+          "Predicate should return false for nil")))
+
+  (testing "Edge case: list passed into predicate generator is nil"
+    (let [predicate (kb/create-note-predicate-from-collection nil)]
+      (is (false? (predicate (kb/create-note :c 4)))
+          "Predicate should return false for C in nil list")))
+
+  (testing "Edge case: list passed into predicate generator is nil as
+            well as note passed into generated function"
+    (let [predicate (kb/create-note-predicate-from-collection nil)]
+      (is (false? (predicate nil))
+          "Predicate should return false for nil in nil list")))
+
+  (testing "Basic note collection predicate"
+    (let [c-major-notes [:c :e :g]
+          predicate (kb/create-note-predicate-from-collection c-major-notes)]
+      (is (true? (predicate (kb/create-note :c 4)))
+          "Predicate should return true for C in C major")
+      (is (true? (predicate (kb/create-note :e 4)))
+          "Predicate should return true for E in C major")
+      (is (true? (predicate (kb/create-note :g 4)))
+          "Predicate should return true for G in C major")
+      (is (false? (predicate (kb/create-note :d 4)))
+          "Predicate should return false for D in C major")
+      (is (false? (predicate (kb/create-note :f 4)))
+          "Predicate should return false for F in C major")
+      (is (false? (predicate (kb/create-note :b 4)))
+          "Predicate should return false for B in C major")))
+
+  (testing "Predicate with accidentals"
+    (let [e-minor-notes [:e :fsgf :g :a :b :csdf :dsef]
+          predicate (kb/create-note-predicate-from-collection e-minor-notes)]
+      (is (true? (predicate (kb/create-note :e 4)))
+          "Predicate should return true for E in E minor")
+      (is (true? (predicate (kb/create-note :fsgf 3)))
+          "Predicate should return true for F#/Gb in E minor")
+      (is (false? (predicate (kb/create-note :gsaf 6)))
+          "Predicate should return true for G#/Ab in E minor")
+      (is (false? (predicate (kb/create-note :c 4)))
+          "Predicate should return false for C in E minor")
+      (is (false? (predicate (kb/create-note :f 4)))
+          "Predicate should return false for F in E minor")))
+
+  (testing "Predicate with empty collection"
+    (let [empty-notes []
+          predicate (kb/create-note-predicate-from-collection empty-notes)]
+      (is (false? (predicate (kb/create-note :c 4)))
+          "Predicate should return false for any note with empty collection")
+      (is (false? (predicate (kb/create-note :d 5)))
+          "Predicate should return false for any note with empty collection")
+      (is (false? (predicate (kb/create-note :fsgf 5)))
+          "Predicate should return false for any note with empty collection")
+      (is (false? (predicate (kb/create-note :gsaf 3)))
+          "Predicate should return false for any note with empty collection")))
+
+  (testing "Predicate is octave agnostic"
+    (let [notes [:c :e :g]
+          predicate (kb/create-note-predicate-from-collection notes)]
+      (doseq [i (range -2 10)]
+        (is (true? (predicate (kb/create-note :c i)))
+          "Predicate should return true regardless of octave")
+        (is (false? (predicate (kb/create-note :f i)))
+            "Predicate should return true regardless of octave")
+        (is (false? (predicate (kb/create-note :fsgf i)))
+            "Predicate should return true regardless of octave")))))
+
+(deftest test-keyboard-protocol-implementation
+  (testing "ChromaticKeyboard implementation"
+    (let [keyboard (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          rows (kb/get-rows keyboard)]
+      (testing "Basic keyboard structure"
+        (is (map? rows) "get-rows should return a map")
+        (is (contains? rows :top) "Rows should contain :top key")
+        (is (contains? rows :bottom) "Rows should contain :bottom key")
+        (is (vector? (:top rows)) "Top row should be a vector")
+        (is (vector? (:bottom rows)) "Bottom row should be a vector"))
+
+      (testing "Shift operations"
+        (let [shifted-right (kb/shift-right keyboard)
+              right-rows (kb/get-rows shifted-right)
+              first-bottom (first (:bottom right-rows))
+              shifted-left (kb/shift-left keyboard)
+              left-rows (kb/get-rows shifted-left)
+              first-bottom-left (first (:bottom left-rows))]
+          (is (= (kb/create-note :d 4) first-bottom)
+              "Shifting right should move bottom row to next chromatic note (C to D")
+          (is (= (kb/create-note :b 3) first-bottom-left)
+              "Shifting left should move to previous note (C to B)")))
+
+      (testing "Filter and map operations"
+        (let [c-major-scale [:c :d :e :f :g :a :b]
+              filter-fn (kb/create-note-predicate-from-collection c-major-scale)
+              filtered-keyboard (kb/filter-notes keyboard filter-fn)
+              filtered-rows (kb/get-rows filtered-keyboard)
+              c-note (kb/create-note :c 4)
+              csdf-note (kb/create-note :csdf 4)
+              map-fn (fn [note]
+                       (when note
+                         (kb/transpose-note note 1)))
+              mapped-keyboard (kb/map-notes keyboard map-fn)
+              mapped-rows (kb/get-rows mapped-keyboard)]
+          (is (some #(= c-note %) (flatten (vals filtered-rows)))
+              "C note should be present in filtered keyboard")
+          (is (not (some #(= csdf-note %) (flatten (vals filtered-rows))))
+              "C#/Db note should not be present in filtered keyboard")
+          (is (= (kb/create-note :csdf 4)
+                 (first (:bottom mapped-rows)))
+              "First note in mapped keyboard should be C# (C transposed up)")))))
+
+  (testing "FoldingKeyboard implementation"
+    (let [keyboard (kb/create-folding-keyboard (kb/create-note :c 4))
+          rows (kb/get-rows keyboard)]
+      (testing "Basic keyboard structure"
+        (is (map? rows) "get-rows should return a map")
+        (is (contains? rows :top) "Rows should contain :top key")
+        (is (contains? rows :bottom) "Rows should contain :bottom key")
+        (is (= 8 (count (:top rows))) "Top row should have 8 notes")
+        (is (= 8 (count (:bottom rows))) "Bottom row should have 8 notes"))
+
+      (testing "Shift operations"
+        (let [shifted-right (kb/shift-right keyboard)
+              right-rows (kb/get-rows shifted-right)
+              first-note (first (:bottom right-rows))
+              shifted-left (kb/shift-left keyboard)
+              left-rows (kb/get-rows shifted-left)
+              first-note-left (first (:bottom left-rows))]
+          (is (= (kb/create-note :csdf 4) first-note)
+              "Shifting right should move to next note (C to C#/Db)")
+          (is (= (kb/create-note :b 3) first-note-left)
+              "Shifting left should move to previous note (C to B)")))
+
+      (testing "Filter and map operations"
+        (let [c-major-scale [:c :d :e :f :g :a :b]
+              filter-fn (kb/create-note-predicate-from-collection c-major-scale)
+              filtered-keyboard (kb/filter-notes keyboard filter-fn)
+              filtered-rows (kb/get-rows filtered-keyboard)
+              map-fn (fn [note]
+                       (when note
+                         (kb/transpose-note note 12)))
+              mapped-keyboard (kb/map-notes keyboard map-fn)
+              mapped-rows (kb/get-rows mapped-keyboard)]
+          (is (some? (some #(and % (= (:name %) :c)) (flatten (vals filtered-rows))))
+              "C note should be present in filtered keyboard")
+          (is (not (some #(and % (= (:name %) :csdf)) (flatten (vals filtered-rows))))
+              "C#/Db note should not be present in filtered keyboard")
+          (is (= (kb/create-note :c 5)
+                 (first (:bottom mapped-rows)))
+              "First note in mapped keyboard should be C5 (C4 transposed up an octave)"))))))
+
 
 ;; Run all tests
 (run-tests)
