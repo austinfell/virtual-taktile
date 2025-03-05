@@ -558,8 +558,8 @@
               shifted-left (kb/shift-left keyboard)
               left-rows (kb/get-rows shifted-left)
               first-bottom-left (first (:bottom left-rows))]
-          (is (= (kb/create-note :d 4) first-bottom)
-              "Shifting right should move bottom row to next chromatic note (C to D")
+          (is (= (kb/create-note :c 4) first-bottom)
+              "Shifting right should not move yet, because C and C# display the same keyboard.")
           (is (= (kb/create-note :b 3) first-bottom-left)
               "Shifting left should move to previous note (C to B)")))
 
