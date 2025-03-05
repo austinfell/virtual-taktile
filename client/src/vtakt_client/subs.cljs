@@ -13,7 +13,7 @@
    (:active-panel db)))
 
 (re-frame/reg-sub
- ::keyboard-shift
+ ::keyboard-root
  (fn [db _]
-   (:keyboard-shift db)))
+   (:keyboard-root db)))
 

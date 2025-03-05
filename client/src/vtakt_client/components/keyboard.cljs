@@ -195,6 +195,7 @@
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
 
+;; Keyboard protocol and implementations.
 (defprotocol Keyboard
   "A protocol that defines the common operations for keyboard-like interfaces.
    Implementations represent different keyboard layouts and behaviors for
@@ -222,13 +223,13 @@
      The map-fn should accept a note and return a transformed note or nil.
      This can be used to apply visual styles, transpositions, or other transformations."))
 
-(defn generate-chromatic-layout
+(defn- generate-chromatic-layout
   "Generates a chromatic keyboard layout with natural notes on bottom row
    and their corresponding flats on the top row, with optional filtering"
   ([root-note]
    (generate-chromatic-layout root-note nil))
   ([root-note map-fn]
-   (let [all-notes (create-chromatic-note-generator root-note)
+   (let [all-notes (create-chromatic-note-generator (if (not (natural-note? root-note)) (shift-note root-note :down) root-note))
          natural-notes (filter natural-note? all-notes)
          bottom-row (take 8 natural-notes)
          filtered-bottom (if map-fn (map map-fn bottom-row) bottom-row)
@@ -270,7 +271,7 @@
    (let [layout (generate-chromatic-layout root-note)]
      (->ChromaticKeyboard root-note layout nil))))
 
-(defn generate-folding-layout
+(defn- generate-folding-layout
   ([root-note]
    (generate-folding-layout root-note nil))
   ([root-note transformations]
@@ -335,3 +336,4 @@
          (if (= (first remaining-notes) (:name current-note))
            (recur (conj result current-note) (rest remaining-notes) (shift-note current-note :up))
            (recur result remaining-notes (shift-note current-note :up))))))))
+

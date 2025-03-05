@@ -1,5 +1,7 @@
-(ns vtakt-client.db)
+(ns vtakt-client.db
+  (:require
+   [vtakt-client.components.keyboard :as kb]))
 
 (def default-db
   {:name "re-frame"
-   :keyboard-shift 29})
+   :keyboard-root (kb/create-note :c 4)})

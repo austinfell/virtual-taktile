@@ -87,23 +87,33 @@
               (str n)
               [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])])
 
+(seq-title)
 
+(seq-btn 1 (kb/create-note :c 4))
+
+
+;; ck (kb/create-chromatic-keyboard @keyboard-shift ((kb/scales :chromatic) :c))]
 (defn sequencer []
-  (let [keyboard-shift (re-frame/subscribe [::subs/keyboard-shift])
-        ck (kb/chromatic-keyboard @keyboard-shift ((kb/scales :chromatic) :c))]
+  (let [keyboard-root (re-frame/subscribe [::subs/keyboard-root])
+        ck (kb/create-chromatic-keyboard @keyboard-root)]
   [re-com/v-box
-   :children [
-              [re-com/h-box
-               :children [
-                          [re-com/button :label "<-" :on-click #(re-frame/dispatch [::events/dec-keyboard-shift])]
-                          [re-com/button :label "->" :on-click #(re-frame/dispatch [::events/inc-keyboard-shift])]
-                          ]
+   :children [[re-com/h-box
+               :children
+               [
+                [re-com/button :label "<-" :on-click #(re-frame/dispatch [::events/dec-keyboard-root])]
+                [re-com/button :label "->" :on-click #(re-frame/dispatch [::events/inc-keyboard-root])]
+                [re-com/title
+                 :src (at)
+                 :label (:root-note ck)
+                 :level :level1
+                 ]
+                ]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (:top-row ck))]
+               :children [(map seq-btn (range 1 9) (:top (kb/get-rows ck)))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (:bottom-row ck))]
+               :children [(map seq-btn (range 9 17) (:bottom (kb/get-rows ck)))]
                ]
               ]]))
 

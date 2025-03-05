@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [vtakt-client.db :as db]
+   [vtakt-client.components.keyboard :as kb]
    ))
 
 (re-frame/reg-event-db
@@ -20,11 +21,11 @@
    {:db (assoc db :active-panel active-panel)}))
 
 (re-frame/reg-event-fx
- ::inc-keyboard-shift
+ ::inc-keyboard-root
  (fn [{:keys [db]} [_ keyboard-shift]]
-   {:db (update db :keyboard-shift inc)}))
+   {:db (update db :keyboard-root #(kb/transpose-note % 1))}))
 
 (re-frame/reg-event-fx
- ::dec-keyboard-shift
+ ::dec-keyboard-root
  (fn [{:keys [db]} [_ keyboard-shift]]
-   {:db (update db :keyboard-shift dec)}))
+   {:db (update db :keyboard-root #(kb/transpose-note % -1))}))
