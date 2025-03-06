@@ -346,9 +346,9 @@
   (testing "Property: composable transpositions"
     (let [note-samples (take 10 (gen/sample (s/gen ::kb/note)))
           trans-pairs (take 20 (gen/sample
-                               (s/gen (s/tuple
-                                       (s/int-in -20 20)
-                                       (s/int-in -20 20)))))]
+                                (s/gen (s/tuple
+                                        (s/int-in -20 20)
+                                        (s/int-in -20 20)))))]
       (doseq [note note-samples
               [t1 t2] trans-pairs]
         (let [note-obj (kb/create-note (:name note) (:octave note))
@@ -407,15 +407,15 @@
     (is (nil? (kb/get-flat-equivalent nil))
         "Nils flat equivalent is nil."))
 
-    (testing "Get flat equivalent of incomplete data structure"
-      (is (nil? (kb/get-flat-equivalent {:name :c}))
-          "C has no flat equivalent")
-      (is (= {:name :csdf} (kb/get-flat-equivalent {:name :d}))
-          "D's flat equivalent is C#/Db")
-      (is (= nil (kb/get-flat-equivalent {:octave 2}))
-          "No available mappings yields nil")
-      (is (= nil (kb/get-flat-equivalent {}))
-          "No data at all should yield nil."))
+  (testing "Get flat equivalent of incomplete data structure"
+    (is (nil? (kb/get-flat-equivalent {:name :c}))
+        "C has no flat equivalent")
+    (is (= {:name :csdf} (kb/get-flat-equivalent {:name :d}))
+        "D's flat equivalent is C#/Db")
+    (is (= nil (kb/get-flat-equivalent {:octave 2}))
+        "No available mappings yields nil")
+    (is (= nil (kb/get-flat-equivalent {}))
+        "No data at all should yield nil."))
 
   (testing "Get flat equivalent of natural notes"
     (is (nil? (kb/get-flat-equivalent (kb/create-note :c 4)))
@@ -534,7 +534,7 @@
           predicate (kb/create-note-predicate-from-collection notes)]
       (doseq [i (range -2 10)]
         (is (true? (predicate (kb/create-note :c i)))
-          "Predicate should return true regardless of octave")
+            "Predicate should return true regardless of octave")
         (is (false? (predicate (kb/create-note :f i)))
             "Predicate should return true regardless of octave")
         (is (false? (predicate (kb/create-note :fsgf i)))
@@ -623,6 +623,209 @@
                  (first (:bottom mapped-rows)))
               "First note in mapped keyboard should be C5 (C4 transposed up an octave)"))))))
 
+(deftest build-chord-generative-tests
+  (testing "Generative tests for build-chord"
+    (let [check-results (stest/check `kb/build-chord
+                                     {:clojure.spec.test.check/opts
+                                      {:num-tests 100}})]
+      (is (true? (get-in (first check-results) [:clojure.spec.test.check/ret :pass?]))
+          (str "build-chord generative tests failed: " (-> check-results first :failure))))))
+
+(deftest build-chord-property-tests
+  (testing "Property: Chord inversion preserves note names"
+    (let [chord-samples [[:c :e :g]  ; C major
+                         [:a :c :e]  ; A minor
+                         [:g :b :d :f]] ; G dominant 7
+          octaves [3 4 5]
+          inversions [0 1 2 3]]
+      (doseq [chord chord-samples
+              octave octaves
+              inversion inversions]
+        (when (< inversion (count chord))
+          (let [built-chord (kb/build-chord chord octave inversion)
+                chord-note-names (set (map :name built-chord))]
+            (is (= (set chord) chord-note-names)
+                (str "Inversion " inversion " of " chord
+                     " should contain the same note names")))))))
+
+  (testing "Property: Chord spans correct number of octaves"
+    (let [big-chord [:c :e :g :b
+                     :c :e :g :b
+                     :c :e :g :b
+                     :c :e :g :b]  ; C major 7th chord, looped multiple times
+          octave 4]
+      (doseq [size (range 1 (inc (count big-chord)))]
+        (let [chord (take size big-chord)
+              built-chord (kb/build-chord chord octave 0)
+              min-octave (apply min (map :octave built-chord))
+              max-octave (apply max (map :octave built-chord))
+              expected-span (quot (dec size) 4)] ;; after b, we start getting more octaves.
+          (is (= expected-span (- max-octave min-octave))
+              (str "Chord of size " size " should span " expected-span " octaves"))))))
+
+  (testing "Property: Inversions rotate the chord correctly"
+    (let [chord [:c :e :g]  ; C major triad
+          octave 4]
+      ;; Root position (0 inversion)
+      (let [root-chord (kb/build-chord chord octave 0)]
+        (is (= :c (:name (first root-chord)))
+            "Root position should start with C")
+        (is (= 4 (:octave (first root-chord)))
+            "Root position should start at specified octave"))
+
+      ;; First inversion
+      (let [first-inv (kb/build-chord chord octave 1)]
+        (is (= :e (:name (first first-inv)))
+            "First inversion should start with E")
+        (is (= 4 (:octave (first first-inv)))
+            "First inversion should start at specified octave")
+        (is (= :c (:name (last first-inv)))
+            "First inversion should end with C")
+        (is (= 5 (:octave (last first-inv)))
+            "First inversion should have C in next octave"))
+
+      ;; Second inversion
+      (let [second-inv (kb/build-chord chord octave 2)]
+        (is (= :g (:name (first second-inv)))
+            "Second inversion should start with G")
+        (is (= 4 (:octave (first second-inv)))
+            "Second inversion should start at specified octave")
+        (is (= :e (:name (last second-inv)))
+            "Second inversion should end with E")
+        (is (= 5 (:octave (last second-inv)))
+            "Second inversion should have E in next octave")))))
+
+(deftest build-chord-blackbox-tests
+  (testing "Empty chord construction"
+    (is (= [] (kb/build-chord [] 4))
+        "Empty note list should result in empty chord")
+    (is (= [] (kb/build-chord [] 4 2))
+        "Empty note list with inversion should result in empty chord"))
+
+  (testing "Single note chord construction"
+    (is (= [(kb/create-note :c 4)] (kb/build-chord [:c] 4))
+        "Single note chord should contain just that note")
+    (is (= [(kb/create-note :c 4)] (kb/build-chord [:c] 4 5))
+        "Single note chord with inversion should still contain just that note"))
+
+  (testing "Common chord construction - C major triad"
+    (let [c-major-root (kb/build-chord [:c :e :g] 4 0)
+          expected-root [(kb/create-note :c 4)
+                         (kb/create-note :e 4)
+                         (kb/create-note :g 4)]]
+      (is (= expected-root c-major-root)
+          "C major in root position should have correct notes and octaves")))
+
+  (testing "Common chord construction - C major triad first inversion"
+    (let [c-major-first (kb/build-chord [:c :e :g] 4 1)
+          expected-first [(kb/create-note :e 4)
+                          (kb/create-note :g 4)
+                          (kb/create-note :c 5)]]
+      (is (= expected-first c-major-first)
+          "C major in first inversion should have correct notes and octaves")))
+
+  (testing "Common chord construction - C major triad second inversion"
+    (let [c-major-second (kb/build-chord [:c :e :g] 4 2)
+          expected-second [(kb/create-note :g 4)
+                           (kb/create-note :c 5)
+                           (kb/create-note :e 5)]]
+      (is (= expected-second c-major-second)
+          "C major in second inversion should have correct notes and octaves")))
+
+  (testing "Seventh chord construction - C dominant 7"
+    (let [c-dom7 (kb/build-chord [:c :e :g :asbf] 3)
+          expected [(kb/create-note :c 3)
+                    (kb/create-note :e 3)
+                    (kb/create-note :g 3)
+                    (kb/create-note :asbf 3)]]
+      (is (= expected c-dom7)
+          "C dominant 7 should have correct notes and octaves")))
+
+  (testing "Seventh chord construction - C dominant 7 third inversion"
+    (let [c-dom7-3rd (kb/build-chord [:c :e :g :asbf] 3 3)
+          expected [(kb/create-note :asbf 3)
+                    (kb/create-note :c 4)
+                    (kb/create-note :e 4)
+                    (kb/create-note :g 4)]]
+      (is (= expected c-dom7-3rd)
+          "C dominant 7 in third inversion should have correct notes and octaves")))
+
+  (testing "Negative octave handling"
+    (let [chord (kb/build-chord [:c :e :g] -1)
+          expected [(kb/create-note :c -1)
+                    (kb/create-note :e -1)
+                    (kb/create-note :g -1)]]
+      (is (= expected chord)
+          "Chord should support negative octaves")))
+
+  (testing "Large inversion handling"
+    (let [chord (kb/build-chord [:c :e :g] 4 100)  ; 100 % 3 = 1
+          expected [(kb/create-note :e 4)
+                    (kb/create-note :g 4)
+                    (kb/create-note :c 5)]]
+      (is (= expected chord)
+          "Large inversion number should be properly modulo'd")))
+
+  (testing "Negative inversion handling"
+    (let [chord (kb/build-chord [:c :e :g] 4 -1)  ; -1 % 3 = -1 + 3 = 2
+          expected [(kb/create-note :g 4)
+                    (kb/create-note :c 5)
+                    (kb/create-note :e 5)]]
+      (is (= expected chord)
+          "Negative inversion should wrap around correctly")))
+
+  (testing "Non-standard chord construction"
+    (let [chord (kb/build-chord [:c :fsgf :asbf] 4)
+          expected [(kb/create-note :c 4)
+                    (kb/create-note :fsgf 4)
+                    (kb/create-note :asbf 4)]]
+      (is (= expected chord)
+          "Non-standard chord should be constructed correctly")))
+
+  (testing "Chord with duplicate notes"
+    (let [chord (kb/build-chord [:c :e :c] 4)
+          expected [(kb/create-note :c 4)
+                    (kb/create-note :e 4)
+                    (kb/create-note :c 5)]]
+      (is (= expected chord)
+          "Chord with duplicate notes should have different octaves")))
+
+  (testing "Multiple octave chord"
+    (let [large-chord (kb/build-chord [:c :d :e :f :g :a :b :c :d :e] 3)
+          highest-note (last large-chord)]
+      (is (= 10 (count large-chord))
+          "Large chord should contain all specified notes")
+      (is (= :e (:name highest-note))
+          "Last note of large chord should be E")
+      (is (= 4 (:octave highest-note))
+          "Last note of large chord should be in octave 4")))
+
+  (testing "Large chord inversion"
+    (let [note-names [:c :d :e :f :g :a :b :c :d :e]
+          root-chord (kb/build-chord note-names 3 0)
+          inv-5-chord (kb/build-chord note-names 3 5)
+          root-first-note (first root-chord)
+          inv-first-note (first inv-5-chord)
+          root-last-note (last root-chord)
+          inv-last-note (last inv-5-chord)]
+
+    ;; Check that 5th inversion starts with the 6th note
+      (is (= :a (:name inv-first-note))
+          "5th inversion should start with A")
+      (is (= 3 (:octave inv-first-note))
+          "5th inversion should start in octave 3")
+
+    ;; Check that 5th inversion ends with G in the next octave
+      (is (= :g (:name inv-last-note))
+          "5th inversion should end with G")
+      (is (= 5 (:octave inv-last-note))
+          "5th inversion should end in octave 5")
+
+    ;; Check that both chords have the same notes but in different order
+      (is (= (count root-chord) (count inv-5-chord))
+          "Inverted chord should have same number of notes")
+      (is (= (set (map :name root-chord)) (set (map :name inv-5-chord)))
+          "Inverted chord should have same note names"))))
 
 ;; Run all tests
 (run-tests)

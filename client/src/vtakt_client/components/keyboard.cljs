@@ -16,7 +16,7 @@
 
   For example:
       ((scale-generator chromatic-notes [0 2 4 5 7 9 11]) :c)
-      => [:c :d :e :f :g :a :b]
+      => [:c :d :e :f :g :a :b
       ((scale-generator chromatic-notes [0 2 4 5 7 9 11]) :d)
       => [:d :e :fsgf :g :a :b :csdf]
   "
@@ -91,14 +91,16 @@
 (s/def ::name ::chromatic-note)
 (s/def ::note (s/keys :req-un [::name ::octave]))
 (s/fdef create-note
-  :args (s/cat :name ::chromatic-note :octave int?)
-  :ret ::note)
+  :args (s/cat :name (s/nilable ::chromatic-note) :octave (s/nilable int?))
+  :ret (s/nilable ::note))
 (defn create-note
   "Creates a note map with the given name and octave."
   [name octave]
-  {:pre [(s/valid? ::chromatic-note name)
-         (s/valid? int? octave)]}
-  {:name name :octave octave})
+  {:pre [(s/valid? (s/nilable ::chromatic-note) name)
+         (s/valid? (s/nilable int?) octave)]}
+  (if (or (nil? name) (nil? octave))
+    nil
+    {:name name :octave octave}))
 
 (defn- pshift-note
   "Shifts a note up or down by the specified delta.
@@ -238,6 +240,28 @@
      {:bottom (into [] filtered-bottom)
       :top (into [] filtered-top)})))
 
+(s/def ::keyboard #(satisfies? Keyboard %))
+(s/def ::filter-fn (s/fspec :args (s/cat :note ::note) :ret boolean?))
+(s/def ::map-fn (s/fspec :args (s/cat :note ::note) :ret (s/nilable ::note)))
+(s/def ::top (s/coll-of (s/nilable ::note) :kind vector?))
+(s/def ::bottom (s/coll-of (s/nilable ::note) :kind vector?))
+(s/def ::rows (s/keys :req-un [::top ::bottom]))
+
+(s/fdef shift-left
+  :args (s/cat :this ::keyboard)
+  :ret ::keyboard)
+(s/fdef shift-right
+  :args (s/cat :this ::keyboard) 
+  :ret ::keyboard)
+(s/fdef get-rows
+  :args (s/cat :this ::keyboard)
+  :ret ::rows)
+(s/fdef filter-notes
+  :args (s/cat :this ::keyboard :filter-fn (s/nilable ::filter-fn))
+  :ret ::keyboard)
+(s/fdef map-notes
+  :args (s/cat :this ::keyboard :map-fn (s/nilable ::map-fn))
+  :ret ::keyboard)
 (defrecord ChromaticKeyboard [root-note layout map-fn]
   Keyboard
   (shift-left [this]
@@ -265,6 +289,9 @@
                          guaranteed-new-map-fn)]
       (ChromaticKeyboard. root-note (generate-chromatic-layout root-note combined-fn) combined-fn))))
 
+(s/fdef create-chromatic-keyboard
+  :args (s/cat :root-note ::note)
+  :ret ::keyboard)
 (defn create-chromatic-keyboard
   "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
   ([root-note]
@@ -303,6 +330,9 @@
           new-transformations (if transformations (conj transformations map-impl) [map-impl])]
       (FoldingKeyboard. root-note (generate-folding-layout root-note new-transformations) new-transformations))))
 
+(s/fdef create-folding-keyboard
+  :args (s/cat :root-note ::note)
+  :ret ::keyboard)
 (defn create-folding-keyboard
   "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
   ([root-note]
@@ -319,6 +349,23 @@
    :diminished (create-scale-group [0 3 6])
    :diminished-7 (create-scale-group [0 3 6 9])})
 
+(s/def ::chord-notes (s/coll-of ::chromatic-note :min-count 0 :kind sequential?))
+(s/def ::octave int?)
+(s/def ::inversion int?)
+(s/def ::chord (s/coll-of ::note :kind vector?))
+(s/fdef build-chord
+  :args (s/alt :two-args (s/cat :note-names ::chord-notes
+                                :octave ::octave)
+               :three-args (s/cat :note-names ::chord-notes
+                                  :octave ::octave
+                                  :inversion ::inversion))
+  :ret ::chord
+  :fn (fn [{:keys [args ret]}]
+        (let [note-names (:note-names (second args))
+              empty-input? (empty? note-names)]
+          (if empty-input?
+            (empty? ret)
+            (= (count note-names) (count ret))))))
 (defn build-chord
   "Builds a chord with the given note names starting at the specified octave.
    Optional inversion parameter defaults to 0 (root position)."
@@ -337,3 +384,4 @@
            (recur (conj result current-note) (rest remaining-notes) (shift-note current-note :up))
            (recur result remaining-notes (shift-note current-note :up))))))))
 
+(build-chord [] 2)
