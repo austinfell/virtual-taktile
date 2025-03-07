@@ -6,6 +6,7 @@
    [vtakt-client.styles :as styles]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
+   [vtakt-client.utils :as utils]
    [vtakt-client.subs :as subs]))
 
 ;; home
@@ -87,27 +88,55 @@
               (str n)
               [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])])
 
-(seq-title)
+(defn scale-selector []
+  (let [options (re-frame/subscribe [::subs/scales])
+        selected (re-frame/subscribe [::subs/selected-scale])]
+    (fn []
+      [re-com/single-dropdown
+       :src (at)
+       :choices (into [{:id :off}] (map (fn [v] {:id (first v)}) (into [] @options)))
+       :model @selected
+       :width "125px"
+       :label-fn #(utils/format-keyword (:id %))
+       :on-change #(re-frame/dispatch [::events/set-scale %])
+                     ])))
 
-(seq-btn 1 (kb/create-note :c 4))
+(defn chord-selector []
+  (let [options (re-frame/subscribe [::subs/chords])
+        selected (re-frame/subscribe [::subs/selected-chord])]
+    (fn []
+      [re-com/single-dropdown
+       :src (at)
+       :choices (into [{:id :off}] (map (fn [v] {:id (first v)}) (into [] @options)))
+       :model @selected
+       :width "125px"
+       :label-fn #(utils/format-keyword (:id %))
+       :on-change #(re-frame/dispatch [::events/set-chord %])
+       ])))
 
 
-;; ck (kb/create-chromatic-keyboard @keyboard-shift ((kb/scales :chromatic) :c))]
+
 (defn sequencer []
   (let [keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         ck (kb/create-chromatic-keyboard @keyboard-root)]
   [re-com/v-box
+   :justify :center
    :children [[re-com/h-box
                :children
                [
+                [scale-selector]
+                [chord-selector]
                 [re-com/button :label "<-" :on-click #(re-frame/dispatch [::events/dec-keyboard-root])]
                 [re-com/button :label "->" :on-click #(re-frame/dispatch [::events/inc-keyboard-root])]
-                [re-com/title
-                 :src (at)
-                 :label (:root-note ck)
-                 :level :level1
-                 ]
-                ]
+                [re-com/label
+                 :style {:color :black :margin-top "5px" :margin-left "5px"}
+                 :label
+                 (str
+                  "Root: "
+                  (utils/format-keyword (get-in ck [:root-note :name]))
+                  (get-in ck [:root-note :octave])
+                  )]
+               ]
                ]
               [re-com/h-box
                :children [(map seq-btn (range 1 9) (:top (kb/get-rows ck)))]

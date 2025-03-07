@@ -17,3 +17,22 @@
  (fn [db _]
    (:keyboard-root db)))
 
+(re-frame/reg-sub
+ ::selected-chord
+ (fn [db _]
+   (:selected-chord db)))
+
+(re-frame/reg-sub
+ ::selected-scale
+ (fn [db _]
+   (:selected-scale db)))
+
+(re-frame/reg-sub
+ ::chords
+ (fn [db _]
+   (:chords db)))
+
+(re-frame/reg-sub
+ ::scales
+ (fn [db _]
+   (:scales db)))

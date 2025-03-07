@@ -5,15 +5,15 @@
    [vtakt-client.components.keyboard :as kb]
    ))
 
+(re-frame/reg-event-fx
+ ::navigate
+ (fn [_ [_ handler]]
+   {:navigate handler}))
+
 (re-frame/reg-event-db
  ::initialize-db
  (fn [_ _]
    db/default-db))
-
-(re-frame/reg-event-fx
-  ::navigate
-  (fn [_ [_ handler]]
-   {:navigate handler}))
 
 (re-frame/reg-event-fx
  ::set-active-panel
@@ -29,3 +29,13 @@
  ::dec-keyboard-root
  (fn [{:keys [db]} [_ keyboard-shift]]
    {:db (update db :keyboard-root #(kb/transpose-note % -1))}))
+
+(re-frame/reg-event-fx
+ ::set-chord
+ (fn [{:keys [db]} [_ chord]]
+   {:db (assoc db :selected-chord chord)}))
+
+(re-frame/reg-event-fx
+ ::set-scale
+ (fn [{:keys [db]} [_ selected-scale]]
+   {:db (assoc db :selected-scale selected-scale)}))

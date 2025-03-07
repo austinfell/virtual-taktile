@@ -4,4 +4,12 @@
 
 (def default-db
   {:name "re-frame"
-   :keyboard-root (kb/create-note :c 4)})
+   :keyboard-root (kb/create-note :c 4)
+
+   :selected-chord :off
+   :selected-scale :chromatic
+
+   :chords kb/chords
+   :scales kb/scales
+   })
+
