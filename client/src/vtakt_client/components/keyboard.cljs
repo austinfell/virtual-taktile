@@ -202,15 +202,6 @@
   "A protocol that defines the common operations for keyboard-like interfaces.
    Implementations represent different keyboard layouts and behaviors for
    navigating and manipulating musical notes."
-
-  (shift-left [this]
-    "Shifts the keyboard one step to the left, typically moving to lower notes.
-     Returns a new Keyboard instance with updated state.")
-
-  (shift-right [this]
-    "Shifts the keyboard one step to the right, typically moving to higher notes.
-     Returns a new Keyboard instance with updated state.")
-
   (get-rows [this]
     "Returns a normalized representation of the keyboard as a map with :top and :bottom keys,
      where each key maps to a vector of notes. Corresponds to the physical bottom and top
@@ -247,12 +238,6 @@
 (s/def ::bottom (s/coll-of (s/nilable ::note) :kind vector?))
 (s/def ::rows (s/keys :req-un [::top ::bottom]))
 
-(s/fdef shift-left
-  :args (s/cat :this ::keyboard)
-  :ret ::keyboard)
-(s/fdef shift-right
-  :args (s/cat :this ::keyboard) 
-  :ret ::keyboard)
 (s/fdef get-rows
   :args (s/cat :this ::keyboard)
   :ret ::rows)
@@ -264,14 +249,6 @@
   :ret ::keyboard)
 (defrecord ChromaticKeyboard [root-note layout map-fn]
   Keyboard
-  (shift-left [this]
-    (let [new-root (shift-note root-note :down)]
-      (ChromaticKeyboard. new-root (generate-chromatic-layout new-root map-fn) map-fn)))
-
-  (shift-right [this]
-    (let [new-root (shift-note root-note :up)]
-      (ChromaticKeyboard. new-root (generate-chromatic-layout new-root map-fn) map-fn)))
-
   (get-rows [this]
     (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
 
@@ -308,14 +285,6 @@
 
 (defrecord FoldingKeyboard [root-note notes transformations]
   Keyboard
-  (shift-left [this]
-    (let [new-root (shift-note root-note :down)]
-      (FoldingKeyboard. new-root (generate-folding-layout new-root transformations) transformations)))
-
-  (shift-right [this]
-    (let [new-root (shift-note root-note :up)]
-      (FoldingKeyboard. new-root (generate-folding-layout new-root transformations) transformations)))
-
   (get-rows [this]
     {:bottom (subvec notes 0 8)
      :top (subvec notes 8 16)})
@@ -383,5 +352,3 @@
          (if (= (first remaining-notes) (:name current-note))
            (recur (conj result current-note) (rest remaining-notes) (shift-note current-note :up))
            (recur result remaining-notes (shift-note current-note :up))))))))
-
-(build-chord [] 2)
