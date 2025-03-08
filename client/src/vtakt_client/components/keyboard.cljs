@@ -170,8 +170,9 @@
 (defn natural-note?
   "Returns true if the note is a natural note (not sharp/flat)"
   [note]
-  (not (clojure.string/includes? (name (:name note)) "s")))
-
+  (if-let [note-name (:name note)]
+    (not (clojure.string/includes? (name note-name) "s"))
+    false))  ;; If there's no name, it's not a natural note
 (def natural-note-to-flat-mapping
   {:c nil
    :d :csdf

@@ -744,6 +744,826 @@
       (is (= (set (map :name root-chord)) (set (map :name inv-5-chord)))
           "Inverted chord should have same note names"))))
 
+(deftest test-create-chromatic-keyboard
+  (testing "Basic record initialization"
+    (let [root (kb/create-note :c 4)
+          keyboard (kb/create-chromatic-keyboard root)]
 
+      ;; Test that root-note is set correctly
+      (is (= root (:root-note keyboard))
+          "Root note should be set to the provided note")
+
+      ;; Test that layout is initialized
+      (is (map? (:layout keyboard))
+          "Layout should be a map")
+      (is (contains? (:layout keyboard) :top)
+          "Layout should contain :top key")
+      (is (contains? (:layout keyboard) :bottom)
+          "Layout should contain :bottom key")
+      (is (vector? (get-in keyboard [:layout :top]))
+          "Top row in layout should be a vector")
+      (is (vector? (get-in keyboard [:layout :bottom]))
+          "Bottom row in layout should be a vector")
+
+      ;; Test that map-fn is initially nil
+      (is (nil? (:map-fn keyboard))
+          "map-fn should initially be nil")))
+
+  (testing "Layout initialization with different root notes"
+    (let [c-keyboard (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          d-keyboard (kb/create-chromatic-keyboard (kb/create-note :d 4))
+          fsharp-keyboard (kb/create-chromatic-keyboard (kb/create-note :fsgf 3))]
+
+      ;; Test layout differences based on root note
+      (is (not= (get-in c-keyboard [:layout :bottom])
+                (get-in d-keyboard [:layout :bottom])
+                (get-in fsharp-keyboard [:layout :bottom]))
+          "Different root notes should produce different layouts")
+      (is (not= (get-in c-keyboard [:layout :top])
+                (get-in d-keyboard [:layout :top])
+                (get-in fsharp-keyboard [:layout :top]))
+          "Different root notes should produce different layouts")
+
+      ;; Test first bottom notes.
+      (is (= (kb/create-note :c 4)
+             (first (get-in c-keyboard [:layout :bottom])))
+          "C4 keyboard should have C4 as first note in bottom row")
+      (is (= (kb/create-note :d 4)
+             (first (get-in d-keyboard [:layout :bottom])))
+          "D4 keyboard should have D4 as first note in bottom row")
+      (is (= (kb/create-note :f 3)
+             (first (get-in fsharp-keyboard [:layout :bottom])))
+          "F#3 keyboard should have F3 as first note in bottom row (adjusted to natural)")
+
+      ;; Test first "top" notes.
+      (is (nil? (first (get-in c-keyboard [:layout :top])))
+          "C4 keyboard should have not have note in top row as first note.")
+      (is (= (kb/create-note :csdf 4)
+             (first (get-in d-keyboard [:layout :top])))
+          "D4 keyboard should have C sharp in top row as first note.")
+      (is (nil? (first (get-in fsharp-keyboard [:layout :top])))
+          "F#3 keyboard should have not have note in top row as first note."))))
+
+(deftest test-chromatic-keyboard-row-content
+  (testing "Exact row content with various root notes"
+    ;; Test with C major (no sharps/flats)
+    (let [c-kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          c-rows (kb/rows c-kb)]
+      ;; Bottom row should have natural notes starting with C4
+      (is (= [(kb/create-note :c 4)
+              (kb/create-note :d 4)
+              (kb/create-note :e 4)
+              (kb/create-note :f 4)
+              (kb/create-note :g 4)
+              (kb/create-note :a 4)
+              (kb/create-note :b 4)
+              (kb/create-note :c 5)]
+             (:bottom c-rows))
+          "C4 keyboard bottom row should have C4 through C5")
+      ;; Top row should have nil followed by accidentals
+      (is (= [nil
+              (kb/create-note :csdf 4)
+              (kb/create-note :dsef 4)
+              nil
+              (kb/create-note :fsgf 4)
+              (kb/create-note :gsaf 4)
+              (kb/create-note :asbf 4)
+              nil]
+             (:top c-rows))
+          "C4 keyboard top row should have correct accidentals"))
+
+    ;; Test with A major (3 sharps: F#, C#, G#)
+    (let [a-kb (kb/create-chromatic-keyboard (kb/create-note :a 3))
+          a-rows (kb/rows a-kb)]
+      ;; Bottom row should have natural notes starting with A3
+      (is (= [(kb/create-note :a 3)
+              (kb/create-note :b 3)
+              (kb/create-note :c 4)
+              (kb/create-note :d 4)
+              (kb/create-note :e 4)
+              (kb/create-note :f 4)
+              (kb/create-note :g 4)
+              (kb/create-note :a 4)]
+             (:bottom a-rows))
+          "A3 keyboard bottom row should have A3 through A4")
+      ;; Top row should have nil followed by accidentals
+      (is (= [nil
+              (kb/create-note :asbf 3)
+              nil
+              (kb/create-note :csdf 4)
+              (kb/create-note :dsef 4)
+              nil
+              (kb/create-note :fsgf 4)
+              (kb/create-note :gsaf 4)]
+             (:top a-rows))
+          "A3 keyboard top row should have correct accidentals"))
+
+    ;; Test with F#/Gb major (6 sharps or 6 flats)
+    (let [fs-kb (kb/create-chromatic-keyboard (kb/create-note :fsgf 4))
+          fs-rows (kb/rows fs-kb)]
+      ;; For sharp/flat root, it should shift to the previous natural note (F)
+      (is (= [(kb/create-note :f 4)
+              (kb/create-note :g 4)
+              (kb/create-note :a 4)
+              (kb/create-note :b 4)
+              (kb/create-note :c 5)
+              (kb/create-note :d 5)
+              (kb/create-note :e 5)
+              (kb/create-note :f 5)]
+             (:bottom fs-rows))
+          "F#4 keyboard bottom row should have F4 through F5 (adjusted to natural)")
+      ;; Top row should follow the pattern based on the natural notes
+      (is (= [nil
+              (kb/create-note :fsgf 4)
+              (kb/create-note :gsaf 4)
+              (kb/create-note :asbf 4)
+              nil
+              (kb/create-note :csdf 5)
+              (kb/create-note :dsef 5)
+              nil]
+             (:top fs-rows))
+          "F#4 keyboard top row should have correct accidentals"))
+
+    ;; Test with Eb major (3 flats: Bb, Eb, Ab)
+    (let [eb-kb (kb/create-chromatic-keyboard (kb/create-note :dsef 3))
+          eb-rows (kb/rows eb-kb)]
+      ;; For sharp/flat root, it should shift to the previous natural note (D)
+      (is (= [(kb/create-note :d 3)
+              (kb/create-note :e 3)
+              (kb/create-note :f 3)
+              (kb/create-note :g 3)
+              (kb/create-note :a 3)
+              (kb/create-note :b 3)
+              (kb/create-note :c 4)
+              (kb/create-note :d 4)]
+             (:bottom eb-rows))
+          "Eb3 keyboard bottom row should have D3 through D4 (adjusted to natural)")
+      ;; Top row should follow the pattern based on the natural notes
+      (is (= [nil
+              (kb/create-note :dsef 3)
+              nil
+              (kb/create-note :fsgf 3)
+              (kb/create-note :gsaf 3)
+              (kb/create-note :asbf 3)
+              nil
+              (kb/create-note :csdf 4)]
+             (:top eb-rows))
+          "Eb3 keyboard top row should have correct accidentals"))))
+
+(deftest test-chromatic-keyboard-rows
+  (testing "Basic rows structure with various root notes"
+    (doseq [root-note [[:c 4] [:e 3] [:fsgf 5] [:asbf 2] [:csdf 3]]]
+      (let [kb (kb/create-chromatic-keyboard (apply kb/create-note root-note))
+            rows (kb/rows kb)
+            [note-name octave] root-note]
+
+        ;; Check that the result has the expected keys
+        (is (contains? rows :top)
+            (str note-name octave " keyboard: Result should contain :top key"))
+        (is (contains? rows :bottom)
+            (str note-name octave " keyboard: Result should contain :bottom key"))
+
+        ;; Check that both rows are vectors
+        (is (vector? (:top rows))
+            (str note-name octave " keyboard: Top row should be a vector"))
+        (is (vector? (:bottom rows))
+            (str note-name octave " keyboard: Bottom row should be a vector"))
+
+        ;; Check the length of the rows
+        (is (= 8 (count (:top rows)))
+            (str note-name octave " keyboard: Top row should have 8 elements"))
+        (is (= 8 (count (:bottom rows)))
+            (str note-name octave " keyboard: Bottom row should have 8 elements")))))
+
+  (testing "Row normalization with various root notes"
+    (doseq [root-note [[:d 4] [:f 2] [:gsaf 3] [:dsef 5] [:b 1]]]
+      (let [kb (kb/create-chromatic-keyboard (apply kb/create-note root-note))
+            raw-layout (:layout kb)
+            normalized-rows (kb/rows kb)
+            [note-name octave] root-note]
+
+        ;; Check that the first position in top row is nil
+        (is (nil? (first (:top normalized-rows)))
+            (str note-name octave " keyboard: First position in normalized top row should be nil"))
+
+        ;; Check that the rest of the top row matches the rest of the raw layout's top row
+        (is (= (subvec (:top raw-layout) 1)
+               (subvec (:top normalized-rows) 1))
+            (str note-name octave " keyboard: Rest of normalized top row should match raw layout"))
+
+        ;; Bottom row should remain unchanged
+        (is (= (:bottom raw-layout) (:bottom normalized-rows))
+            (str note-name octave " keyboard: Bottom row should remain unchanged during normalization"))))))
+
+(deftest test-chromatic-keyboard-map-notes
+  (testing "Basic note transformation"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :csdf 4))
+          ;; Simple transformation: transpose all notes up by 1 semitone
+          transpose-up (fn [note] (when note (kb/transpose-note note 1)))
+          mapped-kb (kb/map-notes kb transpose-up)
+          mapped-rows (kb/rows mapped-kb)]
+
+      ;; For C#/Db keyboard, should adjust to C and then map
+      (is (= (kb/create-note :csdf 4) (first (:bottom mapped-rows)))
+          "First note in bottom row should be C#/Db (C transposed up)")
+
+      ;; Check a few more examples to ensure transformation was applied
+      (is (= (kb/create-note :fsgf 4) (nth (:bottom mapped-rows) 3))
+          "Fourth note in bottom row should be F# (F transposed up)")
+
+      ;; Check nil handling - should remain nil
+      (is (nil? (first (:top mapped-rows)))
+          "First position in top row should remain nil after mapping")))
+
+  (testing "Identity mapping with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
+              identity-mapped-kb (kb/map-notes kb identity)
+              original-rows (kb/rows kb)
+              mapped-rows (kb/rows identity-mapped-kb)]
+          ;; Rows should be identical after identity mapping
+          (is (= original-rows mapped-rows)
+              (str "Rows should be identical after applying identity mapping for "
+                   (:name note) (:octave note)))))))
+
+  (testing "Nil mapping function with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
+              nil-mapped-kb (kb/map-notes kb nil)
+              original-rows (kb/rows kb)
+              mapped-rows (kb/rows nil-mapped-kb)]
+          ;; Rows should be identical after nil mapping
+          (is (= original-rows mapped-rows)
+              (str "Rows should be identical when nil mapping function is provided for "
+                   (:name note) (:octave note)))))))
+
+  (testing "Transformation to nil with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
+              ;; Map all notes to nil
+              nil-all (fn [_] nil)
+              mapped-kb (kb/map-notes kb nil-all)
+              mapped-rows (kb/rows mapped-kb)]
+          ;; All notes should be transformed to nil
+          (is (every? nil? (concat (:top mapped-rows) (:bottom mapped-rows)))
+              (str "All notes should be nil after mapping with nil-returning function for "
+                   (:name note) (:octave note)))))))
+
+  (testing "Round-trip transformations with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note name octave))
+              ;; Map: Transpose up 15 semitones, then back down 15
+              up-fn (fn [n] (when n (kb/transpose-note n 15)))
+              down-fn (fn [n] (when n (kb/transpose-note n -15)))
+              up-and-down-kb (-> kb
+                                 (kb/map-notes up-fn)
+                                 (kb/map-notes down-fn))
+              original-rows (kb/rows kb)
+              final-rows (kb/rows up-and-down-kb)]
+
+          ;; After round-trip transformation, rows should be identical
+          (is (= original-rows final-rows)
+              (str "Round-trip transformation should return to original state for "
+                   name octave))))))
+
+  (testing "Octave adjustment mapping"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          ;; Shift all notes up by one octave
+          octave-up (fn [note] (when note (update note :octave inc)))
+          mapped-kb (kb/map-notes kb octave-up)
+          mapped-rows (kb/rows mapped-kb)]
+
+      ;; Check that octaves have been incremented
+      (is (= (kb/create-note :c 5) (first (:bottom mapped-rows)))
+          "First note should be C5 (octave up from C4)")
+      (is (= (kb/create-note :e 5) (nth (:bottom mapped-rows) 2))
+          "Third note should be E5 (octave up from E4)")
+
+      ;; Check nil handling with octave adjustment
+      (is (nil? (first (:top mapped-rows)))
+          "Nil values should remain nil after octave adjustment")))
+
+  (testing "Conditional mapping"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :gsaf 3))
+          ;; Map only natural notes, leave accidentals unchanged
+          highlight-naturals (fn [note]
+                               (when note
+                                 (if (kb/natural-note? note)
+                                   ;; For natural notes, add a :highlighted flag
+                                   (assoc note :highlighted true)
+                                   ;; For accidentals, leave unchanged
+                                   note)))
+          mapped-kb (kb/map-notes kb highlight-naturals)
+          mapped-bottom (get-in (kb/rows mapped-kb) [:bottom])]
+
+      ;; Check that natural notes have :highlighted flag
+      (is (:highlighted (first mapped-bottom))
+          "Natural notes should have :highlighted flag added")
+
+      ;; We need to find an accidental in the top row
+      (let [mapped-top (get-in (kb/rows mapped-kb) [:top])
+            accidental (first (remove nil? mapped-top))]
+        (is (not (:highlighted accidental))
+            "Accidental notes should not have :highlighted flag")))))
+
+(deftest test-chromatic-keyboard-filter-notes
+  (testing "Filter with custom predicate - full row verification"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :a 3))
+          ;; Only keep C and G notes
+          c-g-only? (fn [note] (when note (#{:c :g} (:name note))))
+          filtered-kb (kb/filter-notes kb c-g-only?)
+          filtered-rows (kb/rows filtered-kb)]
+
+      ;; Full verification of bottom row
+      (is (= [nil  ; A3 - filtered
+              nil  ; B3 - filtered
+              (kb/create-note :c 4)  ; C4 - kept
+              nil  ; D4 - filtered
+              nil  ; E4 - filtered
+              nil  ; F4 - filtered
+              (kb/create-note :g 4)  ; G4 - kept
+              nil] ; A4 - filtered
+             (:bottom filtered-rows))
+          "Bottom row should only contain C and G notes, everything else filtered")
+
+      ;; Full verification of top row
+      (is (= [nil  ; First position always nil in rows
+              nil  ; A#/Bb3 - filtered
+              nil  ; No sharp for B
+              nil  ; C#/Db4 - filtered
+              nil  ; D#/Eb4 - filtered
+              nil  ; No sharp for E
+              nil  ; F#/Gb4 - filtered
+              nil] ; G#/Ab4 - filtered
+             (:top filtered-rows))
+          "Top row should contain only nil values as all accidentals are filtered")))
+
+  (testing "Nil predicate preserves all notes - generative test"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              filtered-kb (kb/filter-notes kb nil)
+              original-rows (kb/rows kb)
+              filtered-rows (kb/rows filtered-kb)]
+
+        ;; Result should be identical to original keyboard for any root note
+          (is (= original-rows filtered-rows)
+              (str "Filtering with nil predicate should keep all notes unchanged for "
+                   note-name octave " keyboard"))))))
+
+  (testing "Filter that removes all notes - generative test"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+            ;; Predicate that always returns false
+              none? (constantly false)
+              filtered-kb (kb/filter-notes kb none?)
+              filtered-rows (kb/rows filtered-kb)]
+
+        ;; All notes should be filtered out regardless of root note
+          (is (every? nil? (concat (:top filtered-rows) (:bottom filtered-rows)))
+              (str "All notes should be filtered out for " note-name octave " keyboard"))))))
+
+  (testing "Octave boundary filtering - generative test"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              target-octave (inc octave)  ; Filter to keep notes in next octave up
+              octave-filter (fn [n] (when n (= target-octave (:octave n))))
+              filtered-kb (kb/filter-notes kb octave-filter)
+              filtered-rows (kb/rows filtered-kb)]
+
+        ;; Check that only notes with the target octave are kept
+          (is (every? #(or (nil? %) (= target-octave (:octave %)))
+                      (concat (:top filtered-rows) (:bottom filtered-rows)))
+              (str "Only notes in octave " target-octave " should be preserved"))
+
+        ;; Check that there's a clear division - notes below a certain point should all be nil
+        ;; and notes after that point (in the next octave) should have some non-nil values
+          (let [bottom-row (:bottom filtered-rows)
+              ;; Find the first non-nil note (which should be in the target octave)
+                first-non-nil-idx (first (keep-indexed #(when %2 %1) bottom-row))]
+
+          ;; If there are notes in the target octave in the keyboard...
+            (when first-non-nil-idx
+            ;; All notes before that should be nil (lower octave)
+              (is (every? nil? (take first-non-nil-idx bottom-row))
+                  (str "All notes before index " first-non-nil-idx
+                       " should be nil (lower octave)"))))))))
+
+  (testing "Multiple compositional filters - natural notes then specific note in range"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
+        ;; First filter: keep only natural notes
+          natural-kb (kb/filter-notes kb kb/natural-note?)
+        ;; Second filter: only notes in octave 4
+          octave-4? (fn [note] (when note (= 4 (:octave note))))
+          octave-filtered (kb/filter-notes natural-kb octave-4?)
+        ;; Third filter: only C and G
+          c-g-only? (fn [note] (when note (#{:c :g} (:name note))))
+          final-kb (kb/filter-notes octave-filtered c-g-only?)
+          final-rows (kb/rows final-kb)]
+
+    ;; Full verification of bottom row after all filters
+      (is (= [(kb/create-note :c 4)  ; C4 - kept by all filters
+              nil  ; D4 - filtered by third filter
+              nil  ; E4 - filtered by third filter
+              nil  ; F4 - filtered by third filter
+              (kb/create-note :g 4)  ; G4 - kept by all filters
+              nil  ; A4 - filtered by third filter
+              nil  ; B4 - filtered by third filter
+              nil] ; C5 - filtered by second filter (octave 5)
+             (:bottom final-rows))
+          "Bottom row should only have C4 and G4 after all three filters")
+
+    ;; Top row should be all nil (filtered by first filter)
+      (is (every? nil? (:top final-rows))
+          "Top row should be all nil after natural filter")))
+
+  (testing "Compositional filters with different orders"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :e 3))
+        ;; Define our filters
+          natural? kb/natural-note?
+          octave-4? (fn [note] (when note (= 4 (:octave note))))
+          c-f? (fn [note] (when note (#{:c :f} (:name note))))
+
+        ;; Apply filters in different orders
+          order1 (-> kb
+                     (kb/filter-notes natural?)
+                     (kb/filter-notes octave-4?)
+                     (kb/filter-notes c-f?))
+          order2 (-> kb
+                     (kb/filter-notes c-f?)
+                     (kb/filter-notes octave-4?)
+                     (kb/filter-notes natural?))
+          order3 (-> kb
+                     (kb/filter-notes octave-4?)
+                     (kb/filter-notes natural?)
+                     (kb/filter-notes c-f?))
+          rows1 (kb/rows order1)
+          rows2 (kb/rows order2)
+          rows3 (kb/rows order3)]
+
+    ;; All three orders should give identical results
+      (is (= rows1 rows2)
+          "Filter order 1 and 2 should produce identical results")
+      (is (= rows2 rows3)
+          "Filter order 2 and 3 should produce identical results")
+
+    ;; Verify the exact content (should only have C4 and F4)
+      (let [expected-bottom [nil  ; E3 - filtered by octave
+                             nil  ; F3 - filtered by octave
+                             nil  ; G3 - filtered by octave
+                             nil  ; A3 - filtered by octave
+                             nil  ; B3 - filtered by octave
+                             (kb/create-note :c 4)  ; C4 - kept by all filters
+                             nil  ; D4 - filtered by C-F filter
+                             nil] ; E4 - filtered by C-F filter
+            expected-top [nil nil nil nil nil nil nil nil]]  ; All accidentals filtered
+
+        (is (= expected-bottom (:bottom rows1))
+            "Bottom row should only contain C4 after all filters")
+        (is (= expected-top (:top rows1))
+            "Top row should be all nil after all filters"))))
+
+  (testing "Compositional filtering with contradictory predicates"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :g 4))
+        ;; First filter: only natural notes
+          natural-kb (kb/filter-notes kb kb/natural-note?)
+        ;; Second filter: only accidentals (contradicts first filter)
+          accidental? (fn [note] (when note (not (kb/natural-note? note))))
+          final-kb (kb/filter-notes natural-kb accidental?)
+          final-rows (kb/rows final-kb)]
+
+    ;; Result should be all nil (no note can satisfy both predicates)
+      (is (every? nil? (concat (:top final-rows) (:bottom final-rows)))
+          "All notes should be nil when using contradictory filters")))
+
+  (testing "Idempotent filtering"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :asbf 3))
+        ;; Apply the same filter twice
+          c-e-g? (fn [note] (when note (#{:c :e :g} (:name note))))
+          once-filtered (kb/filter-notes kb c-e-g?)
+          twice-filtered (kb/filter-notes once-filtered c-e-g?)
+          once-rows (kb/rows once-filtered)
+          twice-rows (kb/rows twice-filtered)]
+
+    ;; Applying the same filter twice should give the same result as once
+      (is (= once-rows twice-rows)
+          "Applying the same filter multiple times should be idempotent")))
+
+  (testing "Filtering with disjunction of predicates"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :d 4))
+        ;; Filter to keep C or E notes
+          c-pred? (fn [note] (when note (= :c (:name note))))
+          e-pred? (fn [note] (when note (= :e (:name note))))
+
+        ;; Two approaches to achieve the same result:
+        ;; 1. Using a combined predicate
+          c-or-e? (fn [note] (when note (or (c-pred? note) (e-pred? note))))
+          combined-kb (kb/filter-notes kb c-or-e?)
+
+        ;; 2. Filter for C, then map the result of a separate E filter back in
+          c-kb (kb/filter-notes kb c-pred?)
+          e-kb (kb/filter-notes kb e-pred?)
+        ;; Use map-notes to combine them (if either result has the note, keep it)
+          combined-manually (kb/map-notes kb (fn [note]
+                                               (when note
+                                                 (if (or (c-pred? note) (e-pred? note))
+                                                   note
+                                                   nil))))
+
+          combined-rows (kb/rows combined-kb)
+          manual-rows (kb/rows combined-manually)]
+
+    ;; Both approaches should yield the same result
+      (is (= combined-rows manual-rows)
+          "Different approaches to combining filters should give same result")
+
+    ;; Verify the exact content (only C and E notes)
+      (is (= [nil  ; D4 - filtered
+              (kb/create-note :e 4)  ; E4 - kept
+              nil  ; F4 - filtered
+              nil  ; G4 - filtered
+              nil  ; A4 - filtered
+              nil  ; B4 - filtered
+              (kb/create-note :c 5)  ; C5 - kept
+              nil] ; D5 - filtered
+             (:bottom combined-rows))
+          "Bottom row should only contain C and E notes")
+
+    ;; Top row should only have nil since all accidentals are filtered
+      (is (every? nil? (:top combined-rows))
+          "Top row should be all nil when filtering for only C and E")))
+  (testing "Name-specific filtering - generative test"
+    ;; Generate a variety of notes to test with
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [na (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note na octave))
+              ;; Create a predicate that only matches the name of our sample note
+              note-name-pred (fn [n] (when n (= na (:name n))))
+              filtered-kb (kb/filter-notes kb note-name-pred)
+              filtered-rows (kb/rows filtered-kb)]
+
+          ;; Check that only notes with the specified name are kept
+          (is (every? #(or (nil? %) (= na (:name %)))
+                      (concat (:top filtered-rows) (:bottom filtered-rows)))
+              (str "Only notes with name " na " should be preserved"))
+
+          ;; Ensure at least one note is kept (there should be at least one if the layout is correct)
+          (is (some #(and % (= na (:name %)))
+                    (concat (:top filtered-rows) (:bottom filtered-rows)))
+              (str "At least one note with name " na " should be present")))))))
+
+
+
+(deftest test-chromatic-keyboard-protocol-integration
+  (testing "Basic method chaining with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              ;; Chain operations: map to transpose up, filter to keep naturals, then get rows
+              transposed-kb (kb/map-notes kb #(when % (kb/transpose-note % 2)))
+              filtered-kb (kb/filter-notes transposed-kb kb/natural-note?)
+              result-rows (kb/rows filtered-kb)]
+
+          ;; Verify that all notes in the result are natural notes
+          (is (every? #(or (nil? %) (kb/natural-note? %))
+                      (concat (:top result-rows) (:bottom result-rows)))
+              (str "All notes should be natural after filter for " note-name octave " keyboard"))
+
+          ;; Verify that transposition occurred (compare with untransposed+filtered)
+          (let [just-filtered (kb/filter-notes kb kb/natural-note?)
+                filtered-rows (kb/rows just-filtered)]
+            (is (not= filtered-rows result-rows)
+                (str "Transposed+filtered keyboard should differ from just filtered for "
+                     note-name octave " keyboard")))))))
+
+  (testing "Equivalence of different operation orders"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 5)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              ;; Define our operations
+              transpose-up (fn [n] (when n (kb/transpose-note n 3)))
+              c-e-g-only? (fn [n] (when n (#{:c :e :g} (:name n))))
+
+              ;; Apply operations in different orders
+              map-then-filter (-> kb
+                                (kb/map-notes transpose-up)
+                                (kb/filter-notes c-e-g-only?)
+                                (kb/rows))
+
+              ;; For filter-then-map, we need to adjust the filter to account for transposition
+              ;; If we're transposing up 3 semitones:
+              ;; C→D#, E→G, G→A#, so we should filter for A#, D#, G
+              equivalent-filter? (fn [n]
+                                   (when n
+                                     (#{:dsef :g :asbf} (:name n))))
+
+              filter-then-map (-> kb
+                                (kb/filter-notes equivalent-filter?)
+                                (kb/map-notes transpose-up)
+                                (kb/rows))]
+
+          ;; Check note names in both results
+          (let [map-filter-names (set (keep #(when % (:name %))
+                                          (concat (:top map-then-filter) (:bottom map-then-filter))))
+                filter-map-names (set (keep #(when % (:name %))
+                                          (concat (:top filter-then-map) (:bottom filter-then-map))))]
+
+            ;; Both approaches should yield the same note names
+            (is (= map-filter-names filter-map-names)
+                (str "Both operation orders should yield same note names for "
+                     note-name octave " keyboard")))))))
+
+  (testing "Round-trip operations with generative testing"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              ;; Operations that should cancel out:
+              ;; 1. Transpose up then down by the same amount
+              up-fn (fn [n] (when n (kb/transpose-note n 7)))  ; perfect fifth up
+              down-fn (fn [n] (when n (kb/transpose-note n -7)))  ; perfect fifth down
+
+              ;; 2. Filter to C/E/G, then expand to include all natural notes
+              c-e-g-only? (fn [n] (when n (#{:c :e :g} (:name n))))
+              all-naturals? kb/natural-note?
+              all-notes? (constantly true)  ; Allow any note
+
+              ;; Apply canceling operations
+              transposed-back (-> kb
+                                (kb/map-notes up-fn)
+                                (kb/map-notes down-fn)
+                                (kb/rows))
+
+              filtered-expanded (-> kb
+                                   (kb/filter-notes c-e-g-only?)
+                                   (kb/filter-notes all-notes?)  ; This should be a no-op
+                                   (kb/rows))
+
+              ;; Reference results
+              original-rows (kb/rows kb)
+              filtered-rows (kb/rows (kb/filter-notes kb c-e-g-only?))]
+
+          ;; After transpose up then down, result should match original
+          (is (= original-rows transposed-back)
+              (str "Transpose up then down should return to original for "
+                   note-name octave " keyboard"))
+
+          ;; After filter then expand, result should match just filtered
+          (is (= filtered-rows filtered-expanded)
+              (str "Filter then 'expand' should equal just filtered for "
+                   note-name octave " keyboard"))))))
+
+  (testing "Complex musical transformations"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          ;; Transform C major triad to C minor triad (lower E to Eb)
+          c-major-to-minor (fn [note]
+                             (when note
+                               (if (= :e (:name note))
+                                 (kb/transpose-note note -1)  ; Lower E to Eb
+                                 note)))
+
+          ;; Only keep triad notes (C, E, G)
+          triad-notes? (fn [note]
+                         (when note (#{:c :e :g :dsef} (:name note))))
+
+          ;; Apply transformations
+          result (-> kb
+                     (kb/map-notes c-major-to-minor)
+                     (kb/filter-notes triad-notes?)
+                     (kb/rows))]
+
+      ;; Verify bottom row contains C, Eb, G
+      (let [note-names (set (keep #(when % (:name %)) (:bottom result)))]
+        (is (contains? note-names :c) "Result should contain C")
+        (is (contains? note-names :dsef) "Result should contain Eb")
+        (is (contains? note-names :g) "Result should contain G")
+        (is (not (contains? note-names :e)) "Result should not contain E"))))
+
+  (testing "Data structure integrity through transformations - generative test"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              ;; Complex chained operations
+              result (-> kb
+                        (kb/map-notes #(when % (assoc % :test-attr "mapped")))
+                        (kb/filter-notes #(when % true))  ; Keep all notes
+                        (kb/map-notes #(when % (update % :octave inc)))
+                        (kb/rows))]
+
+          ;; Check structure is preserved
+          (is (contains? result :top) "Result should contain :top key")
+          (is (contains? result :bottom) "Result should contain :bottom key")
+          (is (vector? (:top result)) "Top row should be a vector")
+          (is (vector? (:bottom result)) "Bottom row should be a vector")
+          (is (= 8 (count (:top result))) "Top row should have 8 elements")
+          (is (= 8 (count (:bottom result))) "Bottom row should have 8 elements")
+
+          ;; Check transformations were applied correctly
+          (is (every? #(or (nil? %) (= "mapped" (:test-attr %))) 
+                      (concat (:top result) (:bottom result)))
+              "All notes should have test-attr from first mapping")
+
+          ;; Check octave increment was applied
+          (let [non-nil-notes (remove nil? (concat (:top result) (:bottom result)))]
+            (when (seq non-nil-notes)
+              (is (every? #(= (inc octave) (:octave %)) non-nil-notes)
+                  "All notes should have incremented octave")))))))
+
+  (testing "Integration with full lifecycle transformations"
+    (let [kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
+          ;; Create a pentatonic major scale filter (C, D, E, G, A)
+          pentatonic-major? (fn [note]
+                              (when note (#{:c :d :e :g :a} (:name note))))
+
+          ;; Map to add a "scale-degree" attribute
+          add-scale-degree (fn [note]
+                             (when note
+                               (let [degree (case (:name note)
+                                              :c 1
+                                              :d 2
+                                              :e 3
+                                              :g 5
+                                              :a 6
+                                              nil)]
+                                 (if degree
+                                   (assoc note :scale-degree degree)
+                                   note))))
+
+          ;; Apply transformations
+          result (-> kb
+                     (kb/filter-notes pentatonic-major?)
+                     (kb/map-notes add-scale-degree)
+                     (kb/rows))]
+
+      ;; Verify notes have correct scale degrees
+      (let [c-note (first (:bottom result))
+            d-note (second (:bottom result))
+            e-note (nth (:bottom result) 2)
+            g-note (nth (:bottom result) 4)
+            a-note (nth (:bottom result) 5)]
+
+        (is (= 1 (:scale-degree c-note)) "C should have scale degree 1")
+        (is (= 2 (:scale-degree d-note)) "D should have scale degree 2")
+        (is (= 3 (:scale-degree e-note)) "E should have scale degree 3")
+        (is (= 5 (:scale-degree g-note)) "G should have scale degree 5")
+        (is (= 6 (:scale-degree a-note)) "A should have scale degree 6"))))
+
+  (testing "Error handling with invalid inputs - generative test"
+    (let [note-samples (gen/sample (s/gen ::kb/note) 5)]
+      (doseq [note note-samples
+              :let [note-name (:name note)
+                    octave (:octave note)]]
+        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+              ;; Create some problematic transformations
+              returns-map (fn [_] {})  ; Returns a map instead of a note
+              returns-nil (constantly nil)  ; Always returns nil
+
+              ;; Apply potentially problematic operations
+              result1 (-> kb
+                         (kb/map-notes returns-map)
+                         (kb/filter-notes #(when % true))
+                         (kb/rows))
+
+              result2 (-> kb
+                         (kb/map-notes returns-nil)
+                         (kb/rows))]
+
+          ;; Even with invalid transformations, structure should be preserved
+          (is (contains? result1 :top) "Result1 should contain :top key")
+          (is (contains? result1 :bottom) "Result1 should contain :bottom key")
+          (is (= 8 (count (:top result1))) "Result1 top row should have 8 elements")
+          (is (= 8 (count (:bottom result1))) "Result1 bottom row should have 8 elements")
+
+          (is (contains? result2 :top) "Result2 should contain :top key")
+          (is (contains? result2 :bottom) "Result2 should contain :bottom key")
+          (is (= 8 (count (:top result2))) "Result2 top row should have 8 elements")
+          (is (= 8 (count (:bottom result2))) "Result2 bottom row should have 8 elements")
+
+          ;; All elements should be nil in result2
+          (is (every? nil? (concat (:top result2) (:bottom result2)))
+              "All elements should be nil after nil-returning mapper"))))))
 ;; Run all tests
 (run-tests)
