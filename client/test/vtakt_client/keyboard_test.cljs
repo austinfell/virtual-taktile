@@ -1375,7 +1375,7 @@
               ;; C→D#, E→G, G→A#, so we should filter for A#, D#, G
               equivalent-filter? (fn [n]
                                    (when n
-                                     (#{:dsef :g :asbf} (:name n))))
+                                     (#{:a :csdf :e} (:name n))))
 
               filter-then-map (-> kb
                                 (kb/filter-notes equivalent-filter?)
