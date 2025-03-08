@@ -744,5 +744,6 @@
       (is (= (set (map :name root-chord)) (set (map :name inv-5-chord)))
           "Inverted chord should have same note names"))))
 
+
 ;; Run all tests
 (run-tests)

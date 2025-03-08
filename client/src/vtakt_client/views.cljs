@@ -139,10 +139,10 @@
                ]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (:top (kb/get-rows ck)))]
+               :children [(map seq-btn (range 1 9) (:top (kb/rows ck)))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (:bottom (kb/get-rows ck)))]
+               :children [(map seq-btn (range 9 17) (:bottom (kb/rows ck)))]
                ]
               ]]))
 

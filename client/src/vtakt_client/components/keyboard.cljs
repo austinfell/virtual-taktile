@@ -202,7 +202,7 @@
   "A protocol that defines the common operations for keyboard-like interfaces.
    Implementations represent different keyboard layouts and behaviors for
    navigating and manipulating musical notes."
-  (get-rows [this]
+  (rows [this]
     "Returns a normalized representation of the keyboard as a map with :top and :bottom keys,
      where each key maps to a vector of notes. Corresponds to the physical bottom and top
      row of the devices keyboard.")
@@ -238,7 +238,7 @@
 (s/def ::bottom (s/coll-of (s/nilable ::note) :kind vector?))
 (s/def ::rows (s/keys :req-un [::top ::bottom]))
 
-(s/fdef get-rows
+(s/fdef rows
   :args (s/cat :this ::keyboard)
   :ret ::rows)
 (s/fdef filter-notes
@@ -249,7 +249,7 @@
   :ret ::keyboard)
 (defrecord ChromaticKeyboard [root-note layout map-fn]
   Keyboard
-  (get-rows [this]
+  (rows [this]
     (update layout :top (fn [top-row] (vec (concat [nil] (rest top-row))))))
 
   (filter-notes [this new-filter-fn]
@@ -285,7 +285,7 @@
 
 (defrecord FoldingKeyboard [root-note notes transformations]
   Keyboard
-  (get-rows [this]
+  (rows [this]
     {:bottom (subvec notes 0 8)
      :top (subvec notes 8 16)})
 
