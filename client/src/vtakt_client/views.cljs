@@ -117,8 +117,7 @@
 
 
 (defn sequencer []
-  (let [keyboard-root (re-frame/subscribe [::subs/keyboard-root])
-        ck (kb/create-chromatic-keyboard @keyboard-root)]
+  (let [ck (re-frame/subscribe [::subs/keyboard])]
   [re-com/v-box
    :justify :center
    :children [[re-com/h-box
@@ -133,16 +132,16 @@
                  :label
                  (str
                   "Root: "
-                  (utils/format-keyword (get-in ck [:root-note :name]))
-                  (get-in ck [:root-note :octave])
+                  (utils/format-keyword (get-in @ck [:root-note :name]))
+                  (get-in @ck [:root-note :octave])
                   )]
                ]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (:top (kb/rows ck)))]
+               :children [(map seq-btn (range 1 9) (:top (kb/rows @ck)))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (:bottom (kb/rows ck)))]
+               :children [(map seq-btn (range 9 17) (:bottom (kb/rows @ck)))]
                ]
               ]]))
 
