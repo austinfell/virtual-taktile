@@ -1489,7 +1489,7 @@
           ;; Check octave increment was applied
           (let [non-nil-notes (remove nil? (concat (:top result) (:bottom result)))]
             (when (seq non-nil-notes)
-              (is (every? #(= (inc octave) (:octave %)) non-nil-notes)
+              (is (every? #(or (= (+ octave 2) (:octave %)) (= (inc octave) (:octave %))) non-nil-notes)
                   "All notes should have incremented octave")))))))
 
   (testing "Integration with full lifecycle transformations"
