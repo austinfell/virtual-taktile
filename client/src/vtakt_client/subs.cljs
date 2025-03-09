@@ -29,6 +29,11 @@
    (:keyboard-mode db)))
 
 (re-frame/reg-sub
+ ::keyboard-transpose
+ (fn [db _]
+   (:keyboard-transpose db)))
+
+(re-frame/reg-sub
  ::keyboard
  (fn [_]
    [(re-frame/subscribe [::selected-scale])

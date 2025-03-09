@@ -80,6 +80,7 @@
      {:choices [{:id :chromatic :label "Chromatic"}
                 {:id :folding :label "Folding"}]
       :model #{@current-mode}
+      :style {:color "black"}
       :multi-select? false
       :on-change #(re-frame/dispatch [::events/set-keyboard-mode (first %)])}]))
 
@@ -125,7 +126,8 @@
 
 
 (defn sequencer []
-  (let [ck (re-frame/subscribe [::subs/keyboard])]
+  (let [ck (re-frame/subscribe [::subs/keyboard])
+        transpose (re-frame/subscribe [::subs/keyboard-transpose])]
   [re-com/v-box
    :justify :center
    :children [[re-com/h-box
@@ -144,6 +146,14 @@
                   (get-in @ck [:root-note :octave])
                   )]
                 [keyboard-mode-selector]
+                [re-com/button :label "<-" :on-click #(when (> @transpose -36)
+                                                        (re-frame/dispatch [::events/dec-keyboard-transpose]))]
+                [re-com/button :label "->" :on-click #(when (< @transpose 36)
+                                                        (re-frame/dispatch [::events/inc-keyboard-transpose]))]
+                [re-com/label
+                 :style {:color :black :margin-top "5px" :margin-left "5px"}
+                 :label
+                 (str "Transpose: " @transpose)]
                ]
                ]
               [re-com/h-box

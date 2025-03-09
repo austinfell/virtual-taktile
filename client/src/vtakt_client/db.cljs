@@ -10,6 +10,7 @@
    :selected-scale :chromatic
 
    :keyboard-mode :chromatic
+   :keyboard-transpose 0
    :chords kb/chords
    :scales kb/scales
    })
