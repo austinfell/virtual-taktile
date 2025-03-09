@@ -74,6 +74,15 @@
    :label "VTakt Sequencer"
    :level :level1])
 
+(defn keyboard-mode-selector []
+  (let [current-mode (re-frame/subscribe [::subs/keyboard-mode])]
+    [re-com/selection-list
+     {:choices [{:id :chromatic :label "Chromatic"}
+                {:id :folding :label "Folding"}]
+      :model #{@current-mode}
+      :multi-select? false
+      :on-change #(re-frame/dispatch [::events/set-keyboard-mode (first %)])}]))
+
 (defn seq-btn [n note]
   [re-com/button
      :style {:width "30px"
@@ -81,7 +90,7 @@
              :align-items "center"
              :padding 0
              :justify-content "center"
-             :color (if (or (nil? note) (= n 1)) :black :blue)
+             :color (if (nil? note) :black :blue)
              :text-decoration "underline solid black 1px"
              :height "40px"}
      :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
@@ -134,6 +143,7 @@
                   (utils/format-keyword (get-in @ck [:root-note :name]))
                   (get-in @ck [:root-note :octave])
                   )]
+                [keyboard-mode-selector]
                ]
                ]
               [re-com/h-box

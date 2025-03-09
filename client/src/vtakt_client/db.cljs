@@ -9,6 +9,7 @@
    :selected-chord :off
    :selected-scale :chromatic
 
+   :keyboard-mode :chromatic
    :chords kb/chords
    :scales kb/scales
    })

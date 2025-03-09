@@ -24,15 +24,24 @@
    (:keyboard-root db)))
 
 (re-frame/reg-sub
+ ::keyboard-mode
+ (fn [db _]
+   (:keyboard-mode db)))
+
+(re-frame/reg-sub
  ::keyboard
  (fn [_]
    [(re-frame/subscribe [::selected-scale])
     (re-frame/subscribe [::keyboard-root])
-    (re-frame/subscribe [::scales])])
- (fn [[selected-scale keyboard-root scales] _]
+    (re-frame/subscribe [::scales])
+    (re-frame/subscribe [::keyboard-mode])])
+ (fn [[selected-scale keyboard-root scales keyboard-mode] _]
    (kb/filter-notes
-    (kb/create-chromatic-keyboard keyboard-root)
-    (kb/create-note-predicate-from-collection (get-in scales [selected-scale (:name keyboard-root)])))))
+    (if (= :chromatic keyboard-mode)
+      (kb/create-chromatic-keyboard keyboard-root)
+      (kb/create-folding-keyboard keyboard-root))
+    (kb/create-note-predicate-from-collection
+     (get-in scales [selected-scale (:name keyboard-root)])))))
 
 (re-frame/reg-sub
  ::internal-chord

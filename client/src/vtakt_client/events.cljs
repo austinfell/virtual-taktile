@@ -39,3 +39,8 @@
  ::set-scale
  (fn [{:keys [db]} [_ selected-scale]]
    {:db (assoc db :selected-scale selected-scale)}))
+
+(re-frame/reg-event-fx
+ ::set-keyboard-mode
+ (fn [{:keys [db]} [_ keyboard-mode]]
+   {:db (assoc db :keyboard-mode keyboard-mode)}))
