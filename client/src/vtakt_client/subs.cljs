@@ -39,14 +39,17 @@
    [(re-frame/subscribe [::selected-scale])
     (re-frame/subscribe [::keyboard-root])
     (re-frame/subscribe [::scales])
-    (re-frame/subscribe [::keyboard-mode])])
- (fn [[selected-scale keyboard-root scales keyboard-mode] _]
-   (kb/filter-notes
-    (if (= :chromatic keyboard-mode)
-      (kb/create-chromatic-keyboard keyboard-root)
-      (kb/create-folding-keyboard keyboard-root))
-    (kb/create-note-predicate-from-collection
-     (get-in scales [selected-scale (:name keyboard-root)])))))
+    (re-frame/subscribe [::keyboard-mode])
+    (re-frame/subscribe [::keyboard-transpose])])
+ (fn [[selected-scale keyboard-root scales keyboard-mode keyboard-transpose] _]
+   (kb/map-notes
+    (kb/filter-notes
+     (if (= :chromatic keyboard-mode)
+       (kb/create-chromatic-keyboard keyboard-root)
+       (kb/create-folding-keyboard keyboard-root))
+     (kb/create-note-predicate-from-collection
+      (get-in scales [selected-scale (:name keyboard-root)])))
+    #(kb/transpose-note % keyboard-transpose))))
 
 (re-frame/reg-sub
  ::internal-chord
