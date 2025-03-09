@@ -94,6 +94,7 @@
              :color (if (nil? note) :black :blue)
              :text-decoration "underline solid black 1px"
              :height "40px"}
+     :on-click #(println note)
      :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
               (str n)
               [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])])
