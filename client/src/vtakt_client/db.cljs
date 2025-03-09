@@ -12,4 +12,3 @@
    :chords kb/chords
    :scales kb/scales
    })
-

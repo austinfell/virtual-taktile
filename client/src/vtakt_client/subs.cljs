@@ -14,6 +14,11 @@
    (:active-panel db)))
 
 (re-frame/reg-sub
+ ::selected-scale
+ (fn [db _]
+   (:selected-scale db)))
+
+(re-frame/reg-sub
  ::keyboard-root
  (fn [db _]
    (:keyboard-root db)))
@@ -21,26 +26,47 @@
 (re-frame/reg-sub
  ::keyboard
  (fn [_]
-   [(re-frame/subscribe [::selected-scale]) (re-frame/subscribe [::keyboard-root]) (re-frame/subscribe [::scales])])
+   [(re-frame/subscribe [::selected-scale])
+    (re-frame/subscribe [::keyboard-root])
+    (re-frame/subscribe [::scales])])
  (fn [[selected-scale keyboard-root scales] _]
    (kb/filter-notes
     (kb/create-chromatic-keyboard keyboard-root)
     (kb/create-note-predicate-from-collection (get-in scales [selected-scale (:name keyboard-root)])))))
 
 (re-frame/reg-sub
- ::selected-chord
+ ::internal-chord
  (fn [db _]
    (:selected-chord db)))
 
 (re-frame/reg-sub
- ::selected-scale
+ ::internal-chords
  (fn [db _]
-   (:selected-scale db)))
+   (:chords db)))
 
 (re-frame/reg-sub
  ::chords
- (fn [db _]
-   (:chords db)))
+ (fn [_]
+   [(re-frame/subscribe [::selected-scale])
+    (re-frame/subscribe [::internal-chords])])
+ (fn [[selected-scale internal-chords] _]
+   (if (= selected-scale :chromatic)
+     (into {:off {}} internal-chords)
+     {:off {} :on {}})))
+
+(re-frame/reg-sub
+ ::selected-chord
+ (fn [_]
+   [(re-frame/subscribe [::selected-scale])
+    (re-frame/subscribe [::internal-chord])
+    (re-frame/subscribe [::chords])])
+ (fn [[selected-scale internal-chord chords] _]
+   (if (= selected-scale :chromatic)
+     (if (contains? (set (keys chords)) internal-chord)
+       internal-chord
+       :major)
+     (if (= :off internal-chord) :off :on))))
+
 
 (re-frame/reg-sub
  ::scales

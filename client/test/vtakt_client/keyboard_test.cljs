@@ -11,6 +11,8 @@
 ;; Test Data
 ;; =========================================================
 
+(def gen-test-scale 2)
+
 (def all-notes [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b])
 
 (def common-scales
@@ -150,14 +152,14 @@
 
 (deftest test-scale-group-advanced-properties
   (testing "Octave Equivalence Property"
-    (let [samples (gen/sample (s/gen ::musical-intervals) 20)]
+    (let [samples (gen/sample (s/gen ::musical-intervals) (* gen-test-scale 20))]
       (doseq [sample samples]
         (let [result (kb/create-scale-group sample)]
           (is (= result (kb/create-scale-group (map #(+ % 12) sample)))
               "Octave equivalent scales should be identical")))))
 
   (testing "Coprime Transposition Property"
-    (let [samples (gen/sample (s/gen ::musical-intervals) 20)]
+    (let [samples (gen/sample (s/gen ::musical-intervals) (* gen-test-scale 20))]
       (doseq [sample samples]
         (when (and (seq sample) (< (count sample) 12))
           (let [result (kb/create-scale-group sample)]
@@ -167,7 +169,7 @@
                   (str "Transposition by coprime interval " coprime " should create distinct scale"))))))))
 
   (testing "Structural requirements"
-    (let [samples (gen/sample (s/gen ::musical-intervals) 20)]
+    (let [samples (gen/sample (s/gen ::musical-intervals) (* gen-test-scale 20))]
       (doseq [sample samples]
         (let [result (kb/create-scale-group sample)]
           (is (= 12 (count result))
@@ -318,8 +320,8 @@
             (str (nth all-notes i) "4 → " (nth all-notes next-idx) next-octave)))))
 
   (testing "Property: round trip transposition"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)
-          transposition-samples (gen/sample (s/gen ::kb/transposition-amount) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* gen-test-scale 20))
+          transposition-samples (gen/sample (s/gen ::kb/transposition-amount) (* gen-test-scale 20))]
       (doseq [note note-samples
               n transposition-samples]
         (let [note-obj (kb/create-note (:name note) (:octave note))]
@@ -329,7 +331,7 @@
                    " should return original note"))))))
 
   (testing "Property: octave preservation with 12-semitone transposition"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 20)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* gen-test-scale 20))]
       (doseq [note note-samples]
         (let [note-obj (kb/create-note (:name note) (:octave note))
               trans-up (kb/transpose-note note-obj 12)
@@ -344,11 +346,11 @@
               "Transposing down by 12 should decrease octave by 1")))))
 
   (testing "Property: composable transpositions"
-    (let [note-samples (take 10 (gen/sample (s/gen ::kb/note)))
-          trans-pairs (take 20 (gen/sample
+    (let [note-samples (take (* 10 gen-test-scale) (gen/sample (s/gen ::kb/note)))
+          trans-pairs (take (* 20 gen-test-scale) (gen/sample
                                 (s/gen (s/tuple
-                                        (s/int-in -20 20)
-                                        (s/int-in -20 20)))))]
+                                        (s/int-in (* gen-test-scale -20) (* gen-test-scale 20))
+                                        (s/int-in (* gen-test-scale -20) (* gen-test-scale 20))))))]
       (doseq [note note-samples
               [t1 t2] trans-pairs]
         (let [note-obj (kb/create-note (:name note) (:octave note))
@@ -362,8 +364,8 @@
 
 (deftest test-transpose-note-modulo
   (testing "Modulo 12 transposition equivalence for note names"
-    (let [note-samples (take 10 (gen/sample (s/gen ::kb/note)))
-          large-trans (take 10 (gen/sample (s/gen (s/int-in 12 100))))]
+    (let [note-samples (take (* 10 gen-test-scale) (gen/sample (s/gen ::kb/note)))
+          large-trans (take (* 10 gen-test-scale) (gen/sample (s/gen (s/int-in 12 100))))]
       (doseq [note note-samples
               trans large-trans]
         (let [note-obj (kb/create-note (:name note) (:octave note))
@@ -976,7 +978,7 @@
           "First position in top row should remain nil after mapping")))
 
   (testing "Identity mapping with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples]
         (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
               identity-mapped-kb (kb/map-notes kb identity)
@@ -988,7 +990,7 @@
                    (:name note) (:octave note)))))))
 
   (testing "Nil mapping function with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples]
         (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
               nil-mapped-kb (kb/map-notes kb nil)
@@ -1000,7 +1002,7 @@
                    (:name note) (:octave note)))))))
 
   (testing "Transformation to nil with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples]
         (let [kb (kb/create-chromatic-keyboard (kb/create-note (:name note) (:octave note)))
               ;; Map all notes to nil
@@ -1013,7 +1015,7 @@
                    (:name note) (:octave note)))))))
 
   (testing "Round-trip transformations with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [name (:name note)
                     octave (:octave note)]]
@@ -1105,7 +1107,7 @@
           "Top row should contain only nil values as all accidentals are filtered")))
 
   (testing "Nil predicate preserves all notes - generative test"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [note-name (:name note)
                     octave (:octave note)]]
@@ -1120,7 +1122,7 @@
                    note-name octave " keyboard"))))))
 
   (testing "Filter that removes all notes - generative test"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [note-name (:name note)
                     octave (:octave note)]]
@@ -1135,7 +1137,7 @@
               (str "All notes should be filtered out for " note-name octave " keyboard"))))))
 
   (testing "Octave boundary filtering - generative test"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [note-name (:name note)
                     octave (:octave note)]]
@@ -1308,7 +1310,7 @@
           "Top row should be all nil when filtering for only C and E")))
   (testing "Name-specific filtering - generative test"
     ;; Generate a variety of notes to test with
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [na (:name note)
                     octave (:octave note)]]
@@ -1332,34 +1334,30 @@
 
 (deftest test-chromatic-keyboard-protocol-integration
   (testing "Basic method chaining with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
-      (doseq [note note-samples
-              :let [note-name (:name note)
-                    octave (:octave note)]]
-        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard note)
               ;; Chain operations: map to transpose up, filter to keep naturals, then get rows
-              transposed-kb (kb/map-notes kb #(when % (kb/transpose-note % 2)))
+              transposed-kb (kb/map-notes kb #(kb/transpose-note % 2))
               filtered-kb (kb/filter-notes transposed-kb kb/natural-note?)
               result-rows (kb/rows filtered-kb)]
 
           ;; Verify that all notes in the result are natural notes
           (is (every? #(or (nil? %) (kb/natural-note? %))
                       (concat (:top result-rows) (:bottom result-rows)))
-              (str "All notes should be natural after filter for " note-name octave " keyboard"))
+              (str "All notes should be natural after filter for " (:name note) (:octave note) " keyboard"))
 
           ;; Verify that transposition occurred (compare with untransposed+filtered)
           (let [just-filtered (kb/filter-notes kb kb/natural-note?)
                 filtered-rows (kb/rows just-filtered)]
             (is (not= filtered-rows result-rows)
                 (str "Transposed+filtered keyboard should differ from just filtered for "
-                     note-name octave " keyboard")))))))
+                     (:name note) (:octave note) " keyboard")))))))
 
   (testing "Equivalence of different operation orders"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 5)]
-      (doseq [note note-samples
-              :let [note-name (:name note)
-                    octave (:octave note)]]
-        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard note)
               ;; Define our operations
               transpose-up (fn [n] (when n (kb/transpose-note n 3)))
               c-e-g-only? (fn [n] (when n (#{:c :e :g} (:name n))))
@@ -1371,8 +1369,9 @@
                                 (kb/rows))
 
               ;; For filter-then-map, we need to adjust the filter to account for transposition
-              ;; If we're transposing up 3 semitones:
-              ;; C→D#, E→G, G→A#, so we should filter for A#, D#, G
+              ;; If we're transposing down 3 semitones:
+              ;; C→A, E→C#, G→E, so we should filter for A, C#, and E.
+              ;; (C Major -> A Major)
               equivalent-filter? (fn [n]
                                    (when n
                                      (#{:a :csdf :e} (:name n))))
@@ -1391,20 +1390,19 @@
             ;; Both approaches should yield the same note names
             (is (= map-filter-names filter-map-names)
                 (str "Both operation orders should yield same note names for "
-                     note-name octave " keyboard")))))))
+                     (:name note) (:octave note) " keyboard")))))))
 
   (testing "Round-trip operations with generative testing"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
-      (doseq [note note-samples
-              :let [note-name (:name note)
-                    octave (:octave note)]]
-        (let [kb (kb/create-chromatic-keyboard (kb/create-note note-name octave))
-              ;; Operations that should cancel out:
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
+      (doseq [note note-samples]
+        (let [kb (kb/create-chromatic-keyboard note)
               ;; 1. Transpose up then down by the same amount
-              up-fn (fn [n] (when n (kb/transpose-note n 7)))  ; perfect fifth up
-              down-fn (fn [n] (when n (kb/transpose-note n -7)))  ; perfect fifth down
+              ;; Non-destructive round trip.
+              up-fn (fn [n] (when n (kb/transpose-note n 17)))  ; octave + major 3rd up
+              down-fn (fn [n] (when n (kb/transpose-note n -17)))  ; octave + major 3rd down
 
               ;; 2. Filter to C/E/G, then expand to include all natural notes
+              ;; Destructive round trip.
               c-e-g-only? (fn [n] (when n (#{:c :e :g} (:name n))))
               all-naturals? kb/natural-note?
               all-notes? (constantly true)  ; Allow any note
@@ -1415,11 +1413,11 @@
                                 (kb/map-notes down-fn)
                                 (kb/rows))
 
+              ;; Filtering is actually destructive, can't get that data back.
               filtered-expanded (-> kb
                                    (kb/filter-notes c-e-g-only?)
                                    (kb/filter-notes all-notes?)  ; This should be a no-op
                                    (kb/rows))
-
               ;; Reference results
               original-rows (kb/rows kb)
               filtered-rows (kb/rows (kb/filter-notes kb c-e-g-only?))]
@@ -1427,12 +1425,12 @@
           ;; After transpose up then down, result should match original
           (is (= original-rows transposed-back)
               (str "Transpose up then down should return to original for "
-                   note-name octave " keyboard"))
+                   (:name note) (:octave note) " keyboard"))
 
           ;; After filter then expand, result should match just filtered
           (is (= filtered-rows filtered-expanded)
               (str "Filter then 'expand' should equal just filtered for "
-                   note-name octave " keyboard"))))))
+                   (:name note) (:octave note) " keyboard"))))))
 
   (testing "Complex musical transformations"
     (let [kb (kb/create-chromatic-keyboard (kb/create-note :c 4))
@@ -1461,7 +1459,7 @@
         (is (not (contains? note-names :e)) "Result should not contain E"))))
 
   (testing "Data structure integrity through transformations - generative test"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 10)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [note-name (:name note)
                     octave (:octave note)]]
@@ -1532,7 +1530,7 @@
         (is (= 6 (:scale-degree a-note)) "A should have scale degree 6"))))
 
   (testing "Error handling with invalid inputs - generative test"
-    (let [note-samples (gen/sample (s/gen ::kb/note) 5)]
+    (let [note-samples (gen/sample (s/gen ::kb/note) (* 10 gen-test-scale))]
       (doseq [note note-samples
               :let [note-name (:name note)
                     octave (:octave note)]]

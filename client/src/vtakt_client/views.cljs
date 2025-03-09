@@ -94,7 +94,7 @@
     (fn []
       [re-com/single-dropdown
        :src (at)
-       :choices (into [{:id :off}] (map (fn [v] {:id (first v)}) (into [] @options)))
+       :choices (mapv (fn [v] {:id (first v)}) (into [] @options))
        :model @selected
        :width "125px"
        :label-fn #(utils/format-keyword (:id %))
@@ -107,13 +107,12 @@
     (fn []
       [re-com/single-dropdown
        :src (at)
-       :choices (into [{:id :off}] (map (fn [v] {:id (first v)}) (into [] @options)))
+       :choices (mapv (fn [v] {:id (first v)}) (into [] @options))
        :model @selected
        :width "125px"
        :label-fn #(utils/format-keyword (:id %))
        :on-change #(re-frame/dispatch [::events/set-chord %])
        ])))
-
 
 
 (defn sequencer []
