@@ -353,3 +353,26 @@
          (if (= (first remaining-notes) (:name current-note))
            (recur (conj result current-note) (rest remaining-notes) (shift-note current-note :up))
            (recur result remaining-notes (shift-note current-note :up))))))))
+
+(s/def ::scale-notes (s/coll-of ::chromatic-note :min-count 0 :kind sequential?))
+(s/def ::root-note ::note)
+(s/def ::chord (s/coll-of ::note :kind vector?))
+(s/fdef build-scale-chord
+  :args (s/cat :scale-notes ::scale-notes
+               :root-note ::root-note)
+  :ret ::chord)
+(defn build-scale-chord
+  [scale-notes root-note]
+  (println (str scale-notes root-note))
+  (if (empty? scale-notes)
+    []
+    (let [scale-size (count scale-notes)
+          root-index (.indexOf (vec scale-notes) (:name root-note))]
+      (if (= root-index -1)
+        []
+        (let [positions [0 2 4]
+              chord-note-names (mapv (fn [pos]
+                                      (nth scale-notes
+                                           (mod (+ root-index pos) scale-size)))
+                                    positions)]
+          (build-chord chord-note-names (:octave root-note)))))))

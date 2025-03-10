@@ -84,28 +84,28 @@
       :multi-select? false
       :on-change #(re-frame/dispatch [::events/set-keyboard-mode (first %)])}]))
 
-(defn seq-btn [n note chord chords]
+(defn seq-btn [n note chord chords scale scales keyboard-root keyboard-transpose]
   [:div
   [re-com/button
      :attr {
-            :on-mouse-down #(println (str "on " (if (and
-                                                    (not= chord :off)
-                                                    (not= chord :on))
-                                                 (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                                 (str [note]))
-                                          ))
-            :on-mouse-up #(println (str "off " (if (and
-                                                  (not= chord :off)
-                                                  (not= chord :on))
-                                               (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                               (str [note]))
-                                        ))
-            :on-mouse-leave #(println (str "off " (if (and
-                                                       (not= chord :off)
-                                                       (not= chord :on))
-                                                    (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                                    (str [note]))
-                                           ))
+            :on-mouse-down #(println
+                             (str "on " (if (not= chord :off)
+                                          (if (= scale :chromatic)
+                                            (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                            (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
+                                          (str [note]))))
+            :on-mouse-up #(println
+                           (str "off " (if (not= chord :off)
+                                        (if (= scale :chromatic)
+                                          (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                          (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
+                                        (str [note]))))
+            :on-mouse-leave #(println
+                              (str "off " (if (not= chord :off)
+                                            (if (= scale :chromatic)
+                                              (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                              (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
+                                            (str [note]))))
             }
      :style {:width "30px"
              :display "flex"
@@ -150,7 +150,11 @@
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
         selected-chord (re-frame/subscribe [::subs/selected-chord])
-        available-chords (re-frame/subscribe [::subs/chords])]
+        available-chords (re-frame/subscribe [::subs/chords])
+        selected-scale (re-frame/subscribe [::subs/selected-scale])
+        available-scales (re-frame/subscribe [::subs/scales])
+        scale-root (re-frame/subscribe [::subs/keyboard-root])
+        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])]
   [re-com/v-box
    :justify :center
    :children [[re-com/h-box
@@ -180,11 +184,26 @@
                ]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (:top (kb/rows @ck)) (repeat @selected-chord) (repeat @available-chords))]
+               :children [(map seq-btn
+                               (range 1 9)
+                               (:top (kb/rows @ck))
+                               (repeat @selected-chord)
+                               (repeat @available-chords)
+                               (repeat @selected-scale)
+                               (repeat @available-scales)
+                               (repeat @scale-root)
+                               (repeat @keyboard-transpose))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (:bottom (kb/rows @ck)) (repeat @selected-chord) (repeat @available-chords))]
-               ]
+               :children [(map seq-btn
+                               (range 9 17)
+                               (:bottom (kb/rows @ck))
+                               (repeat @selected-chord)
+                               (repeat @available-chords)
+                               (repeat @selected-scale)
+                               (repeat @available-scales)
+                               (repeat @scale-root)
+                               (repeat @keyboard-transpose))]]
               ]]))
 
 (defn sequencer-panel []

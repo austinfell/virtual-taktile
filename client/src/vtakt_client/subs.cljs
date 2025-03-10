@@ -24,14 +24,14 @@
    (:keyboard-root db)))
 
 (re-frame/reg-sub
- ::keyboard-mode
- (fn [db _]
-   (:keyboard-mode db)))
-
-(re-frame/reg-sub
  ::keyboard-transpose
  (fn [db _]
    (:keyboard-transpose db)))
+
+(re-frame/reg-sub
+ ::keyboard-mode
+ (fn [db _]
+   (:keyboard-mode db)))
 
 (re-frame/reg-sub
  ::keyboard
