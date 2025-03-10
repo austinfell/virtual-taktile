@@ -84,8 +84,29 @@
       :multi-select? false
       :on-change #(re-frame/dispatch [::events/set-keyboard-mode (first %)])}]))
 
-(defn seq-btn [n note]
+(defn seq-btn [n note chord chords]
+  [:div
   [re-com/button
+     :attr {
+            :on-mouse-down #(println (str "on " (if (and
+                                                    (not= chord :off)
+                                                    (not= chord :on))
+                                                 (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                                 (str [note]))
+                                          ))
+            :on-mouse-up #(println (str "off " (if (and
+                                                  (not= chord :off)
+                                                  (not= chord :on))
+                                               (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                               (str [note]))
+                                        ))
+            :on-mouse-leave #(println (str "off " (if (and
+                                                       (not= chord :off)
+                                                       (not= chord :on))
+                                                    (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
+                                                    (str [note]))
+                                           ))
+            }
      :style {:width "30px"
              :display "flex"
              :align-items "center"
@@ -94,10 +115,9 @@
              :color (if (nil? note) :black :blue)
              :text-decoration "underline solid black 1px"
              :height "40px"}
-     :on-click #(println note)
      :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
               (str n)
-              [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])])
+              [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])]])
 
 (defn scale-selector []
   (let [options (re-frame/subscribe [::subs/scales])
@@ -128,7 +148,9 @@
 
 (defn sequencer []
   (let [ck (re-frame/subscribe [::subs/keyboard])
-        transpose (re-frame/subscribe [::subs/keyboard-transpose])]
+        transpose (re-frame/subscribe [::subs/keyboard-transpose])
+        selected-chord (re-frame/subscribe [::subs/selected-chord])
+        available-chords (re-frame/subscribe [::subs/chords])]
   [re-com/v-box
    :justify :center
    :children [[re-com/h-box
@@ -158,10 +180,10 @@
                ]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 1 9) (:top (kb/rows @ck)))]
+               :children [(map seq-btn (range 1 9) (:top (kb/rows @ck)) (repeat @selected-chord) (repeat @available-chords))]
                ]
               [re-com/h-box
-               :children [(map seq-btn (range 9 17) (:bottom (kb/rows @ck)))]
+               :children [(map seq-btn (range 9 17) (:bottom (kb/rows @ck)) (repeat @selected-chord) (repeat @available-chords))]
                ]
               ]]))
 
