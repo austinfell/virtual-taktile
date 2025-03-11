@@ -198,6 +198,32 @@
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
 
+(defn format-note
+  "Formats a musical note keyword into a human-readable string with proper sharp/flat notation.
+   Examples:
+   - :a      -> 'A'
+   - :asbf   -> 'A♯/B♭'
+   - :csdf   -> 'C♯/D♭'
+   - :fsgf   -> 'F♯/G♭'"
+  [note-kw]
+  (when note-kw
+    (let [note-str (name note-kw)
+          enharmonic-map {"asbf" "A♯"
+                          "csdf" "C♯"
+                          "dsef" "D♯"
+                          "fsgf" "F♯"
+                          "gsaf" "G♯"}]
+      (if-let [pretty-name (get enharmonic-map note-str)]
+        pretty-name
+        (clojure.string/upper-case note-str)))))
+
+(defn format-root-note
+  "Formats a root note with octave number for display.
+   Takes a map with :name and :octave keys."
+  [root-note]
+  (when root-note
+    (str (format-note (:name root-note)) (:octave root-note))))
+
 ;; Keyboard protocol and implementations.
 (defprotocol Keyboard
   "A protocol that defines the common operations for keyboard-like interfaces.

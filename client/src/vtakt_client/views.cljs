@@ -66,24 +66,6 @@
      :height   "100%"
      :children [(routes/panels @active-panel)]]))
 
-;; sequencer
-;; TODO - Extract to separate file.
-(defn seq-title []
-  [re-com/title
-   :src   (at)
-   :label "VTakt Sequencer"
-   :level :level1])
-
-(defn keyboard-mode-selector []
-  (let [current-mode (re-frame/subscribe [::subs/keyboard-mode])]
-    [re-com/selection-list
-     {:choices [{:id :chromatic :label "Chromatic"}
-                {:id :folding :label "Folding"}]
-      :model #{@current-mode}
-      :style {:color "black"}
-      :multi-select? false
-      :on-change #(re-frame/dispatch [::events/set-keyboard-mode (first %)])}]))
-
 (defn seq-btn [n note chord chords scale scales keyboard-root keyboard-transpose]
   [:div
   [re-com/button
@@ -119,32 +101,197 @@
               (str n)
               [:div {:style {:display "flex" :height "90%" :border-radius "3px" :justify-content "center" :align-items "center" :width "20px" :border "1px solid black"}} [:p {:style {:margin-bottom "0px"}} (str n)]])]])
 
-(defn scale-selector []
-  (let [options (re-frame/subscribe [::subs/scales])
-        selected (re-frame/subscribe [::subs/selected-scale])]
-    (fn []
-      [re-com/single-dropdown
-       :src (at)
-       :choices (mapv (fn [v] {:id (first v)}) (into [] @options))
-       :model @selected
-       :width "125px"
-       :label-fn #(utils/format-keyword (:id %))
-       :on-change #(re-frame/dispatch [::events/set-scale %])
-                     ])))
+(defn increment-control
+  "A reusable component for increment/decrement controls using musical flat/sharp symbols.
+   - label: Text to display
+   - value: Current value to display
+   - dec-event: Event to dispatch when decrementing
+   - inc-event: Event to dispatch when incrementing
+   - min-value: Optional minimum value (default nil)
+   - max-value: Optional maximum value (default nil)
+   - is-transpose?: Optional flag to use transpose-specific tooltips"
+  [{:keys [label value dec-event inc-event min-value max-value is-transpose?]}]
+  (let [dec-disabled? (and (some? min-value) (<= value min-value))
+        inc-disabled? (and (some? max-value) (>= value max-value))
+        dec-tooltip (cond
+                      dec-disabled? (str "Minimum value reached: " min-value)
+                      is-transpose? "Transpose semitone down"
+                      :else (str "Decrease " (clojure.string/lower-case label)))
+        inc-tooltip (cond
+                      inc-disabled? (str "Maximum value reached: " max-value)
+                      is-transpose? "Transpose semitone up"
+                      :else (str "Increase " (clojure.string/lower-case label)))]
+    [re-com/h-box
+     :align :center
+     :gap "5px"
+     :children
+     [[re-com/button
+       :label "♭" ; Flat symbol
+       :tooltip dec-tooltip
+       :tooltip-position :left-center
+       :disabled? dec-disabled?
+       :class (when-not dec-disabled? "active-button")
+       :style {:min-width "40px"
+               :font-size "16px"
+               :font-weight "bold"
+               :background-color "#e2e2e2"
+               :border "1px solid #bbbbbb"
+               :color "black"}
+       :attr {:aria-label dec-tooltip}
+       :on-click #(when-not dec-disabled?
+                    (re-frame/dispatch dec-event))]
+      [re-com/box
+       :style {:width "38px"
+               :text-align "center"
+               :font-weight "bold"
+               :display "flex"
+               :align-items "center"
+               :justify-content "center"
+               :color "#333333"}
+       :child [:p {:style {:width "100%" :position "relative" :top "5px"}} value]]
 
-(defn chord-selector []
-  (let [options (re-frame/subscribe [::subs/chords])
-        selected (re-frame/subscribe [::subs/selected-chord])]
-    (fn []
-      [re-com/single-dropdown
-       :src (at)
-       :choices (mapv (fn [v] {:id (first v)}) (into [] @options))
-       :model @selected
-       :width "125px"
-       :label-fn #(utils/format-keyword (:id %))
-       :on-change #(re-frame/dispatch [::events/set-chord %])
-       ])))
+      [re-com/button
+       :label "♯" ; Sharp symbol
+       :tooltip inc-tooltip
+       :tooltip-position :right-center
+       :disabled? inc-disabled?
+       :class (when-not inc-disabled? "active-button")
+       :style {:min-width "40px"
+               :font-size "16px"
+               :font-weight "bold"
+               :background-color "#e2e2e2"
+               :border "1px solid #bbbbbb"
+               :color "black"}
+       :attr {:aria-label inc-tooltip}
+       :on-click #(when-not inc-disabled?
+                    (re-frame/dispatch inc-event))]
+     ]]))
 
+(defn make-dropdown-selector
+  "Higher-order function that creates dropdown selectors with consistent styling.
+   Returns a component function that accepts options and selected value."
+  [on-change-event]
+  (fn [options selected]
+    [re-com/single-dropdown
+     :src (at)
+     :choices (mapv (fn [v] {:id (first v)}) (into [] options))
+     :model selected
+     :width "125px"
+     :filter-box? true
+     :label-fn #(utils/format-keyword (:id %))
+     :on-change #(re-frame/dispatch [on-change-event %])]))
+(def scale-selector (make-dropdown-selector ::events/set-scale))
+(def chord-selector (make-dropdown-selector ::events/set-chord))
+
+(defn keyboard-mode-selector [current-mode]
+  (let [chromatic? (= current-mode :chromatic)]
+    [re-com/v-box
+     :gap "5px"
+     :children
+     [[re-com/h-box
+       :class "mode-toggle"
+       :style {:border "1px solid #ccc"
+               :border-radius "4px"
+               :overflow "hidden"
+               :width "200px"
+               :height "36px"
+               :cursor "pointer"}
+       :children
+       [[re-com/box
+         :class (str "toggle-option" (when chromatic? " active"))
+         :style {:flex "1"
+                 :text-align "center"
+                 :padding "8px"
+                 :background-color (if chromatic? "#4a86e8" "#f0f0f0")
+                 :color (if chromatic? "white" "black")
+                 :transition "all 0.2s ease"}
+         :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :chromatic])}
+         :child "Chromatic"]
+        [re-com/box
+         :class (str "toggle-option" (when-not chromatic? " active"))
+         :style {:flex "1"
+                 :text-align "center"
+                 :padding "8px"
+                 :background-color (if chromatic? "#f0f0f0" "#4a86e8")
+                 :color (if chromatic? "black" "white")
+                 :transition "all 0.2s ease"}
+         :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :folding])}
+         :child "Folding"]]]]]))
+
+(defn keyboard-configurator []
+  (let [ck (re-frame/subscribe [::subs/keyboard])
+        transpose (re-frame/subscribe [::subs/keyboard-transpose])
+        keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])
+        selected-chord (re-frame/subscribe [::subs/selected-chord])
+        available-chords (re-frame/subscribe [::subs/chords])
+        selected-scale (re-frame/subscribe [::subs/selected-scale])
+        available-scales (re-frame/subscribe [::subs/scales])]
+    (fn []
+      [re-com/v-box
+       :gap "15px"
+       :children
+       [[re-com/title
+         :label "Keyboard Configuration"
+         :level :level2
+         :style {:margin-bottom "5px"}]
+        [re-com/h-box
+         :gap "20px"
+         :align :center
+         :style {:background-color "#f5f5f5"
+                 :border-radius "8px"
+                 :padding "15px"}
+         :children
+         [[re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Scale"]
+            [scale-selector @available-scales @selected-scale]]]
+          
+          [re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Root Note"]
+            [increment-control 
+             {:label "Root"
+              :value (kb/format-root-note (:root-note @ck))
+              :dec-event [::events/dec-keyboard-root]
+              :inc-event [::events/inc-keyboard-root]}]]]
+          
+          [re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Chord"]
+            [chord-selector @available-chords @selected-chord]]]
+          
+          [re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Transpose"]
+            [increment-control
+             {:label "Transpose"
+              :value @transpose
+              :dec-event [::events/dec-keyboard-transpose]
+              :inc-event [::events/inc-keyboard-transpose]
+              :min-value -36
+              :max-value 36
+              :is-transpose? true}]]]
+          
+          [re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Keyboard Mode"]
+            [keyboard-mode-selector @keyboard-mode]]]
+         ]]]])))
 
 (defn sequencer []
   (let [ck (re-frame/subscribe [::subs/keyboard])
@@ -157,32 +304,7 @@
         keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])]
   [re-com/v-box
    :justify :center
-   :children [[re-com/h-box
-               :children
-               [
-                [scale-selector]
-                [chord-selector]
-                [re-com/button :label "<-" :on-click #(re-frame/dispatch [::events/dec-keyboard-root])]
-                [re-com/button :label "->" :on-click #(re-frame/dispatch [::events/inc-keyboard-root])]
-                [re-com/label
-                 :style {:color :black :margin-top "5px" :margin-left "5px"}
-                 :label
-                 (str
-                  "Root: "
-                  (utils/format-keyword (get-in @ck [:root-note :name]))
-                  (get-in @ck [:root-note :octave])
-                  )]
-                [keyboard-mode-selector]
-                [re-com/button :label "<-" :on-click #(when (> @transpose -36)
-                                                        (re-frame/dispatch [::events/dec-keyboard-transpose]))]
-                [re-com/button :label "->" :on-click #(when (< @transpose 36)
-                                                        (re-frame/dispatch [::events/inc-keyboard-transpose]))]
-                [re-com/label
-                 :style {:color :black :margin-top "5px" :margin-left "5px"}
-                 :label
-                 (str "Transpose: " @transpose)]
-               ]
-               ]
+   :children [[keyboard-configurator]
               [re-com/h-box
                :children [(map seq-btn
                                (range 1 9)
@@ -210,7 +332,6 @@
   [re-com/v-box
    :src      (at)
    :gap      "1em"
-   :children [[seq-title]
-              [sequencer]]])
+   :children [[sequencer]]])
 
 (defmethod routes/panels :sequencer-panel [] [sequencer-panel])
