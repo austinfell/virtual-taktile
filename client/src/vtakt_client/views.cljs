@@ -112,23 +112,13 @@
    - is-transpose?: Optional flag to use transpose-specific tooltips"
   [{:keys [label value dec-event inc-event min-value max-value is-transpose?]}]
   (let [dec-disabled? (and (some? min-value) (<= value min-value))
-        inc-disabled? (and (some? max-value) (>= value max-value))
-        dec-tooltip (cond
-                      dec-disabled? (str "Minimum value reached: " min-value)
-                      is-transpose? "Transpose semitone down"
-                      :else (str "Decrease " (clojure.string/lower-case label)))
-        inc-tooltip (cond
-                      inc-disabled? (str "Maximum value reached: " max-value)
-                      is-transpose? "Transpose semitone up"
-                      :else (str "Increase " (clojure.string/lower-case label)))]
+        inc-disabled? (and (some? max-value) (>= value max-value))]
     [re-com/h-box
      :align :center
      :gap "5px"
      :children
      [[re-com/button
        :label "♭" ; Flat symbol
-       :tooltip dec-tooltip
-       :tooltip-position :left-center
        :disabled? dec-disabled?
        :class (when-not dec-disabled? "active-button")
        :style {:min-width "40px"
@@ -137,7 +127,6 @@
                :background-color "#e2e2e2"
                :border "1px solid #bbbbbb"
                :color "black"}
-       :attr {:aria-label dec-tooltip}
        :on-click #(when-not dec-disabled?
                     (re-frame/dispatch dec-event))]
       [re-com/box
@@ -152,8 +141,6 @@
 
       [re-com/button
        :label "♯" ; Sharp symbol
-       :tooltip inc-tooltip
-       :tooltip-position :right-center
        :disabled? inc-disabled?
        :class (when-not inc-disabled? "active-button")
        :style {:min-width "40px"
@@ -162,7 +149,6 @@
                :background-color "#e2e2e2"
                :border "1px solid #bbbbbb"
                :color "black"}
-       :attr {:aria-label inc-tooltip}
        :on-click #(when-not inc-disabled?
                     (re-frame/dispatch inc-event))]
      ]]))
