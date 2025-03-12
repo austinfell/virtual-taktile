@@ -204,6 +204,157 @@
          :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :folding])}
          :child "Folding"]]]]]))
 
+
+(defn- white-key
+  "Renders a white key with proper styling.
+   - note: The note this key represents
+   - active?: Whether this note is active in the current scale
+   - on-click: Function to call when key is clicked"
+  [{:keys [note active? on-click]}]
+  [re-com/box
+   :class "white-key"
+   :attr {:on-click (when on-click #(on-click note))}
+   :style {:width "28px"
+           :height "60px"
+           :background-color (if active? "#FFF6A3" "#e0e0e0")
+           :border "1px solid #aaa"
+           :border-radius "0 0 3px 3px"
+           :margin "0 1px"
+           :position "relative"
+           :z-index 1
+           :cursor (when on-click "pointer")
+           :transition "background-color 0.2s ease"}
+   :child [re-com/box
+           :style {:position "absolute"
+                   :bottom "5px"
+                   :left 0
+                   :right 0
+                   :text-align "center"
+                   :color (if active? "#333" "#aaa")
+                   :font-size "10px"
+                   :font-weight (if active? "bold" "normal")}
+           :child (when note (kb/format-note (:name note)))]])
+
+(defn- black-key
+  "Renders a black key with proper styling.
+   - note: The note this key represents
+   - active?: Whether this note is active in the current scale
+   - on-click: Function to call when key is clicked
+   - position: Horizontal offset in pixels"
+  [{:keys [note active? on-click position]}]
+  (when note
+    [re-com/box
+     :class "black-key"
+     :attr {:on-click (when on-click #(on-click note))}
+     :style {:width "16px"
+             :height "40px"
+             :background-color (if active? "#FFCF00" "#333")
+             :border-radius "0 0 3px 3px"
+             :position "absolute"
+             :left (str position "px")
+             :z-index 2
+             :cursor (when on-click "pointer")
+             :transition "background-color 0.2s ease"}
+     :child [re-com/box
+             :style {:position "absolute"
+                     :bottom "5px"
+                     :left 0
+                     :right 0
+                     :text-align "center"
+                     :color (if active? "#333" "#ccc")
+                     :font-size "8px"
+                     :font-weight (if active? "bold" "normal")}
+             :child (when note (kb/format-note (:name note)))]]))
+
+(defn- is-note-in-scale?
+  "Determines if a note is in the current scale."
+  [note scale-notes]
+  (when (and note scale-notes)
+    (some #(= (:name note) %) scale-notes)))
+
+(defn octave-view
+  "Renders a piano-like octave view showing which notes are in the current scale.
+   - Selected scale notes will be highlighted
+   - Optional on-key-click handler for interactive usage"
+  [& {:keys [on-key-click]}]
+  (let [root-note (re-frame/subscribe [::subs/keyboard-root])
+        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])
+        selected-scale (re-frame/subscribe [::subs/selected-scale])
+        available-scales (re-frame/subscribe [::subs/scales])
+        
+        ;; Get the adjusted root note based on transposition
+        adjusted-root (kb/transpose-note @root-note @keyboard-transpose)
+        
+        ;; Get the scale notes for the current scale and root
+        scale-notes (get-in @available-scales [@selected-scale (:name adjusted-root)])
+        
+        ;; Generate a sequence of notes for an octave starting from C
+        c-note (kb/create-note :c (:octave adjusted-root))
+        octave-notes (take 12 (iterate #(kb/shift-note % :up) c-note))
+        
+        ;; Extract white and black notes
+        white-notes (filter kb/natural-note? octave-notes)
+        black-notes (remove kb/natural-note? octave-notes)
+        
+        ;; Create a sequence of [note position] for black keys
+        black-key-positions (map vector
+                                black-notes
+                                [20 48 104 132 160])]
+    
+    [re-com/box
+     :class "octave-view"
+     :style {:background-color "#222"
+             :border-radius "5px"
+             :padding "10px"
+             :width "210px"}
+     :child 
+     [re-com/v-box
+      :gap "10px"
+      :children
+      [[re-com/title
+        :level :level3
+        :style {:color "#FFCF00"
+                :margin "0"
+                :text-align "center"}
+        :label "OCTAVE"]
+       
+       ;; Main keys container with proper positioning
+       [re-com/box
+        :style {:position "relative"
+                :height "70px"
+                :margin-top "10px"}
+        :child
+        [re-com/h-box
+         :style {:position "relative"}
+         :children
+         ;; First place white keys as base layer
+         (concat
+          (mapv (fn [note]
+                  [white-key {:note note
+                              :active? (is-note-in-scale? note scale-notes)
+                              :on-click on-key-click}])
+                white-notes)
+          
+          ;; Then place black keys as overlay
+          (mapv (fn [[note position]]
+                  [black-key {:note note
+                              :active? (is-note-in-scale? note scale-notes)
+                              :position position
+                              :on-click on-key-click}])
+                black-key-positions))]]]]]))
+
+;; Example usage in a parent component:
+(defn octave-display-panel []
+  [re-com/v-box
+   :gap "20px"
+   :children
+   [[re-com/title
+     :level :level2
+     :label "Octave Display"]
+    
+    [octave-view
+     :on-key-click #(println "Clicked note:" (kb/format-note (:name %)))]]])
+
 (defn keyboard-configurator []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
@@ -227,7 +378,8 @@
                  :border-radius "8px"
                  :padding "15px"}
          :children
-         [[re-com/v-box
+         [[octave-display-panel]
+          [re-com/v-box
            :gap "10px"
            :children
            [[re-com/label 
@@ -278,7 +430,6 @@
              :label "Keyboard Mode"]
             [keyboard-mode-selector @keyboard-mode]]]
          ]]]])))
-
 (defn sequencer []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
