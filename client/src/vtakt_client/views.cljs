@@ -214,7 +214,7 @@
    :class "white-key"
    :style {:width "28px"
            :height "60px"
-           :background (if (not (nil? note)) "#FFF6A3" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
+           :background "#FFF6A3"
            :margin "0 1px"
            :position "relative"
            :z-index 1
@@ -240,7 +240,10 @@
      :class "black-key"
      :style {:width "16px"
              :height "40px"
-             :background (if (not (nil? note)) "#333" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
+             :background "#333"
+             :border-left (if (not (nil? note)) "none" "2px solid black")
+             :border-bottom (if (not (nil? note)) "none" "2px solid black")
+             :border-right (if (not (nil? note)) "none" "2px solid black")
              :position "absolute"
              :left (str position "px")
              :z-index 2
