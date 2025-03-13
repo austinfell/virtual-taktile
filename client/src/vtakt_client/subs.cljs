@@ -50,6 +50,22 @@
      (kb/create-note-predicate-from-collection
       (get-in scales [selected-scale (:name keyboard-root)])))
     #(kb/transpose-note % keyboard-transpose))))
+(re-frame/reg-sub
+
+ ::chromatic-keyboard
+ (fn [_]
+   [(re-frame/subscribe [::selected-scale])
+    (re-frame/subscribe [::keyboard-root])
+    (re-frame/subscribe [::scales])
+    (re-frame/subscribe [::keyboard-mode])
+    (re-frame/subscribe [::keyboard-transpose])])
+ (fn [[selected-scale keyboard-root scales keyboard-mode keyboard-transpose] _]
+   (kb/map-notes
+    (kb/filter-notes
+     (kb/create-chromatic-keyboard keyboard-root)
+     (kb/create-note-predicate-from-collection
+      (get-in scales [selected-scale (:name keyboard-root)])))
+    #(kb/transpose-note % keyboard-transpose))))
 
 (re-frame/reg-sub
  ::internal-chord

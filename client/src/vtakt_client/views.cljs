@@ -209,12 +209,12 @@
   "Renders a white key with proper styling.
    - note: The note this key represents
    - active?: Whether this note is active in the current scale"
-  [{:keys [note active?]}]
+  [note]
   [re-com/box
    :class "white-key"
    :style {:width "28px"
            :height "60px"
-           :background (if active? "#FFF6A3" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
+           :background (if (not (nil? note)) "#FFF6A3" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
            :margin "0 1px"
            :position "relative"
            :z-index 1
@@ -225,23 +225,22 @@
                    :left "1px"
                    :right 0
                    :text-align "center"
-                   :color (if active? "#333" "transparent")
+                   :color (if (not (nil? note)) "#333" "transparent")
                    :font-size "10px"
-                   :font-weight (if active? "bold" "normal")}
-           :child (when note (kb/format-note (:name note)))]])
+                   :font-weight "bold"}
+           :child (if note (kb/format-note (:name note)) "")]])
 
 (defn- black-key
   "Renders a black key with proper styling.
    - note: The note this key represents
    - active?: Whether this note is active in the current scale
    - position: Horizontal offset in pixels"
-  [{:keys [note active? position]}]
-  (when note
+  [{:keys [note position]}]
     [re-com/box
      :class "black-key"
      :style {:width "16px"
              :height "40px"
-             :background (if active? "#333" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
+             :background (if (not (nil? note)) "#333" "repeating-linear-gradient(45deg, #FFF6A3, #FFF6A3 2px, black 2px, black 4px)")
              :position "absolute"
              :left (str position "px")
              :z-index 2
@@ -252,10 +251,10 @@
                      :left "2px"
                      :right 0
                      :text-align "center"
-                     :color (if active? "#FFF6A3" "transparent")
+                     :color "#FFF6A3"
                      :font-size "8px"
-                     :font-weight (if active? "bold" "normal")}
-             :child (when note (kb/format-note (:name note)))]]))
+                     :font-weight "bold"}
+             :child (if note (kb/format-note (:name note)) "")]])
 
 (defn- is-note-in-scale?
   "Determines if a note is in the current scale."
@@ -267,32 +266,27 @@
   "Renders a piano-like octave view showing which notes are in the current scale.
    - Selected scale notes will be highlighted"
   []
-  (let [root-note (re-frame/subscribe [::subs/keyboard-root])
-        selected-scale (re-frame/subscribe [::subs/selected-scale])
-        available-scales (re-frame/subscribe [::subs/scales])
-
-        ;; Get the scale notes for the current scale and root
-        scale-notes (get-in @available-scales [@selected-scale (:name @root-note)])
-
-        ;; Generate a sequence of notes for an octave starting from C
-        c-note (kb/create-note :c (:octave @root-note))
-        octave-notes (take 12 (iterate #(kb/shift-note % :up) c-note))
+  (let [keyboard (re-frame/subscribe [::subs/chromatic-keyboard])
+        keyboard-root (re-frame/subscribe [::subs/keyboard-root])
+        octave-notes (take 12 (filter #(kb/natural-note? %) (iterate #(kb/shift-note % :up) (kb/transpose-note @keyboard-root 1))))
 
         ;; Extract white and black notes
-        white-notes (filter kb/natural-note? octave-notes)
-        black-notes (remove kb/natural-note? octave-notes)
+        white-notes (:bottom (kb/rows @keyboard))
+        black-notes (:top (kb/rows @keyboard))
 
         ;; Create a sequence of [note position] for black keys
-        black-key-positions (map vector
-                                black-notes
-                                [21 51 111 141 171])]
-
+        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
+                             (map vector
+                              (rest black-notes)
+                              [21 51 82 111 141 171 202]
+                              octave-notes
+                              ))]
     [re-com/box
      :class "octave-view"
      :style {:background-color "#222"
              :border-radius "5px"
              :padding "10px"
-             :width "232px"}
+             :width "260px"}
      :child 
      [re-com/v-box
       :gap "10px"
@@ -310,14 +304,12 @@
          ;; First place white keys as base layer
          (concat
           (mapv (fn [note]
-                  [white-key {:note note
-                              :active? (is-note-in-scale? note scale-notes)}])
+                  [white-key note])
                 white-notes)
 
           ;; Then place black keys as overlay
           (mapv (fn [[note position]]
                   [black-key {:note note
-                              :active? (is-note-in-scale? note scale-notes)
                               :position position}])
                 black-key-positions))]]]]]))
 
