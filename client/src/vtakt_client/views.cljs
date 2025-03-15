@@ -70,24 +70,15 @@
   [:div
   [re-com/button
      :attr {
-            :on-mouse-down #(println
-                             (str "on " (if (not= chord :off)
-                                          (if (= scale :chromatic)
-                                            (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                            (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
-                                          (str [note]))))
-            :on-mouse-up #(println
-                           (str "off " (if (not= chord :off)
-                                        (if (= scale :chromatic)
-                                          (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                          (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
-                                        (str [note]))))
-            :on-mouse-leave #(println
-                              (str "off " (if (not= chord :off)
-                                            (if (= scale :chromatic)
-                                              (str (kb/build-chord (get-in chords [chord (:name note)]) (:octave note)))
-                                              (str (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note)))
-                                            (str [note]))))
+            :on-mouse-down #(let [notes-to-press
+                                  (if (not= chord :off)
+                                    (if (= scale :chromatic)
+                                      (kb/build-chord (get-in chords [chord (:name note)]) (:octave note))
+                                      (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note))
+                                    [note])]
+                              (re-frame/dispatch [::events/set-pressed-notes notes-to-press]))
+            :on-mouse-up #(re-frame/dispatch [::events/clear-pressed-notes])
+            :on-mouse-leave #(re-frame/dispatch [::events/clear-pressed-notes])
             }
      :style {:width "30px"
              :display "flex"
@@ -204,43 +195,59 @@
          :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :folding])}
          :child "Folding"]]]]]))
 
-
+;; Update white-key to indicate pressed state
 (defn- white-key
   "Renders a white key with proper styling.
    - note: The note this key represents
-   - active?: Whether this note is active in the current scale"
-  [note]
+   - pressed?: Whether this note is currently pressed"
+  [note idx pressed? chord-mode?]
   [re-com/box
    :class "white-key"
    :style {:width "28px"
            :height "60px"
-           :background "#FFF6A3"
+           :background (if (and pressed? (or (not chord-mode?) (not= idx 7))) "#FFD700" "#FFF6A3")
            :margin "0 1px"
            :position "relative"
            :z-index 1
            :transition "background-color 0.2s ease"}
-   :child [re-com/box
-           :style {:position "absolute"
-                   :bottom 0
-                   :left "1px"
-                   :right 0
-                   :text-align "center"
-                   :color (if (not (nil? note)) "#333" "transparent")
-                   :font-size "10px"
-                   :font-weight "bold"}
-           :child (if note (kb/format-note (:name note)) "")]])
+   :child [re-com/v-box
+           :justify :end
+           :align :center
+           :style {:height "100%"}
+           :children
+           [(when (and pressed? (or (not chord-mode?) (not= idx 7)))
+              [re-com/box
+               :style {:width "12px"
+                       :height "12px"
+                       :border-radius "50%"
+                       :background-color "#d35400"
+                       :margin-bottom "15px"
+                       :position "relative"
+                       :left "7px"}
+               :child ""])
+            [re-com/box
+             :style {:position "absolute"
+                     :bottom 0
+                     :left "1px"
+                     :right 0
+                     :text-align "center"
+                     :color (if (not (nil? note)) "#333" "transparent")
+                     :font-size "10px"
+                     :font-weight "bold"}
+             :child (if note (kb/format-note (:name note)) "")]]]])
 
+;; Update black-key to indicate pressed state 
 (defn- black-key
   "Renders a black key with proper styling.
    - note: The note this key represents
-   - active?: Whether this note is active in the current scale
-   - position: Horizontal offset in pixels"
-  [{:keys [note position]}]
+   - position: Horizontal offset in pixels
+   - pressed?: Whether this note is currently pressed"
+  [{:keys [note position pressed?]}]
     [re-com/box
      :class "black-key"
      :style {:width "16px"
              :height "40px"
-             :background "#333"
+             :background (if pressed? "#8c44ad" "#333") ; Purple for pressed, dark gray for normal
              :border-left (if (not (nil? note)) "none" "2px solid black")
              :border-bottom (if (not (nil? note)) "none" "2px solid black")
              :border-right (if (not (nil? note)) "none" "2px solid black")
@@ -248,16 +255,41 @@
              :left (str position "px")
              :z-index 2
              :transition "background-color 0.2s ease"}
-     :child [re-com/box
-             :style {:position "absolute"
-                     :bottom "1px"
-                     :left "2px"
-                     :right 0
-                     :text-align "center"
-                     :color "#FFF6A3"
-                     :font-size "8px"
-                     :font-weight "bold"}
-             :child (if note (kb/format-note (:name note)) "")]])
+     :child [re-com/v-box
+             :justify :start
+             :align :center
+             :style {:height "100%"}
+             :children
+             [(when pressed?
+                [re-com/box
+                 :style {:width "10px"
+                         :height "10px"
+                         :border-radius "50%"
+                         :background-color "#f39c12"
+                         :margin-top "5px"
+                         :position "relative"
+                         :left "3px"}
+                 :child ""])
+              [re-com/box
+               :style {:position "absolute"
+                       :bottom "1px"
+                       :left "2px"
+                       :right 0
+                       :text-align "center"
+                       :color "#FFF6A3"
+                       :font-size "8px"
+                       :font-weight "bold"}
+               :child (if note (kb/format-note (:name note)) "")]]]])
+
+(defn- is-note-pressed?
+  "Determines if a note is currently being pressed."
+  [note pressed-notes chord-mode]
+  (when (and note pressed-notes)
+    (some #(and (= (:name note) (:name %)) 
+                (if (false? chord-mode)
+                  (= (:octave note) (:octave %))
+                  true))
+          pressed-notes)))
 
 (defn- is-note-in-scale?
   "Determines if a note is in the current scale."
@@ -271,6 +303,8 @@
   []
   (let [keyboard (re-frame/subscribe [::subs/chromatic-keyboard])
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
+        pressed-notes (re-frame/subscribe [::subs/pressed-notes])
+        selected-chord (re-frame/subscribe [::subs/selected-chord])
         octave-notes (take 12 (filter #(kb/natural-note? %) (iterate #(kb/shift-note % :up) (kb/transpose-note @keyboard-root 1))))
 
         ;; Extract white and black notes
@@ -290,7 +324,7 @@
              :border-radius "5px"
              :padding "10px"
              :width "260px"}
-     :child 
+     :child
      [re-com/v-box
       :gap "10px"
       :children
@@ -306,15 +340,57 @@
          :children
          ;; First place white keys as base layer
          (concat
-          (mapv (fn [note]
-                  [white-key note])
+          (mapv (fn [idx note]
+                  [white-key note idx (is-note-pressed? note @pressed-notes (not= @selected-chord :off)) (not= @selected-chord :off)])
+                (range)
                 white-notes)
+
+
 
           ;; Then place black keys as overlay
           (mapv (fn [[note position]]
                   [black-key {:note note
-                              :position position}])
+                              :position position
+                              :pressed? (is-note-pressed? note @pressed-notes true)}])
                 black-key-positions))]]]]]))
+
+(defn pressed-notes-display []
+  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])]
+    [re-com/box
+     :style {:width "100px"
+             :min-height "100px"
+             :display "flex"
+             :flex-direction "column"
+             :justify-content "center"
+             :align-items "center"
+             :background-color "#f5f5f5"
+             :border "1px solid #ccc"
+             :border-radius "5px"}
+     :child
+     (if (seq @pressed-notes)
+       [re-com/v-box
+        :align :center
+        :justify :center
+        :gap "5px"
+        :children
+        [
+         (doall
+           (for [note @pressed-notes]
+             ^{:key (str (hash note))}
+             [re-com/label
+              :style {:font-weight "bold"
+                     :color "black"
+                     :margin "2px 0"
+                     :font-size "14px"}
+              :label (kb/format-root-note note)]))]]
+       [re-com/v-box
+        :align :center
+        :justify :center
+        :style {:height "100%"}
+        :children
+        [[re-com/label
+          :style {:color "#999"}
+          :label "No notes"]]])]))
 
 (defn keyboard-configurator []
   (let [ck (re-frame/subscribe [::subs/keyboard])
@@ -340,6 +416,13 @@
          :align :center
          :children
          [
+          [re-com/v-box
+           :gap "10px"
+           :children
+           [[re-com/label 
+             :style {:font-weight "bold" :color "black"}
+             :label "Notes"]
+            [pressed-notes-display]]]
           [re-com/v-box
            :gap "10px"
            :children

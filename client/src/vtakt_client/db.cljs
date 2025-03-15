@@ -13,4 +13,6 @@
    :keyboard-transpose 0
    :chords kb/chords
    :scales kb/scales
+
+   :pressed-notes []
    })

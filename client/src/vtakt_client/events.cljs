@@ -54,3 +54,13 @@
  ::set-keyboard-mode
  (fn [{:keys [db]} [_ keyboard-mode]]
    {:db (assoc db :keyboard-mode keyboard-mode)}))
+
+(re-frame/reg-event-fx
+ ::set-pressed-notes
+ (fn [{:keys [db]} [_ notes]]
+   {:db (assoc db :pressed-notes notes)}))
+
+(re-frame/reg-event-fx
+ ::clear-pressed-notes
+ (fn [{:keys [db]} _]
+   {:db (assoc db :pressed-notes [])}))

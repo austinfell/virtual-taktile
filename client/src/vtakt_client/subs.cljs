@@ -105,3 +105,8 @@
  ::scales
  (fn [db _]
    (:scales db)))
+
+(re-frame/reg-sub
+ ::pressed-notes
+ (fn [db _]
+   (:pressed-notes db)))
