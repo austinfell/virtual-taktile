@@ -1,6 +1,7 @@
 (ns vtakt-client.views
   (:require
    [re-frame.core :as re-frame]
+   [reagent.core :as reagent]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.components.keyboard :as kb]
    [vtakt-client.styles :as styles]
@@ -355,34 +356,46 @@
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
-  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])]
+  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])
+        ;; Group notes into columns of max 4 items
+        grouped-notes (fn [notes]
+                        (partition-all 4 notes))]
     [re-com/box
-     :style {:width "100px"
-             :min-height "100px"
+     :style {:width "auto"
+             :min-width "130px"
+             :min-height "110px"
              :display "flex"
-             :flex-direction "column"
              :justify-content "center"
+             :font-size "12px"
              :align-items "center"
              :background-color "#f5f5f5"
              :border "1px solid #ccc"
-             :border-radius "5px"}
+             :border-radius "5px"
+             :padding "5px"}
      :child
      (if (seq @pressed-notes)
-       [re-com/v-box
+       [re-com/h-box
         :align :center
         :justify :center
-        :gap "5px"
+        :gap "10px"
         :children
-        [
-         (doall
-           (for [note @pressed-notes]
-             ^{:key (str (hash note))}
-             [re-com/label
-              :style {:font-weight "bold"
-                     :color "black"
-                     :margin "2px 0"
-                     :font-size "14px"}
-              :label (kb/format-root-note note)]))]]
+        (doall
+          (for [column (grouped-notes @pressed-notes)]
+            ^{:key (str "col-" (hash (first column)))}
+            [re-com/v-box
+             :align :center
+             :justify :center
+             :gap "5px"
+             :children
+             (doall
+               (for [note column]
+                 ^{:key (str (hash note))}
+                 [re-com/label
+                  :style {:font-weight "bold"
+                         :color "black"
+                         :margin "2px 0"
+                         :white-space "nowrap"}
+                  :label (kb/format-root-note note)]))]))]
        [re-com/v-box
         :align :center
         :justify :center
@@ -484,6 +497,7 @@
               :max-value 36
               :is-transpose? true}]]]
          ]]]])))
+
 (defn sequencer []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
@@ -492,32 +506,110 @@
         selected-scale (re-frame/subscribe [::subs/selected-scale])
         available-scales (re-frame/subscribe [::subs/scales])
         scale-root (re-frame/subscribe [::subs/keyboard-root])
-        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])]
-  [re-com/v-box
-   :justify :center
-   :children [[keyboard-configurator]
-              [re-com/h-box
-               :children [(map seq-btn
-                               (range 1 9)
-                               (:top (kb/rows @ck))
-                               (repeat @selected-chord)
-                               (repeat @available-chords)
-                               (repeat @selected-scale)
-                               (repeat @available-scales)
-                               (repeat @scale-root)
-                               (repeat @keyboard-transpose))]
-               ]
-              [re-com/h-box
-               :children [(map seq-btn
-                               (range 9 17)
-                               (:bottom (kb/rows @ck))
-                               (repeat @selected-chord)
-                               (repeat @available-chords)
-                               (repeat @selected-scale)
-                               (repeat @available-scales)
-                               (repeat @scale-root)
-                               (repeat @keyboard-transpose))]]
-              ]]))
+        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])
+        ;; Create a local atom to track pressed keys and their associated notes
+        pressed-keys (reagent/atom {})
+        
+        ;; Define the key mappings
+        top-row-keys #{"s" "d" "f" "g" "h" "j" "k" "l"}
+        bottom-row-keys #{"z" "x" "c" "v" "b" "n" "m" ","}
+        
+        ;; Helper function to get notes from a key
+        get-notes-for-key (fn [key]
+          (let [top-keys-map {"a" 0, "s" 1, "d" 2, "f" 3, "g" 4, "h" 5, "j" 6, "k" 7}
+                bottom-keys-map {"z" 0, "x" 1, "c" 2, "v" 3, "b" 4, "n" 5, "m" 6, "," 7}
+                top-row-idx (get top-keys-map key -1)
+                bottom-row-idx (get bottom-keys-map key -1)
+                note (cond 
+                       (>= top-row-idx 0) (nth (:top (kb/rows @ck)) top-row-idx)
+                       (>= bottom-row-idx 0) (nth (:bottom (kb/rows @ck)) bottom-row-idx)
+                       :else nil)]
+            
+            (when note
+              (if (not= @selected-chord :off)
+                (if (= @selected-scale :chromatic)
+                  (kb/build-chord (get-in @available-chords [@selected-chord (:name note)]) (:octave note))
+                  (kb/build-scale-chord (get-in @available-scales [@selected-scale (:name (kb/transpose-note @scale-root @keyboard-transpose))]) note))
+                [note]))))
+        
+        ;; Helper function to update pressed notes based on currently pressed keys
+        update-pressed-notes (fn []
+          (let [all-notes (reduce (fn [notes key-notes] 
+                                    (concat notes (val key-notes)))
+                                  []
+                                  @pressed-keys)]
+            ;; Only dispatch if there are notes to press
+            (when (seq all-notes)
+              (re-frame/dispatch [::events/set-pressed-notes all-notes]))))
+        
+        ;; Function to handle key press events
+        handle-key-press (fn [event]
+          (let [key (.toLowerCase (.-key event))]
+            ;; Skip handling if the key is already pressed (to avoid retriggering)
+            (when (and (or (contains? top-row-keys key) 
+                           (contains? bottom-row-keys key))
+                       (not (contains? @pressed-keys key)))
+              (let [notes (get-notes-for-key key)]
+                (when (seq notes)
+                  ;; Store the notes associated with this key
+                  (swap! pressed-keys assoc key notes)
+                  ;; Update all currently pressed notes
+                  (update-pressed-notes))))))
+        
+        ;; Function to handle key release events
+        handle-key-release (fn [event]
+          (let [key (.toLowerCase (.-key event))]
+            (when (contains? @pressed-keys key)
+              ;; Remove this key from pressed keys
+              (swap! pressed-keys dissoc key)
+              ;; If no keys are pressed, clear all notes
+              (if (empty? @pressed-keys)
+                (re-frame/dispatch [::events/clear-pressed-notes])
+                ;; Otherwise update with remaining pressed notes
+                (update-pressed-notes)))))]
+    
+    ;; Add event listeners when component mounts
+    (reagent/create-class
+     {:component-did-mount
+      (fn []
+        (.addEventListener js/document "keydown" handle-key-press)
+        (.addEventListener js/document "keyup" handle-key-release))
+      
+      :component-will-unmount
+      (fn []
+        (.removeEventListener js/document "keydown" handle-key-press)
+        (.removeEventListener js/document "keyup" handle-key-release))
+      
+      :reagent-render
+      (fn []
+        [re-com/v-box
+         :justify :center
+         :children [[keyboard-configurator]
+                    [re-com/h-box
+                     :children [(map-indexed (fn [idx [n note chord chords scale scales keyboard-root keyboard-transpose]]
+                                               (seq-btn n note chord chords scale scales keyboard-root keyboard-transpose))
+                                             (map vector 
+                                                  (range 1 9)
+                                                  (:top (kb/rows @ck))
+                                                  (repeat @selected-chord)
+                                                  (repeat @available-chords)
+                                                  (repeat @selected-scale)
+                                                  (repeat @available-scales)
+                                                  (repeat @scale-root)
+                                                  (repeat @keyboard-transpose)))]
+                     ]
+                    [re-com/h-box
+                     :children [(map-indexed (fn [idx [n note chord chords scale scales keyboard-root keyboard-transpose]]
+                                               (seq-btn n note chord chords scale scales keyboard-root keyboard-transpose))
+                                             (map vector
+                                                  (range 9 17)
+                                                  (:bottom (kb/rows @ck))
+                                                  (repeat @selected-chord)
+                                                  (repeat @available-chords)
+                                                  (repeat @selected-scale)
+                                                  (repeat @available-scales)
+                                                  (repeat @scale-root)
+                                                  (repeat @keyboard-transpose)))]]]])})))
 
 (defn sequencer-panel []
   [re-com/v-box
