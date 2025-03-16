@@ -4,11 +4,11 @@
    [reagent.core :as reagent]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.core :as kb]
+   [vtakt-client.keyboard.events :as events]
+   [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.styles :as styles]
-   [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
-   [vtakt-client.utils :as utils]
-   [vtakt-client.subs :as subs]))
+   [vtakt-client.utils :as utils]))
 
 (defn seq-btn [n note chord chords scale scales keyboard-root keyboard-transpose]
   [:div
