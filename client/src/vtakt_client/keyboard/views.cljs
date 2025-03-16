@@ -12,64 +12,76 @@
    [vtakt-client.utils :as utils]))
 
 ;; ------------------------------
-;; Utility Functions
-;; ------------------------------
-
-(defn- is-note-pressed?
-  "Determines if a note is currently being pressed."
-  [note pressed-notes chord-mode]
-  (when (and note pressed-notes)
-    (some #(and (= (:name note) (:name %))
-                (if (false? chord-mode)
-                  (= (:octave note) (:octave %))
-                  true))
-          pressed-notes)))
-
-(defn- is-note-in-scale?
-  "Determines if a note is in the current scale."
-  [note scale-notes]
-  (when (and note scale-notes)
-    (some #(= (:name note) %) scale-notes)))
-
-;; ------------------------------
 ;; Control Components
 ;; ------------------------------
 
-(defn increment-control
-  "A reusable component for increment/decrement controls using musical flat/sharp symbols.
-   - label: Text to display
-   - value: Current value to display
-   - dec-event: Event to dispatch when decrementing
-   - inc-event: Event to dispatch when incrementing
-   - min-value: Optional minimum value (default nil)
-   - max-value: Optional maximum value (default nil)
-   - is-transpose?: Optional flag to use transpose-specific tooltips"
-  [{:keys [label value dec-event inc-event min-value max-value is-transpose?]}]
-  (let [dec-disabled? (and (some? min-value) (<= value min-value))
-        inc-disabled? (and (some? max-value) (>= value max-value))]
-    [re-com/h-box
-     :align :center
-     :gap "5px"
-     :children
-     [[re-com/button
-       :label "♭" ; Flat symbol
-       :disabled? dec-disabled?
-       :class (str (styles/increment-button) " " (when-not dec-disabled? (styles/increment-button-active)))
-       :on-click #(when-not dec-disabled?
-                    (re-frame/dispatch dec-event))]
-      [re-com/box
-       :class (styles/increment-value-box)
-       :child [:p {:class (styles/increment-value)} value]]
+(defn make-increment-control
+  "Higher-order function that creates increment/decrement controls with consistent styling.
+   Returns a component function that accepts a complex value to display.
 
-      [re-com/button
-       :label "♯" ; Sharp symbol
-       :disabled? inc-disabled?
-       :class (str (styles/increment-button) " " (when-not inc-disabled? (styles/increment-button-active)))
-       :on-click #(when-not inc-disabled?
-                    (re-frame/dispatch inc-event))]
-     ]]))
+   Parameters:
+   - label: Text label for the control
+   - dec-event: Event vector prefix for decrementing
+   - inc-event: Event vector prefix for incrementing
+   - render-fn: Function that transforms the value into a displayable string
+   - min-value: Optional minimum allowed value
+   - max-value: Optional maximum allowed value
+   - less-than-fn: Function that compares two values to determine if first is less than second
+   - greater-than-fn: Function that compares two values to determine if first is greater than second"
+  [& {:keys [label dec-event inc-event render-fn min-value max-value
+             less-than-equal-fn]
+      :or {render-fn str
+           less-than-equal-fn (fn [a b] (< (compare a b) 0))
+           min-value nil
+           max-value nil}}]
+  (fn [value]
+    (let [dec-disabled? (and (some? min-value)
+                          (less-than-equal-fn value min-value))
+          greater-than-equal-fn (fn [l r] (less-than-equal-fn r l))
+          inc-disabled? (and (some? max-value)
+                          (greater-than-equal-fn value max-value))]
+      [re-com/h-box
+       :align :center
+       :gap "5px"
+       :children
+       [[re-com/button
+         :label "♭"
+         :disabled? dec-disabled?
+         :class (str (styles/increment-button) " "
+                     (when-not dec-disabled? (styles/increment-button-active)))
+         :on-click #(when-not dec-disabled?
+                      (re-frame/dispatch (conj dec-event value)))]
+        [re-com/box
+         :class (styles/increment-value-box)
+         :child [:p {:class (styles/increment-value)} (render-fn value)]]
+        [re-com/button
+         :label "♯"
+         :disabled? inc-disabled?
+         :class (str (styles/increment-button) " "
+                     (when-not inc-disabled? (styles/increment-button-active)))
+         :on-click #(when-not inc-disabled?
+                      (re-frame/dispatch (conj inc-event value)))]
+       ]])))
+(def root-note-control
+  (make-increment-control
+   :label "Root Note"
+   :dec-event [::events/dec-keyboard-root]
+   :inc-event [::events/inc-keyboard-root]
+   :render-fn kb/format-root-note
+   :min-value kb/c0-note
+   :max-value kb/g9-note
+   :less-than-equal-fn kb/note-less-than-equal?))
+(def transpose-control
+  (make-increment-control
+   :label "Transpose"
+   :dec-event [::events/dec-keyboard-transpose]
+   :inc-event [::events/inc-keyboard-transpose]
+   :render-fn str
+   :min-value -36
+   :max-value 36
+   :less-than-equal-fn <=))
 
-(defn make-dropdown-selector
+(defn- make-dropdown-selector
   "Higher-order function that creates dropdown selectors with consistent styling.
    Returns a component function that accepts options and selected value."
   [on-change-event]
@@ -82,8 +94,6 @@
      :filter-box? true
      :label-fn #(utils/format-keyword (:id %))
      :on-change #(re-frame/dispatch [on-change-event %])]))
-
-;; Define dropdown selectors
 (def scale-selector (make-dropdown-selector ::events/set-scale))
 (def chord-selector (make-dropdown-selector ::events/set-chord))
 
@@ -178,16 +188,16 @@
                [:p {:class (styles/seq-number)} (str n)]])]])
 
 (defn octave-view
-  "Renders a piano-like octave view showing which notes are in the current scale.
-   - Selected scale notes will be highlighted"
+  "Renders a piano-like octave view showing which notes are in the current scale."
   []
   (let [keyboard (re-frame/subscribe [::subs/chromatic-keyboard])
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
         selected-chord (re-frame/subscribe [::subs/selected-chord])
         octave-notes (take 12 (filter #(kb/natural-note? %)
-                                     (iterate #(kb/shift-note % :up)
-                                              (kb/transpose-note @keyboard-root 1))))
+                              (iterate #(kb/shift-note % :up)
+                                       (kb/transpose-note @keyboard-root 1))))
+        chord-mode? (not= @selected-chord :off)
 
         ;; Extract white and black notes
         white-notes (:bottom (kb/rows @keyboard))
@@ -195,18 +205,17 @@
 
         ;; Create a sequence of [note position] for black keys
         black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
-                             (map vector
-                                 (rest black-notes)
-                                 [21 51 82 111 141 171 202]
-                                 octave-notes))]
+                            (map vector
+                                (rest black-notes)
+                                [21 51 82 111 141 171 202]
+                                octave-notes))]
     [re-com/box
      :class (styles/octave-view)
      :child
      [re-com/v-box
       :gap "10px"
       :children
-      [
-       ;; Main keys container with proper positioning
+      [;; Main keys container with proper positioning
        [re-com/box
         :class (styles/keys-container)
         :child
@@ -216,17 +225,26 @@
          ;; First place white keys as base layer
          (concat
           (mapv (fn [idx note]
-                  [white-key-component note idx
-                   (is-note-pressed? note @pressed-notes (not= @selected-chord :off))
-                   (not= @selected-chord :off)])
+                  (let [pressed? (when (and note @pressed-notes)
+                                   (if chord-mode?
+                                     ;; In chord mode, only check note name
+                                     (some #(= (:name note) (:name %)) @pressed-notes)
+                                     ;; In normal mode, check exact note (name and octave)
+                                     (some #(and (= (:name note) (:name %))
+                                                (= (:octave note) (:octave %)))
+                                           @pressed-notes)))]
+                    [white-key-component note idx pressed? chord-mode?]))
                 (range)
                 white-notes)
 
           ;; Then place black keys as overlay
           (mapv (fn [[note position]]
-                  [black-key-component {:note note
-                                        :position position
-                                        :pressed? (is-note-pressed? note @pressed-notes true)}])
+                  (let [pressed? (when (and note @pressed-notes)
+                                   ;; For black keys, always just check the note name
+                                   (some #(= (:name note) (:name %)) @pressed-notes))]
+                    [black-key-component {:note note
+                                          :position position
+                                          :pressed? pressed?}]))
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
@@ -333,11 +351,7 @@
            [[re-com/label
              :class (styles/section-label)
              :label "Root Note"]
-            [increment-control
-             {:label "Root"
-              :value (kb/format-root-note (:root-note @ck))
-              :dec-event [::events/dec-keyboard-root]
-              :inc-event [::events/inc-keyboard-root]}]]]
+            [root-note-control (:root-note @ck)]]]
           [re-com/v-box
            :gap "10px"
            :children
@@ -351,14 +365,7 @@
            [[re-com/label
              :class (styles/section-label)
              :label "Transpose"]
-            [increment-control
-             {:label "Transpose"
-              :value @transpose
-              :dec-event [::events/dec-keyboard-transpose]
-              :inc-event [::events/inc-keyboard-transpose]
-              :min-value -36
-              :max-value 36
-              :is-transpose? true}]]]
+            [transpose-control @transpose]]]
          ]]]])))
 
 (defn keyboard []
