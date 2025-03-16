@@ -71,6 +71,7 @@
   [re-com/v-box
    :src      (at)
    :gap      "1em"
-   :children [[kb/keyboard]]])
+   :children [[kb/keyboard-configurator] [kb/keyboard]]])
 
-(defmethod routes/panels :keyboard-panel [] [keyboard-panel])
+(defmethod routes/panels :keyboard-panel []
+  [keyboard-panel])

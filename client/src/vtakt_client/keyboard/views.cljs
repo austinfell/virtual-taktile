@@ -529,8 +529,7 @@
       (fn []
         [re-com/v-box
          :justify :center
-         :children [[keyboard-configurator]
-                    [re-com/h-box
+         :children [[re-com/h-box
                      :children [(map-indexed (fn [idx [n note chord chords scale scales keyboard-root keyboard-transpose]]
                                                (seq-btn n note chord chords scale scales keyboard-root keyboard-transpose))
                                              (map vector 
