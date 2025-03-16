@@ -123,7 +123,7 @@
 (def scale-selector
   (make-dropdown-selector
    ::events/set-scale
-   :width "180px"
+   :width "190px"
    :pinned-items #{:chromatic}))
 
 (def chord-selector
@@ -206,6 +206,7 @@
   "Button component for sequencer keys"
   [n note chord chords scale scales keyboard-root keyboard-transpose]
   [:div
+  {:key (str "seq-btn-" n "-" (when note (str (:name note) (:octave note))))}  ; Add unique key here
   [re-com/button
      :attr {
             :on-mouse-down #(let [notes-to-press
