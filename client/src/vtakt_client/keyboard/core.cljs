@@ -224,7 +224,7 @@
   (when root-note
     (str (format-note (:name root-note)) (:octave root-note))))
 
-(defn note-less-than-equal?
+(defn note-at-or-below?
   "Compares two notes and returns true if first note is lower than second note."
   [note1 note2]
   (let [octave1 (:octave note1)

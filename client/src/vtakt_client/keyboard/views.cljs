@@ -14,54 +14,58 @@
 ;; ------------------------------
 ;; Control Components
 ;; ------------------------------
-
-(defn make-increment-control
+(defn- make-increment-control
   "Higher-order function that creates increment/decrement controls with consistent styling.
-   Returns a component function that accepts a complex value to display.
-
+   Returns a memoized component function that accepts a complex value to display.
    Parameters:
    - label: Text label for the control
    - dec-event: Event vector prefix for decrementing
    - inc-event: Event vector prefix for incrementing
    - render-fn: Function that transforms the value into a displayable string
-   - min-value: Optional minimum allowed value
-   - max-value: Optional maximum allowed value
-   - less-than-fn: Function that compares two values to determine if first is less than second
-   - greater-than-fn: Function that compares two values to determine if first is greater than second"
+   - min-value: Optional minimum allowed value (inclusive boundary)
+   - max-value: Optional maximum allowed value (inclusive boundary)
+   - at-or-below-fn: Function that compares if first value is at or below second value
+                     (returns true when first <= second in conventional terms)
+                     This determines when decrement button should be disabled
+   Returns:
+   A memoized function component that takes a value and renders an increment control"
   [& {:keys [label dec-event inc-event render-fn min-value max-value
-             less-than-equal-fn]
+             at-or-below-fn]
       :or {render-fn str
-           less-than-equal-fn (fn [a b] (< (compare a b) 0))
+           at-or-below-fn (fn [a b] (< (compare a b) 0))
            min-value nil
            max-value nil}}]
-  (fn [value]
-    (let [dec-disabled? (and (some? min-value)
-                          (less-than-equal-fn value min-value))
-          greater-than-equal-fn (fn [l r] (less-than-equal-fn r l))
-          inc-disabled? (and (some? max-value)
-                          (greater-than-equal-fn value max-value))]
-      [re-com/h-box
-       :align :center
-       :gap "5px"
-       :children
-       [[re-com/button
-         :label "♭"
-         :disabled? dec-disabled?
-         :class (str (styles/increment-button) " "
-                     (when-not dec-disabled? (styles/increment-button-active)))
-         :on-click #(when-not dec-disabled?
-                      (re-frame/dispatch (conj dec-event value)))]
-        [re-com/box
-         :class (styles/increment-value-box)
-         :child [:p {:class (styles/increment-value)} (render-fn value)]]
-        [re-com/button
-         :label "♯"
-         :disabled? inc-disabled?
-         :class (str (styles/increment-button) " "
-                     (when-not inc-disabled? (styles/increment-button-active)))
-         :on-click #(when-not inc-disabled?
-                      (re-frame/dispatch (conj inc-event value)))]
-       ]])))
+
+  (memoize
+    (fn [value]
+      (let [dec-disabled? (and (some? min-value)
+                            (at-or-below-fn value min-value))
+            at-or-above-fn (fn [l r] (at-or-below-fn r l))
+            inc-disabled? (and (some? max-value)
+                            (at-or-above-fn value max-value))]
+        [re-com/h-box
+         :align :center
+         :gap "5px"
+         :children
+         [[re-com/button
+           :label "♭"
+           :disabled? dec-disabled?
+           :class (str (styles/increment-button) " "
+                       (when-not dec-disabled? (styles/increment-button-active)))
+           :on-click #(when-not dec-disabled?
+                        (re-frame/dispatch (conj dec-event value)))]
+          [re-com/box
+           :class (styles/increment-value-box)
+           :child [:p {:class (styles/increment-value)} (render-fn value)]]
+          [re-com/button
+           :label "♯"
+           :disabled? inc-disabled?
+           :class (str (styles/increment-button) " "
+                       (when-not inc-disabled? (styles/increment-button-active)))
+           :on-click #(when-not inc-disabled?
+                        (re-frame/dispatch (conj inc-event value)))]
+         ]]))))
+
 (def root-note-control
   (make-increment-control
    :label "Root Note"
@@ -70,7 +74,8 @@
    :render-fn kb/format-root-note
    :min-value kb/c0-note
    :max-value kb/g9-note
-   :less-than-equal-fn kb/note-less-than-equal?))
+   :at-or-below-fn kb/note-at-or-below?))
+
 (def transpose-control
   (make-increment-control
    :label "Transpose"
@@ -79,40 +84,73 @@
    :render-fn str
    :min-value -36
    :max-value 36
-   :less-than-equal-fn <=))
+   :at-or-below-fn <=))
 
 (defn- make-dropdown-selector
   "Higher-order function that creates dropdown selectors with consistent styling.
-   Returns a component function that accepts options and selected value."
-  [on-change-event]
-  (fn [options selected]
-    [re-com/single-dropdown
-     :src (at)
-     :choices (mapv (fn [v] {:id (first v)}) (into [] options))
-     :model selected
-     :width "125px"
-     :filter-box? true
-     :label-fn #(utils/format-keyword (:id %))
-     :on-change #(re-frame/dispatch [on-change-event %])]))
-(def scale-selector (make-dropdown-selector ::events/set-scale))
-(def chord-selector (make-dropdown-selector ::events/set-chord))
+   Returns a memoized component function that accepts options and selected value.
 
-(defn keyboard-mode-selector [current-mode]
-  (let [chromatic? (= current-mode :chromatic)]
+   Parameters:
+   - on-change-event: Event to dispatch when selection changes
+   - width: Width of the dropdown (default: '125px')
+   - filter-box?: Whether to show a filter box (default: true)
+   - pinned-items: Set of item keys that should appear at the top of the list
+   - sort-fn: Function to sort the non-pinned options (default: alphabetical by name)"
+  [on-change-event & {:keys [width filter-box? pinned-items sort-fn]
+                       :or {width "125px"
+                            filter-box? true
+                            pinned-items #{}
+                            sort-fn (fn [options]
+                                     (sort-by (comp name first) options))}}]
+  (memoize
+    (fn [options selected]
+      (let [;; Split options into pinned and regular items
+            pinned (filter #(contains? pinned-items (first %)) options)
+            regular (filter #(not (contains? pinned-items (first %))) options)
+            ;; Sort the regular items
+            sorted-regular (sort-fn regular)
+            ;; Combine pinned items (in original order) with sorted regular items
+            combined-options (concat pinned sorted-regular)]
+        [re-com/single-dropdown
+         :src (at)
+         :choices (mapv (fn [v] {:id (first v)}) (into [] combined-options))
+         :model selected
+         :width width
+         :filter-box? filter-box?
+         :label-fn #(utils/format-keyword (:id %))
+         :on-change #(re-frame/dispatch [on-change-event %])]))))
+
+(def scale-selector
+  (make-dropdown-selector
+   ::events/set-scale
+   :width "180px"
+   :pinned-items #{:chromatic}))
+
+(def chord-selector
+  (make-dropdown-selector
+   ::events/set-chord
+   :pinned-items #{:off}))
+
+(defn keyboard-mode-selector
+  "A toggle component for switching between chromatic and folding keyboard modes."
+  [current-mode]
+  (let [chromatic? (= current-mode :chromatic)
+        ;; TODO - we should really have a single source of truth for available keyboard modes...
+        ;; who knows, maybe one day we will have a 31TET keyboard or something...
+        mode-options [{:id :chromatic :label "Chromatic"}
+                      {:id :folding :label "Folding"}]]
     [re-com/v-box
      :gap "5px"
      :children
      [[re-com/h-box
        :class (styles/mode-toggle)
        :children
-       [[re-com/box
-         :class (styles/mode-option chromatic?)
-         :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :chromatic])}
-         :child "Chromatic"]
-        [re-com/box
-         :class (styles/mode-option (not chromatic?))
-         :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :folding])}
-         :child "Folding"]]]]]))
+       (for [{:keys [id label]} mode-options]
+         [re-com/box
+          :class (styles/mode-option (= id current-mode))
+          :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode id])
+                 :key (name id)}
+          :child label])]]]))
 
 ;; ------------------------------
 ;; Piano Key Components
@@ -287,7 +325,6 @@
 ;; ------------------------------
 ;; Main Components
 ;; ------------------------------
-
 (defn keyboard-configurator []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
