@@ -441,7 +441,7 @@
               :is-transpose? true}]]]
          ]]]])))
 
-(defn sequencer []
+(defn keyboard []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
         selected-chord (re-frame/subscribe [::subs/selected-chord])

@@ -11,7 +11,7 @@
 (def routes
   (atom
     ["/" {""      :home
-          "sequencer" :sequencer
+          "keyboard" :keyboard
           "about" :about}]))
 
 (defn parse

@@ -67,10 +67,10 @@
      :height   "100%"
      :children [(routes/panels @active-panel)]]))
 
-(defn sequencer-panel []
+(defn keyboard-panel []
   [re-com/v-box
    :src      (at)
    :gap      "1em"
-   :children [[kb/sequencer]]])
+   :children [[kb/keyboard]]])
 
-(defmethod routes/panels :sequencer-panel [] [sequencer-panel])
+(defmethod routes/panels :keyboard-panel [] [keyboard-panel])
