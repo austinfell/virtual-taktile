@@ -2,7 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [vtakt-client.db :as db]
-   [vtakt-client.components.keyboard :as kb]
+   [vtakt-client.keyboard.core :as kb]
    ))
 
 (re-frame/reg-event-fx

@@ -1,6 +1,6 @@
 (ns vtakt-client.db
   (:require
-   [vtakt-client.components.keyboard :as kb]))
+   [vtakt-client.keyboard.core :as kb]))
 
 (def default-db
   {:name "re-frame"

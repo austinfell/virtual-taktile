@@ -1,4 +1,4 @@
-(ns vtakt-client.components.keyboard
+(ns vtakt-client.keyboard.core
   (:require [clojure.walk :refer [postwalk]]
             [clojure.spec.alpha :as s]))
 

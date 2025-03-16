@@ -1,6 +1,6 @@
 (ns vtakt-client.subs
   (:require
-   [vtakt-client.components.keyboard :as kb]
+   [vtakt-client.keyboard.core :as kb]
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
