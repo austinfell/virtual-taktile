@@ -32,7 +32,6 @@
      [[re-com/button
        :label "♭" ; Flat symbol
        :disabled? dec-disabled?
-       :class (when-not dec-disabled? "active-button")
        :style styles/increment-button-style
        :on-click #(when-not dec-disabled?
                     (re-frame/dispatch dec-event))]
@@ -43,7 +42,6 @@
       [re-com/button
        :label "♯" ; Sharp symbol
        :disabled? inc-disabled?
-       :class (when-not inc-disabled? "active-button")
        :style styles/increment-button-style
        :on-click #(when-not inc-disabled?
                     (re-frame/dispatch inc-event))]
@@ -71,16 +69,13 @@
      :gap "5px"
      :children
      [[re-com/h-box
-       :class "mode-toggle"
        :style styles/mode-toggle-style
        :children
        [[re-com/box
-         :class (str "toggle-option" (when chromatic? " active"))
          :style (styles/mode-option-style chromatic?)
          :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :chromatic])}
          :child "Chromatic"]
         [re-com/box
-         :class (str "toggle-option" (when-not chromatic? " active"))
          :style (styles/mode-option-style (not chromatic?))
          :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode :folding])}
          :child "Folding"]]]]]))
@@ -92,7 +87,6 @@
    - pressed?: Whether this note is currently pressed"
   [note idx pressed? chord-mode?]
   [re-com/box
-   :class "white-key"
    :style (styles/white-key-style pressed? chord-mode? idx)
    :child [re-com/v-box
            :justify :end
@@ -115,7 +109,6 @@
    - pressed?: Whether this note is currently pressed"
   [{:keys [note position pressed?]}]
     [re-com/box
-     :class "black-key"
      :style (assoc (styles/black-key-style pressed? note) :left (str position "px"))
      :child [re-com/v-box
              :justify :start
@@ -168,7 +161,6 @@
                               octave-notes
                               ))]
     [re-com/box
-     :class "octave-view"
      :style styles/octave-view-style
      :child
      [re-com/v-box
