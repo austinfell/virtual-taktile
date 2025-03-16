@@ -11,25 +11,7 @@
    [vtakt-client.routes :as routes]
    [vtakt-client.utils :as utils]))
 
-(defn seq-btn [n note chord chords scale scales keyboard-root keyboard-transpose]
-  [:div
-  [re-com/button
-     :attr {
-            :on-mouse-down #(let [notes-to-press
-                                  (if (not= chord :off)
-                                    (if (= scale :chromatic)
-                                      (kb/build-chord (get-in chords [chord (:name note)]) (:octave note))
-                                      (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note))
-                                    [note])]
-                              (re-frame/dispatch [::events/set-pressed-notes notes-to-press]))
-            :on-mouse-up #(re-frame/dispatch [::events/clear-pressed-notes])
-            :on-mouse-leave #(re-frame/dispatch [::events/clear-pressed-notes])
-            }
-     :style (assoc styles/seq-button-style :color (if (nil? note) :black :blue))
-     :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
-              (str n)
-              [:div {:style styles/seq-number-container-style}
-               [:p {:style styles/seq-number-style} (str n)]])]])
+;; Keyboard Configuration
 
 (defn increment-control
   "A reusable component for increment/decrement controls using musical flat/sharp symbols.
@@ -341,6 +323,28 @@
               :max-value 36
               :is-transpose? true}]]]
          ]]]])))
+
+;; Keyboard
+
+(defn seq-btn [n note chord chords scale scales keyboard-root keyboard-transpose]
+  [:div
+  [re-com/button
+     :attr {
+            :on-mouse-down #(let [notes-to-press
+                                  (if (not= chord :off)
+                                    (if (= scale :chromatic)
+                                      (kb/build-chord (get-in chords [chord (:name note)]) (:octave note))
+                                      (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note))
+                                    [note])]
+                              (re-frame/dispatch [::events/set-pressed-notes notes-to-press]))
+            :on-mouse-up #(re-frame/dispatch [::events/clear-pressed-notes])
+            :on-mouse-leave #(re-frame/dispatch [::events/clear-pressed-notes])
+            }
+     :style (assoc styles/seq-button-style :color (if (nil? note) :black :blue))
+     :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
+              (str n)
+              [:div {:style styles/seq-number-container-style}
+               [:p {:style styles/seq-number-style} (str n)]])]])
 
 (defn keyboard []
   (let [ck (re-frame/subscribe [::subs/keyboard])
