@@ -1,107 +1,135 @@
 (ns vtakt-client.keyboard.styles
   (:require
-   [vtakt-client.styles :as app-styles]))
+   [vtakt-client.styles :as app-styles]
+   [spade.core :refer [defclass defglobal]]
+   [garden.units :refer [px]]
+   [garden.color :as color]))
+
+;; Color constants
+(def colors
+  {:white-key-default "#FFF6A3"
+   :white-key-pressed "#FFD700"
+   :black-key-default "#333"
+   :black-key-pressed "#8c44ad"
+   :indicator-white "#d35400"
+   :indicator-black "#f39c12"
+   :chromatic-active "#4a86e8"
+   :inactive "#f0f0f0"
+   :border-light "#ccc"
+   :border-dark "#bbbbbb"
+   :text-dark "#333333"
+   :text-black "black"
+   :text-white "white"
+   :text-light "#999"
+   :bg-light "#f5f5f5"
+   :bg-dark "#222"})
 
 ;; Button styles
-(def seq-button-style
-  {:width "30px"
+(defclass seq-button []
+  {:width (px 30)
    :display "flex"
    :align-items "center"
    :padding 0
    :justify-content "center"
    :text-decoration "underline solid black 1px"
-   :height "40px"})
+   :height (px 40)})
 
-(defn seq-button-number-style [n]
-  (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
-    {:style seq-button-style}
-    {:style (assoc seq-button-style :text-decoration "none")}))
+(defclass seq-button-number [n]
+  (when (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
+    {:text-decoration "none"}))
 
-(def seq-number-container-style
+(defclass seq-number-container []
   {:display "flex"
    :height "90%"
-   :border-radius "3px"
+   :border-radius (px 3)
    :justify-content "center"
    :align-items "center"
-   :width "20px"
+   :width (px 20)
    :border "1px solid black"})
 
-(def seq-number-style
-  {:margin-bottom "0px"})
+(defclass seq-number []
+  {:margin-bottom (px 0)})
 
 ;; Increment control styles
-(def increment-button-style
-  {:min-width "40px"
-   :font-size "16px"
+(defclass increment-button []
+  {:min-width (px 40)
+   :font-size (px 16)
    :font-weight "bold"
-   :background-color "#e2e2e2"
-   :border "1px solid #bbbbbb"
-   :color "black"})
+   :background-color (:bg-light colors)
+   :border (str "1px solid " (:border-dark colors))
+   :color (:text-black colors)})
 
-(def increment-value-box-style
-  {:width "38px"
+(defclass increment-button-active []
+  {:cursor "pointer"
+   :transition "background-color 0.2s ease"
+   "&:hover" {:background-color (color/lighten (:bg-light colors) 5)}})
+
+(defclass increment-value-box []
+  {:width (px 38)
    :text-align "center"
    :font-weight "bold"
    :display "flex"
    :align-items "center"
    :justify-content "center"
-   :color "#333333"})
+   :color (:text-dark colors)})
 
-(def increment-value-style
+(defclass increment-value []
   {:width "100%"
    :position "relative"
-   :top "5px"})
+   :top (px 5)})
 
 ;; Keyboard mode selector styles
-(def mode-toggle-style
-  {:border "1px solid #ccc"
-   :border-radius "4px"
+(defclass mode-toggle []
+  {:border (str "1px solid " (:border-light colors))
+   :border-radius (px 4)
    :overflow "hidden"
-   :width "200px"
-   :height "36px"
+   :width (px 200)
+   :height (px 36)
    :cursor "pointer"})
 
-(defn mode-option-style [active?]
-  {:flex "1"
+(defclass mode-option [active?]
+  {:flex 1
    :text-align "center"
-   :padding "8px"
-   :background-color (if active? "#4a86e8" "#f0f0f0")
-   :color (if active? "white" "black")
+   :padding (px 8)
+   :background-color (if active? (:chromatic-active colors) (:inactive colors))
+   :color (if active? (:text-white colors) (:text-black colors))
    :transition "all 0.2s ease"})
 
 ;; Piano key styles
-(defn white-key-style [pressed? chord-mode? idx]
-  {:width "28px"
-   :height "60px"
-   :background (if (and pressed? (or (not chord-mode?) (not= idx 7))) "#FFD700" "#FFF6A3")
-   :margin "0 1px"
+(defclass white-key [pressed? chord-mode? idx]
+  {:width (px 28)
+   :height (px 60)
+   :background (if (and pressed? (or (not chord-mode?) (not= idx 7))) 
+                 (:white-key-pressed colors) 
+                 (:white-key-default colors))
+   :margin (str "0 " (px 1))
    :position "relative"
    :z-index 1
    :transition "background-color 0.2s ease"})
 
-(def white-key-indicator-style
-  {:width "12px"
-   :height "12px"
+(defclass white-key-indicator []
+  {:width (px 12)
+   :height (px 12)
    :border-radius "50%"
-   :background-color "#d35400"
-   :margin-bottom "15px"
+   :background-color (:indicator-white colors)
+   :margin-bottom (px 15)
    :position "relative"
-   :left "7px"})
+   :left (px 7)})
 
-(defn white-key-label-style [note]
+(defclass white-key-label [note]
   {:position "absolute"
    :bottom 0
-   :left "1px"
+   :left (px 1)
    :right 0
    :text-align "center"
-   :color (if (not (nil? note)) "#333" "transparent")
-   :font-size "10px"
+   :color (if (not (nil? note)) (:text-dark colors) "transparent")
+   :font-size (px 10)
    :font-weight "bold"})
 
-(defn black-key-style [pressed? note]
-  {:width "16px"
-   :height "40px"
-   :background (if pressed? "#8c44ad" "#333") ; Purple for pressed, dark gray for normal
+(defclass black-key [pressed? note]
+  {:width (px 16)
+   :height (px 40)
+   :background (if pressed? (:black-key-pressed colors) (:black-key-default colors))
    :border-left (if (not (nil? note)) "none" "2px solid black")
    :border-bottom (if (not (nil? note)) "none" "2px solid black")
    :border-right (if (not (nil? note)) "none" "2px solid black")
@@ -109,69 +137,72 @@
    :z-index 2
    :transition "background-color 0.2s ease"})
 
-(def black-key-indicator-style
-  {:width "10px"
-   :height "10px"
+(defclass black-key-indicator []
+  {:width (px 10)
+   :height (px 10)
    :border-radius "50%"
-   :background-color "#f39c12"
-   :margin-top "5px"
+   :background-color (:indicator-black colors)
+   :margin-top (px 5)
    :position "relative"
-   :left "3px"})
+   :left (px 3)})
 
-(def black-key-label-style
+(defclass black-key-label []
   {:position "absolute"
-   :bottom "1px"
-   :left "2px"
+   :bottom (px 1)
+   :left (px 2)
    :right 0
    :text-align "center"
-   :color "#FFF6A3"
-   :font-size "8px"
+   :color (:white-key-default colors)
+   :font-size (px 8)
    :font-weight "bold"})
 
 ;; Octave view styles
-(def octave-view-style
-  {:background-color "#222"
-   :border-radius "5px"
-   :padding "10px"
-   :width "260px"})
+(defclass octave-view []
+  {:background-color (:bg-dark colors)
+   :border-radius (px 5)
+   :padding (px 10)
+   :width (px 260)})
 
-(def keys-container-style
+(defclass keys-container []
   {:position "relative"
-   :height "70px"
-   :margin-top "10px"})
+   :height (px 70)
+   :margin-top (px 10)})
+
+(defclass keys-relative-container []
+  {:position "relative"})
 
 ;; Pressed notes display styles
-(def pressed-notes-container-style
+(defclass pressed-notes-container []
   {:width "auto"
-   :min-width "130px"
-   :min-height "115px"
+   :min-width (px 130)
+   :min-height (px 115)
    :display "flex"
    :justify-content "center"
-   :font-size "12px"
+   :font-size (px 12)
    :align-items "center"
-   :background-color "#f5f5f5"
-   :border "1px solid #ccc"
-   :border-radius "5px"
-   :padding "5px"})
+   :background-color (:bg-light colors)
+   :border (str "1px solid " (:border-light colors))
+   :border-radius (px 5)
+   :padding (px 5)})
 
-(def note-label-style
+(defclass note-label []
   {:font-weight "bold"
-   :color "black"
-   :margin "2px 0"
+   :color (:text-black colors)
+   :margin (str (px 2) " 0")
    :white-space "nowrap"})
 
-(def empty-notes-label-style
-  {:color "#999"})
+(defclass empty-notes-label []
+  {:color (:text-light colors)})
 
 ;; Keyboard configurator styles
-(def configurator-container-style
-  {:background-color "#f5f5f5"
-   :border-radius "8px"
-   :padding "15px"})
+(defclass configurator-container []
+  {:background-color (:bg-light colors)
+   :border-radius (px 8)
+   :padding (px 15)})
 
-(def configurator-title-style
-  {:margin-bottom "5px"})
+(defclass configurator-title []
+  {:margin-bottom (px 5)})
 
-(def section-label-style
+(defclass section-label []
   {:font-weight "bold"
-   :color "black"})
+   :color (:text-black colors)})

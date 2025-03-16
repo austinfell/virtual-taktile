@@ -16,8 +16,7 @@
     [re-com/title
      :src   (at)
      :label (str "Hello from " @name ". This is the Home Page." )
-     :level :level1
-     :class (styles/level1)]))
+     :level :level1]))
 
 (defn link-to-about-page []
   [re-com/hyperlink
