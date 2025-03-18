@@ -155,7 +155,6 @@
 ;; ------------------------------
 ;; Piano Key Components
 ;; ------------------------------
-
 (defn- white-key-component
   "Renders a white key with proper styling.
    - note: The note this key represents
@@ -181,7 +180,7 @@
    - note: The note this key represents
    - position: Horizontal offset in pixels
    - pressed?: Whether this note is currently pressed"
-  [{:keys [note position pressed?]}]
+  [note position pressed?]
     [re-com/box
      :class (styles/black-key pressed? note)
      :style {:left (str position "px")}
@@ -281,9 +280,7 @@
                   (let [pressed? (when (and note @pressed-notes)
                                    ;; For black keys, always just check the note name
                                    (some #(= (:name note) (:name %)) @pressed-notes))]
-                    [black-key-component {:note note
-                                          :position position
-                                          :pressed? pressed?}]))
+                    [black-key-component note position pressed?]))
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
