@@ -4,8 +4,10 @@
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
             [ring.util.response :refer [response created not-found]]
+            [ring.adapter.jetty9 :as j]
             [datomic.api :as d]
             [vtakt-server.operations :as ops]
+            [vtakt-server.schema :as s]
             [clojure.walk :as walk]))
 
 
@@ -164,22 +166,32 @@
 
 ;; ----- Server -----
 
-(defn start-server
-  "Start the API server with the given database connection"
-  [conn options]
-  (let [app (create-routes conn)
-        server (org.eclipse.jetty.server.Server. (:port options))
-        servlet (org.eclipse.jetty.servlet.ServletContextHandler. server "/")
-        holder (org.eclipse.jetty.servlet.ServletHolder.
-                (ring.util.servlet/servlet app))]
-    (.addServlet servlet holder "/*")
-    (.start server)
-    (println (str "Server started on port " (:port options)))
-    server))
+(def cli-options
+  [["-p" "--port PORT" "Port number"
+    :default 3000
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+   ["-d" "--database URI" "Datomic database URI"
+    :default ""]
+   ["-h" "--help"]])
 
-(defn stop-server
-  "Stop the API server"
-  [server]
-  (.stop server)
-  (println "Server stopped"))
+(defn usage [options-summary]
+  (->> ["VTakt Project Server"
+        ""
+        "Usage: lein run [options]"
+        ""
+        "Options:"
+        options-summary]
+       (clojure.string/join \newline)))
+
+(def s (let [db-uri "datomic:mem://vtakt"
+     conn (if (d/create-database db-uri)
+            (let [new-conn (d/connect db-uri)]
+              (schema/install-schema new-conn)
+              new-conn)
+            (d/connect db-uri))
+     server (api/start-server conn {:port (:port options)})]
+  server
+      ))
+
 
