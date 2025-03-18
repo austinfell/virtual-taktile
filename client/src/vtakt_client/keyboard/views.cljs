@@ -113,6 +113,7 @@
             combined-options (concat pinned sorted-regular)]
         [re-com/single-dropdown
          :src (at)
+         :class (styles/dropdown)
          :choices (mapv (fn [v] {:id (first v)}) (into [] combined-options))
          :model selected
          :width width
@@ -236,13 +237,16 @@
         white-notes (:bottom (kb/rows @keyboard))
         black-notes (:top (kb/rows @keyboard))
 
-        potential-black-keys (map vector
-                                  (rest black-notes)
-                                  [0 1 2 3 4 5 6]
-                                  white-notes)
+        octave-notes (take 12 (filter #(kb/natural-note? %)
+                                      (iterate #(kb/shift-note % :up)
+                                               (kb/transpose-note @keyboard-root 1))))
 
         ;; Create a sequence of [note position-index] for black keys
-        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2))) potential-black-keys)]
+        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
+                              (map vector
+                                (rest black-notes)
+                                [1 2 3 4 5 6 7]
+                                octave-notes))]
     [re-com/box
      :class (styles/octave-view)
      :child
