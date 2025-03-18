@@ -175,27 +175,25 @@
              :class (styles/white-key-label note)
              :child (if note (kb/format-note (:name note)) "")]]]])
 
-(defn- black-key-component
+(defn black-key-component
   "Renders a black key with proper styling.
    - note: The note this key represents
-   - position: Horizontal offset in pixels
    - pressed?: Whether this note is currently pressed"
-  [note position pressed?]
-    [re-com/box
-     :class (styles/black-key pressed? note)
-     :style {:left (str position "px")}
-     :child [re-com/v-box
-             :justify :start
-             :align :center
-             :style {:height "100%"}
-             :children
-             [(when pressed?
-                [re-com/box
-                 :class (styles/black-key-indicator)
-                 :child ""])
+  [note pressed?]
+  [re-com/box
+   :class (styles/black-key pressed? note)
+   :child [re-com/v-box
+           :justify :start
+           :align :center
+           :style {:height "100%"}
+           :children
+           [(when pressed?
               [re-com/box
-               :class (styles/black-key-label)
-               :child (if note (kb/format-note (:name note)) "")]]]])
+               :class (styles/black-key-indicator)
+               :child ""])
+            [re-com/box
+             :class (styles/black-key-label)
+             :child (if note (kb/format-note (:name note)) "")]]]])
 
 ;; ------------------------------
 ;; Keyboard UI Components
@@ -232,20 +230,22 @@
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
         selected-chord (re-frame/subscribe [::subs/selected-chord])
-        octave-notes (take 12 (filter #(kb/natural-note? %)
-                              (iterate #(kb/shift-note % :up)
-                                       (kb/transpose-note @keyboard-root 1))))
         chord-mode? (not= @selected-chord :off)
 
         ;; Extract white and black notes
         white-notes (:bottom (kb/rows @keyboard))
         black-notes (:top (kb/rows @keyboard))
 
-        ;; Create a sequence of [note position] for black keys
+        ;; Get the 
+        octave-notes (take 7 (filter #(kb/natural-note? %)
+                                      (iterate #(kb/shift-note % :up)
+                                               (kb/transpose-note @keyboard-root 1))))
+
+        ;; Create a sequence of [note position-index] for black keys
         black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
-                            (map vector
+                              (map vector
                                 (rest black-notes)
-                                [19 47 75 103 131 159 187]
+                                [1 2 3 4 5 6 7]
                                 octave-notes))]
     [re-com/box
      :class (styles/octave-view)
@@ -275,12 +275,14 @@
                 (range)
                 white-notes)
 
-          ;; Then place black keys as overlay
-          (mapv (fn [[note position]]
+          ;; Then place black keys as overlay with class-based positioning
+          (mapv (fn [[note position-index]]
                   (let [pressed? (when (and note @pressed-notes)
                                    ;; For black keys, always just check the note name
                                    (some #(= (:name note) (:name %)) @pressed-notes))]
-                    [black-key-component note position pressed?]))
+                    [re-com/box
+                     :class (styles/black-key-position position-index)
+                     :child [black-key-component note pressed?]]))
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
