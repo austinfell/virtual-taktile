@@ -246,7 +246,7 @@
         black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
                             (map vector
                                 (rest black-notes)
-                                [21 51 82 111 141 171 202]
+                                [19 47 75 103 131 159 187]
                                 octave-notes))]
     [re-com/box
      :class (styles/octave-view)

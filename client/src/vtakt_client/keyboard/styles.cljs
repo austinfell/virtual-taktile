@@ -5,24 +5,23 @@
    [garden.units :refer [px]]
    [garden.color :as color]))
 
-;; Color constants
 (def colors
-  {:white-key-default "#FFF6A3"
-   :white-key-pressed "#FFD700"
-   :black-key-default "#333"
-   :black-key-pressed "#8c44ad"
-   :indicator-white "#d35400"
-   :indicator-black "#f39c12"
-   :chromatic-active "#4a86e8"
-   :inactive "#f0f0f0"
-   :border-light "#ccc"
-   :border-dark "#bbbbbb"
+  {:white-key-default "#FFFFFF"
+   :white-key-pressed "#E6F0FA"
+   :black-key-default "#282828"
+   :black-key-pressed "#404040"
+   :indicator-white "#3498db"
+   :indicator-black "#2980b9"
+   :chromatic-active "#34495e"
+   :inactive "#f8f9fa"
+   :border-light "#e0e0e0"
+   :border-dark "#d0d0d0"
    :text-dark "#333333"
-   :text-black "black"
-   :text-white "white"
-   :text-light "#999"
-   :bg-light "#f5f5f5"
-   :bg-dark "#222"})
+   :text-black "#000000"
+   :text-white "#ffffff"
+   :text-light "#7f8c8d"
+   :bg-light "#f9f9f9"
+   :bg-dark "#1e1e1e"})
 
 ;; Button styles
 (defclass seq-button []
@@ -83,8 +82,6 @@
   {:border (str "1px solid " (:border-light colors))
    :border-radius (px 4)
    :overflow "hidden"
-   :width (px 200)
-   :height (px 36)
    :cursor "pointer"})
 
 (defclass mode-option [active?]
@@ -98,6 +95,7 @@
 ;; Piano key styles
 (defclass white-key [pressed? chord-mode? idx]
   {:width (px 28)
+   :border-right "1px solid black"
    :height (px 60)
    :background (if (and pressed? (or (not chord-mode?) (not= idx 7))) 
                  (:white-key-pressed colors) 
@@ -108,13 +106,14 @@
    :transition "background-color 0.2s ease"})
 
 (defclass white-key-indicator []
-  {:width (px 12)
-   :height (px 12)
+  {:width (px 10)
+   :height (px 10)
    :border-radius "50%"
+   :z-index 999
    :background-color (:indicator-white colors)
    :margin-bottom (px 15)
    :position "relative"
-   :left (px 7)})
+   :left (px 8)})
 
 (defclass white-key-label [note]
   {:position "absolute"
@@ -160,8 +159,8 @@
 (defclass octave-view []
   {:background-color (:bg-dark colors)
    :border-radius (px 5)
-   :padding (px 10)
-   :width (px 260)})
+   :padding-left (px 10)
+   :width (px 245)})
 
 (defclass keys-container []
   {:position "relative"
@@ -169,7 +168,8 @@
    :margin-top (px 10)})
 
 (defclass keys-relative-container []
-  {:position "relative"})
+  {:position "relative"
+   :padding-right (px 0)})
 
 ;; Pressed notes display styles
 (defclass pressed-notes-container []
