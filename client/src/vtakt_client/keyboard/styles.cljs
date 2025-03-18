@@ -138,13 +138,13 @@
 
 ;; Black key position classes
 (defclass black-key-position [position-index]
-  (let [positions {1 (px 19)
-                   2 (px 47)
-                   3 (px 75)
-                   4 (px 103)
-                   5 (px 131)
-                   6 (px 159)
-                   7 (px 187)}
+  (let [positions {0 (px 19)
+                   1 (px 47)
+                   2 (px 75)
+                   3 (px 103)
+                   4 (px 131)
+                   5 (px 159)
+                   6 (px 187)}
         position-value (get positions position-index (px 0))]
     {:position "absolute"
      :left position-value}))

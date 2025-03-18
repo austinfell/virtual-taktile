@@ -236,17 +236,13 @@
         white-notes (:bottom (kb/rows @keyboard))
         black-notes (:top (kb/rows @keyboard))
 
-        ;; Get the 
-        octave-notes (take 7 (filter #(kb/natural-note? %)
-                                      (iterate #(kb/shift-note % :up)
-                                               (kb/transpose-note @keyboard-root 1))))
+        potential-black-keys (map vector
+                                  (rest black-notes)
+                                  [0 1 2 3 4 5 6]
+                                  white-notes)
 
         ;; Create a sequence of [note position-index] for black keys
-        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
-                              (map vector
-                                (rest black-notes)
-                                [1 2 3 4 5 6 7]
-                                octave-notes))]
+        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2))) potential-black-keys)]
     [re-com/box
      :class (styles/octave-view)
      :child
