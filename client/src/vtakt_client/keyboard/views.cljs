@@ -181,12 +181,6 @@
                             (styles/black-key-label))
                    :child (if note (kb/format-note (:name note)) "")]]]]))))
 
-(defn- white-key [note pressed?]
-  [piano-key note pressed? :white])
-
-(defn- black-key [note pressed?]
-  [piano-key note pressed? :black])
-
 ;; ------------------------------
 ;; Keyboard UI Components
 ;; ------------------------------
@@ -266,7 +260,7 @@
          ;; First place white keys as base layer
          (concat
           (mapv (fn [idx note]
-                  [white-key note (is-note-pressed? note idx)])
+                  [piano-key note (is-note-pressed? note idx) :white])
                 (range)
                 white-notes)
 
@@ -277,7 +271,7 @@
                                    (some #(= (:name note) (:name %)) @pressed-notes))]
                     [re-com/box
                      :class (styles/black-key-position position-index)
-                     :child [black-key note pressed?]]))
+                     :child [piano-key note pressed? :black]]))
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
