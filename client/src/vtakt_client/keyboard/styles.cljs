@@ -66,7 +66,6 @@
 (defclass increment-value-box []
   {:width (px 38)
    :text-align "center"
-   :font-weight "bold"
    :display "flex"
    :align-items "center"
    :justify-content "center"
@@ -93,12 +92,12 @@
    :transition "all 0.2s ease"})
 
 ;; Piano key styles
-(defclass white-key [pressed? chord-mode? idx]
+(defclass white-key [pressed?]
   {:width (px 28)
    :border-right "1px solid black"
    :height (px 60)
-   :background (if (and pressed? (or (not chord-mode?) (not= idx 7))) 
-                 (:white-key-pressed colors) 
+   :background (if pressed?
+                 (:white-key-pressed colors)
                  (:white-key-default colors))
    :margin (str "0 " (px 1))
    :position "relative"
@@ -125,13 +124,10 @@
    :font-size (px 10)
    :font-weight "bold"})
 
-(defclass black-key [pressed? note]
+(defclass black-key [pressed?]
   {:width (px 16)
    :height (px 40)
    :background (if pressed? (:black-key-pressed colors) (:black-key-default colors))
-   :border-left (if (not (nil? note)) "none" "2px solid black")
-   :border-bottom (if (not (nil? note)) "none" "2px solid black")
-   :border-right (if (not (nil? note)) "none" "2px solid black")
    :position "absolute"
    :z-index 2
    :transition "background-color 0.2s ease"})
@@ -199,8 +195,7 @@
    :padding (px 5)})
 
 (defclass note-label []
-  {:font-weight "bold"
-   :color (:text-black colors)
+  {:color (:text-black colors)
    :margin (str (px 2) " 0")
    :white-space "nowrap"})
 
@@ -222,4 +217,3 @@
 
 (defclass dropdown []
   {:color "black"})
-

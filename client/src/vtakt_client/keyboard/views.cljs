@@ -68,7 +68,7 @@
 
 (def root-note-control
   (make-increment-control
-   :label "Root Note"
+   :label "Root"
    :dec-event [::events/dec-keyboard-root]
    :inc-event [::events/inc-keyboard-root]
    :render-fn kb/format-root-note
@@ -156,45 +156,36 @@
 ;; ------------------------------
 ;; Piano Key Components
 ;; ------------------------------
-(defn- white-key-component
-  "Renders a white key with proper styling.
-   - note: The note this key represents
-   - pressed?: Whether this note is currently pressed"
-  [note idx pressed? chord-mode?]
-  [re-com/box
-   :class (styles/white-key pressed? chord-mode? idx)
-   :child [re-com/v-box
-           :justify :end
-           :align :center
-           :style {:height "100%"}
-           :children
-           [(when (and pressed? (or (not chord-mode?) (not= idx 7)))
-              [re-com/box
-               :class (styles/white-key-indicator)
-               :child ""])
-            [re-com/box
-             :class (styles/white-key-label note)
-             :child (if note (kb/format-note (:name note)) "")]]]])
+(def piano-key
+  (memoize
+    (fn [note pressed? key-type]
+      (let [is-white? (= key-type :white)]
+        [re-com/box
+         :class (if is-white?
+                  (styles/white-key pressed?)
+                  (styles/black-key pressed?))
+         :child [re-com/v-box
+                 :justify (if is-white? :end :start)
+                 :align :center
+                 :style {:height "100%"}
+                 :children
+                 [(when pressed?
+                    [re-com/box
+                     :class (if is-white?
+                              (styles/white-key-indicator)
+                              (styles/black-key-indicator))
+                     :child ""])
+                  [re-com/box
+                   :class (if is-white?
+                            (styles/white-key-label note)
+                            (styles/black-key-label))
+                   :child (if note (kb/format-note (:name note)) "")]]]]))))
 
-(defn black-key-component
-  "Renders a black key with proper styling.
-   - note: The note this key represents
-   - pressed?: Whether this note is currently pressed"
-  [note pressed?]
-  [re-com/box
-   :class (styles/black-key pressed? note)
-   :child [re-com/v-box
-           :justify :start
-           :align :center
-           :style {:height "100%"}
-           :children
-           [(when pressed?
-              [re-com/box
-               :class (styles/black-key-indicator)
-               :child ""])
-            [re-com/box
-             :class (styles/black-key-label)
-             :child (if note (kb/format-note (:name note)) "")]]]])
+(defn- white-key [note pressed?]
+  [piano-key note pressed? :white])
+
+(defn- black-key [note pressed?]
+  [piano-key note pressed? :black])
 
 ;; ------------------------------
 ;; Keyboard UI Components
@@ -241,6 +232,18 @@
                                       (iterate #(kb/shift-note % :up)
                                                (kb/transpose-note @keyboard-root 1))))
 
+        ;; Determine if a note is pressed, with special handling for idx 7 in chord mode
+        is-note-pressed? (fn [note idx]
+                           (when (and note @pressed-notes)
+                             (if chord-mode?
+                               ;; In chord mode, check note name and handle special case for idx 7
+                               (and (some #(= (:name note) (:name %)) @pressed-notes)
+                                    (or (not= idx 7) (not chord-mode?)))
+                               ;; In normal mode, check exact note (name and octave)
+                               (some #(and (= (:name note) (:name %))
+                                          (= (:octave note) (:octave %)))
+                                     @pressed-notes))))
+
         ;; Create a sequence of [note position-index] for black keys
         black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
                               (map vector
@@ -263,15 +266,7 @@
          ;; First place white keys as base layer
          (concat
           (mapv (fn [idx note]
-                  (let [pressed? (when (and note @pressed-notes)
-                                   (if chord-mode?
-                                     ;; In chord mode, only check note name
-                                     (some #(= (:name note) (:name %)) @pressed-notes)
-                                     ;; In normal mode, check exact note (name and octave)
-                                     (some #(and (= (:name note) (:name %))
-                                                (= (:octave note) (:octave %)))
-                                           @pressed-notes)))]
-                    [white-key-component note idx pressed? chord-mode?]))
+                  [white-key note (is-note-pressed? note idx)])
                 (range)
                 white-notes)
 
@@ -282,7 +277,7 @@
                                    (some #(= (:name note) (:name %)) @pressed-notes))]
                     [re-com/box
                      :class (styles/black-key-position position-index)
-                     :child [black-key-component note pressed?]]))
+                     :child [black-key note pressed?]]))
                 black-key-positions))]]]]]))
 
 (defn pressed-notes-display []
@@ -387,7 +382,7 @@
            :children
            [[re-com/label
              :class (styles/section-label)
-             :label "Root Note"]
+             :label "Root"]
             [root-note-control (:root-note @ck)]]]
           [re-com/v-box
            :gap "10px"
