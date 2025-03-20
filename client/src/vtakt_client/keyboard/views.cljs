@@ -9,7 +9,8 @@
    [vtakt-client.keyboard.styles :as styles]
    [vtakt-client.styles :as app-styles]
    [vtakt-client.routes :as routes]
-   [vtakt-client.utils :as utils]
+   [vtakt-client.utils.core :as uc]
+   [vtakt-client.utils.specs :as us]
    [clojure.spec.alpha :as s]))
 
 ;; ------------------------------
@@ -75,6 +76,9 @@
          (fn [note]
            (and (kb/note-at-or-below? kb/c0-note note)
                 (kb/note-at-or-below? note kb/g9-note)))))
+(s/fdef root-note-control
+  :args (s/cat :value ::root-note-in-range)
+  :ret ::us/reagent-component)
 (def root-note-control
   (make-increment-control
    :label "Root"
@@ -88,7 +92,7 @@
 (s/def ::transpose-value (s/int-in -36 36))
 (s/fdef transpose-control
   :args (s/cat :value ::transpose-value)
-  :ret vector?)
+  :ret ::us/reagent-component)
 (def transpose-control
   (make-increment-control
    :label "Transpose"
@@ -131,7 +135,7 @@
          :model selected
          :width width
          :filter-box? filter-box?
-         :label-fn #(utils/format-keyword (:id %))
+         :label-fn #(uc/format-keyword (:id %))
          :on-change #(re-frame/dispatch [on-change-event %])]))))
 
 (def scale-selector

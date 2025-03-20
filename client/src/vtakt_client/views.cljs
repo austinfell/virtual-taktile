@@ -4,10 +4,8 @@
    [reagent.core :as reagent]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
-   [vtakt-client.styles :as styles]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
-   [vtakt-client.utils :as utils]
    [vtakt-client.subs :as subs]))
 
 ;; home
