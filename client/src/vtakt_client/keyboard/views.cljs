@@ -138,17 +138,31 @@
          :label-fn #(uc/format-keyword (:id %))
          :on-change #(re-frame/dispatch [on-change-event %])]))))
 
+(s/def ::scale-options (s/map-of keyword? (s/coll-of ::kb/chromatic-note :kind sequential?)))
+(s/def ::selected-scale keyword?)
+(s/fdef scale-selector
+  :args (s/cat :options ::scale-options :selected ::selected-scale)
+  :ret ::us/reagent-component)
 (def scale-selector
   (make-dropdown-selector
    ::events/set-scale
    :width "190px"
    :pinned-items #{:chromatic}))
 
+(s/def ::chord-options (s/map-of keyword? (s/map-of ::kb/chromatic-note (s/coll-of ::kb/chromatic-note :kind sequential?))))
+(s/def ::selected-chord keyword?)
+(s/fdef chord-selector
+  :args (s/cat :options ::chord-options :selected ::selected-chord)
+  :ret ::us/reagent-component)
 (def chord-selector
   (make-dropdown-selector
    ::events/set-chord
    :pinned-items #{:off}))
 
+(s/def ::keyboard-mode #{:chromatic :folding})
+(s/fdef keyboard-mode-selector
+  :args (s/cat :current-mode ::keyboard-mode)
+  :ret ::us/reagent-component)
 (defn keyboard-mode-selector
   "A toggle component for switching between chromatic and folding keyboard modes."
   [current-mode]
@@ -173,6 +187,15 @@
 ;; ------------------------------
 ;; Piano Key Components
 ;; ------------------------------
+
+(s/def ::note-or-nil (s/nilable ::kb/note))
+(s/def ::pressed? boolean?)
+(s/def ::key-type #{:white :black})
+(s/fdef piano-key
+  :args (s/cat :note ::note-or-nil
+               :pressed? ::pressed?
+               :key-type ::key-type)
+  :ret ::us/reagent-component)
 (def piano-key
   (memoize
     (fn [note pressed? key-type]
