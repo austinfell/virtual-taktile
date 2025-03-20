@@ -447,79 +447,7 @@
         selected-scale (re-frame/subscribe [::subs/selected-scale])
         available-scales (re-frame/subscribe [::subs/scales])
         scale-root (re-frame/subscribe [::subs/keyboard-root])
-        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])
-        ;; Create a local atom to track pressed keys and their associated notes
-        pressed-keys (reagent/atom {})
-
-        ;; Define the key mappings
-        top-row-keys #{"s" "d" "f" "g" "h" "j" "k" "l"}
-        bottom-row-keys #{"z" "x" "c" "v" "b" "n" "m" ","}
-
-        ;; Helper function to get notes from a key
-        get-notes-for-key (fn [key]
-          (let [top-keys-map {"a" 0, "s" 1, "d" 2, "f" 3, "g" 4, "h" 5, "j" 6, "k" 7}
-                bottom-keys-map {"z" 0, "x" 1, "c" 2, "v" 3, "b" 4, "n" 5, "m" 6, "," 7}
-                top-row-idx (get top-keys-map key -1)
-                bottom-row-idx (get bottom-keys-map key -1)
-                note (cond
-                       (>= top-row-idx 0) (nth (:top (kb/rows @ck)) top-row-idx)
-                       (>= bottom-row-idx 0) (nth (:bottom (kb/rows @ck)) bottom-row-idx)
-                       :else nil)]
-
-            (when note
-              (if (not= @selected-chord :off)
-                (if (= @selected-scale :chromatic)
-                  (kb/build-chord (get-in @available-chords [@selected-chord (:name note)]) (:octave note))
-                  (kb/build-scale-chord (get-in @available-scales [@selected-scale (:name (kb/transpose-note @scale-root @keyboard-transpose))]) note))
-                [note]))))
-
-        ;; Event handler functions
-        update-pressed-notes (fn []
-          (let [all-notes (reduce (fn [notes key-notes]
-                                    (concat notes (val key-notes)))
-                                  []
-                                  @pressed-keys)]
-            ;; Only dispatch if there are notes to press
-            (when (seq all-notes)
-              (re-frame/dispatch [::events/set-pressed-notes all-notes]))))
-
-        handle-key-press (fn [event]
-          (let [key (.toLowerCase (.-key event))]
-            ;; Skip handling if the key is already pressed (to avoid retriggering)
-            (when (and (or (contains? top-row-keys key)
-                           (contains? bottom-row-keys key))
-                       (not (contains? @pressed-keys key)))
-              (let [notes (get-notes-for-key key)]
-                (when (seq notes)
-                  ;; Store the notes associated with this key
-                  (if (= @selected-chord :off)
-                    (swap! pressed-keys assoc key notes)
-                    (reset! pressed-keys {key notes}))
-                  ;; Update all currently pressed notes
-                  (update-pressed-notes))))))
-
-        handle-key-release (fn [event]
-          (let [key (.toLowerCase (.-key event))]
-            (when (contains? @pressed-keys key)
-              ;; Remove this key from pressed keys
-              (swap! pressed-keys dissoc key)
-              ;; If no keys are pressed, clear all notes
-              (if (empty? @pressed-keys)
-                (re-frame/dispatch [::events/clear-pressed-notes])
-                ;; Otherwise update with remaining pressed notes
-                (update-pressed-notes)))))]
-
-    ;; Component lifecycle with event handlers
-    (reagent/create-class
-     {:component-did-mount
-      (fn []
-        (.addEventListener js/document "keydown" handle-key-press)
-        (.addEventListener js/document "keyup" handle-key-release))
-
-      :component-will-unmount
-      (fn []
-        (.removeEventListener js/document "keydown" handle-key-press)
-        (.removeEventListener js/document "keyup" handle-key-release))
+        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])]
 
       :reagent-render
       (fn []
@@ -551,4 +479,4 @@
                                       (repeat @selected-scale)
                                       (repeat @available-scales)
                                       (repeat @scale-root)
-                                      (repeat @keyboard-transpose)))]]]])})))
+                                      (repeat @keyboard-transpose)))]]]])))
