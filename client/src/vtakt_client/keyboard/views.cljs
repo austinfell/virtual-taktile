@@ -71,6 +71,7 @@
                         (re-frame/dispatch (conj inc-event value)))]
          ]]))))
 
+;; Root note control
 (s/def ::root-note-in-range
   (s/and ::kb/note
          (fn [note]
@@ -89,6 +90,7 @@
    :max-value kb/g9-note
    :at-or-below-fn kb/note-at-or-below?))
 
+;; Transpose control
 (s/def ::transpose-value (s/int-in -36 36))
 (s/fdef transpose-control
   :args (s/cat :value ::transpose-value)
@@ -138,6 +140,7 @@
          :label-fn #(uc/format-keyword (:id %))
          :on-change #(re-frame/dispatch [on-change-event %])]))))
 
+;; Scale selector
 (s/def ::scale-options (s/map-of keyword? (s/coll-of ::kb/chromatic-note :kind sequential?)))
 (s/def ::selected-scale keyword?)
 (s/fdef scale-selector
@@ -149,6 +152,7 @@
    :width "190px"
    :pinned-items #{:chromatic}))
 
+;; Chord selector
 (s/def ::chord-options (s/map-of keyword? (s/map-of ::kb/chromatic-note (s/coll-of ::kb/chromatic-note :kind sequential?))))
 (s/def ::selected-chord keyword?)
 (s/fdef chord-selector
@@ -159,6 +163,7 @@
    ::events/set-chord
    :pinned-items #{:off}))
 
+;; Keyboard mode selector.
 (s/def ::keyboard-mode #{:chromatic :folding})
 (s/fdef keyboard-mode-selector
   :args (s/cat :current-mode ::keyboard-mode)
