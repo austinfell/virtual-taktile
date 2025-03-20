@@ -9,11 +9,13 @@
    [vtakt-client.keyboard.styles :as styles]
    [vtakt-client.styles :as app-styles]
    [vtakt-client.routes :as routes]
-   [vtakt-client.utils :as utils]))
+   [vtakt-client.utils :as utils]
+   [clojure.spec.alpha :as s]))
 
 ;; ------------------------------
 ;; Control Components
 ;; ------------------------------
+
 (defn- make-increment-control
   "Higher-order function that creates increment/decrement controls with consistent styling.
    Returns a memoized component function that accepts a complex value to display.
@@ -28,7 +30,9 @@
                      (returns true when first <= second in conventional terms)
                      This determines when decrement button should be disabled
    Returns:
-   A memoized function component that takes a value and renders an increment control"
+   A memoized function component that takes a value and renders an increment control
+
+   Sufficiently generic that I do not think this is worth spec-ing out."
   [& {:keys [label dec-event inc-event render-fn min-value max-value
              at-or-below-fn]
       :or {render-fn str
@@ -66,6 +70,11 @@
                         (re-frame/dispatch (conj inc-event value)))]
          ]]))))
 
+(s/def ::root-note-in-range
+  (s/and ::kb/note
+         (fn [note]
+           (and (kb/note-at-or-below? kb/c0-note note)
+                (kb/note-at-or-below? note kb/g9-note)))))
 (def root-note-control
   (make-increment-control
    :label "Root"
@@ -76,6 +85,10 @@
    :max-value kb/g9-note
    :at-or-below-fn kb/note-at-or-below?))
 
+(s/def ::transpose-value (s/int-in -36 36))
+(s/fdef transpose-control
+  :args (s/cat :value ::transpose-value)
+  :ret vector?)
 (def transpose-control
   (make-increment-control
    :label "Transpose"
