@@ -313,6 +313,7 @@
 
 (defn- prepare-black-key-positions
   "Prepares the positioning data for black keys.
+
    Parameters:
    - black-notes: Collection of black notes from the keyboard
    - keyboard-root: The root note of the keyboard"
@@ -326,6 +327,9 @@
                  [1 2 3 4 5 6 7]
                  octave-notes))))
 
+(s/fdef octave-view
+  :args (s/cat)
+  :ret ::us/reagent-component)
 (defn octave-view
   "Renders a piano-like octave view showing which notes are in the current scale."
   []
@@ -335,10 +339,8 @@
         selected-chord (re-frame/subscribe [::subs/selected-chord])
         chord-mode? (not= @selected-chord :off)]
     (fn []
-      (let [;; Extract white and black notes
-            white-notes (:bottom (kb/rows @keyboard))
+      (let [white-notes (:bottom (kb/rows @keyboard))
             black-notes (:top (kb/rows @keyboard))
-            ;; Prepare the black key positions
             black-key-positions (prepare-black-key-positions black-notes @keyboard-root)]
         [re-com/box
          :class (styles/octave-view)
@@ -352,7 +354,6 @@
             [re-com/h-box
              :class (styles/keys-relative-container)
              :children
-             ;; Combine white and black key layers
              (concat
               (white-keys-layer white-notes @pressed-notes chord-mode?)
               (black-keys-layer black-key-positions @pressed-notes))]]]]]))))
@@ -386,6 +387,9 @@
      :class (styles/empty-notes-label)
      :label "No notes"]]])
 
+(s/fdef pressed-notes-display
+  :args (s/cat)
+  :ret ::us/reagent-component)
 (defn pressed-notes-display
   "Displays currently pressed notes in columns of up to 4 notes each.
    Shows an empty state message when no notes are pressed."
@@ -410,11 +414,6 @@
 ;; Main Components
 ;; ------------------------------
 (defn- control-section
-  "A reusable section component for the keyboard configurator.
-
-   Parameters:
-   - label: Text label for the section
-   - content: Child component(s) to display in the section"
   [label content]
   [re-com/v-box
    :gap "10px"
@@ -424,7 +423,48 @@
      :label label]
     content]])
 
-(defn keyboard-configurator []
+(s/fdef keyboard-configurator
+  :args (s/cat)
+  :ret ::us/reagent-component)
+(defn keyboard-configurator
+  "A comprehensive configuration panel for the musical keyboard interface.
+
+  This component provides a complete user interface for controlling and configuring
+  the keyboard's behavior, including:
+
+  - Real-time display of currently pressed notes
+  - Visual octave representation showing scale notes
+  - Keyboard mode selection (chromatic or folding)
+  - Scale selection with support for multiple musical scales
+  - Root note control with semitone adjustment
+  - Chord selection with various chord types
+  - Transposition control to shift played notes
+
+  The configurator is organized into two main rows of controls:
+  1. Display controls (Notes, Octave Display, Keyboard Mode)
+  2. Musical theory controls (Scale, Root, Chord, Transpose)
+
+  Each control is rendered within a standardized section layout for visual consistency.
+
+  This component subscribes to multiple re-frame subscriptions to maintain its state:
+  - ::subs/keyboard - The current keyboard state
+  - ::subs/keyboard-transpose - Current transposition value
+  - ::subs/keyboard-mode - Current keyboard mode (chromatic or folding)
+  - ::subs/selected-chord - Currently selected chord
+  - ::subs/chords - Available chord options
+  - ::subs/selected-scale - Currently selected scale
+  - ::subs/scales - Available scale options
+
+  Returns:
+    A Reagent component rendering the complete configuration interface.
+
+  Example usage:
+    [keyboard-configurator]
+
+  See also:
+    control-section, pressed-notes-display, octave-view, keyboard-mode-selector,
+    scale-selector, root-note-control, chord-selector, transpose-control"
+  []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
         keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])
@@ -457,7 +497,50 @@
           [control-section "Chord" [chord-selector @available-chords @selected-chord]]
           [control-section "Transpose" [transpose-control @transpose]]]]]])))
 
-(defn keyboard []
+(s/fdef keyboard
+  :args (s/cat)
+  :ret ::us/reagent-component)
+(defn keyboard
+  "Renders an interactive musical keyboard interface with trigger buttons arranged in two rows.
+
+  This component creates a virtual keyboard consisting of two rows of notes that users
+  can interact with to trigger musical notes and chords. The keyboard layout is determined
+  by the current keyboard state (either chromatic or folding), which includes information
+  about note arrangement, active scales, and other musical parameters.
+
+  The keyboard uses the following structure:
+  - A top row of buttons representing the first 8 positions (1-8)
+  - A bottom row of buttons representing the next 8 positions (9-16)
+
+  Each position renders a note-trigger component that:
+  - Displays the position number
+  - Shows special styling for measure starts (positions 1, 5, 9, 13)
+  - Enables playing notes when clicked
+  - Indicates when a position has no associated note
+
+  The component subscribes to:
+  - ::subs/keyboard - The current keyboard state with full note arrangement
+
+  The actual notes played depend on several factors:
+  - Current keyboard mode (chromatic or folding)
+  - Selected scale
+  - Root note
+  - Transposition value
+  - Chord settings
+
+  Notes are displayed differently in each keyboard mode:
+  - Chromatic: Natural notes on bottom row, accidentals (sharps/flats) on top row
+  - Folding: Sequential notes arranged to optimize playability
+
+  Returns:
+    A Reagent component rendering the interactive keyboard interface.
+
+  Example usage:
+    [keyboard]
+
+  See also:
+    note-trigger, keyboard-configurator, kb/rows"
+  []
   (let [ck (re-frame/subscribe [::subs/keyboard])]
     (fn []
       (let [keyboard-rows (kb/rows @ck)
