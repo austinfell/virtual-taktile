@@ -328,46 +328,73 @@
                      :child [piano-key note pressed? :black]]))
                 black-key-positions))]]]]]))
 
-(defn pressed-notes-display []
-  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])
-        ;; Group notes into columns of max 4 items
-        grouped-notes (fn [notes]
-                        (partition-all 4 notes))]
-    [re-com/box
-     :class (styles/pressed-notes-container)
-     :child
-     (if (seq @pressed-notes)
-       [re-com/h-box
-        :align :center
-        :justify :center
-        :gap "10px"
-        :children
-        (doall
-          (for [column (grouped-notes @pressed-notes)]
+(defn- note-column
+  "Renders a column of note labels.
+
+   Parameters:
+   - notes: A sequence of note maps to display in this column"
+  [notes]
+  [re-com/v-box
+   :align :center
+   :justify :center
+   :gap "5px"
+   :children
+   (for [note notes]
+     ^{:key (str (hash note))}
+     [re-com/label
+      :class (styles/note-label)
+      :label (kb/format-root-note note)])])
+
+(defn- empty-state
+  "Renders the empty state when no notes are pressed."
+  []
+  [re-com/v-box
+   :align :center
+   :justify :center
+   :height "100%"
+   :children
+   [[re-com/label
+     :class (styles/empty-notes-label)
+     :label "No notes"]]])
+
+(defn pressed-notes-display
+  "Displays currently pressed notes in columns of up to 4 notes each.
+   Shows an empty state message when no notes are pressed."
+  []
+  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])]
+    (fn []
+      [re-com/box
+       :class (styles/pressed-notes-container)
+       :child
+       (if (seq @pressed-notes)
+         [re-com/h-box
+          :align :center
+          :justify :center
+          :gap "10px"
+          :children
+          (for [column (partition-all 4 @pressed-notes)]
             ^{:key (str "col-" (hash (first column)))}
-            [re-com/v-box
-             :align :center
-             :justify :center
-             :gap "5px"
-             :children
-             (doall
-               (for [note column]
-                 ^{:key (str (hash note))}
-                 [re-com/label
-                  :class (styles/note-label)
-                  :label (kb/format-root-note note)]))]))]
-       [re-com/v-box
-        :align :center
-        :justify :center
-        :style {:height "100%"}
-        :children
-        [[re-com/label
-          :class (styles/empty-notes-label)
-          :label "No notes"]]])]))
+            [note-column column])]
+         [empty-state])])))
 
 ;; ------------------------------
 ;; Main Components
 ;; ------------------------------
+(defn- control-section
+  "A reusable section component for the keyboard configurator.
+
+   Parameters:
+   - label: Text label for the section
+   - content: Child component(s) to display in the section"
+  [label content]
+  [re-com/v-box
+   :gap "10px"
+   :children
+   [[re-com/label
+     :class (styles/section-label)
+     :label label]
+    content]])
+
 (defn keyboard-configurator []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
@@ -389,64 +416,17 @@
          :gap "20px"
          :align :center
          :children
-         [
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Notes"]
-            [pressed-notes-display]]]
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Octave Display"]
-            [octave-view]]]
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Keyboard Mode"]
-            [keyboard-mode-selector @keyboard-mode]]]
-          ]
-         ]
+         [[control-section "Notes" [pressed-notes-display]]
+          [control-section "Octave Display" [octave-view]]
+          [control-section "Keyboard Mode" [keyboard-mode-selector @keyboard-mode]]]]
         [re-com/h-box
          :gap "20px"
          :align :center
          :children
-         [
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Scale"]
-            [scale-selector @available-scales @selected-scale]]]
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Root"]
-            [root-note-control (:root-note @ck)]]]
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Chord"]
-            [chord-selector @available-chords @selected-chord]]]
-          [re-com/v-box
-           :gap "10px"
-           :children
-           [[re-com/label
-             :class (styles/section-label)
-             :label "Transpose"]
-            [transpose-control @transpose]]]
-         ]]]])))
+         [[control-section "Scale" [scale-selector @available-scales @selected-scale]]
+          [control-section "Root" [root-note-control (:root-note @ck)]]
+          [control-section "Chord" [chord-selector @available-chords @selected-chord]]
+          [control-section "Transpose" [transpose-control @transpose]]]]]])))
 
 (defn keyboard []
   (let [ck (re-frame/subscribe [::subs/keyboard])]
