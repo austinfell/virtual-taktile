@@ -165,33 +165,19 @@
       (wrap-defaults api-defaults)))
 
 ;; ----- Server -----
+;; Create our handler with middleware
 
-(def cli-options
-  [["-p" "--port PORT" "Port number"
-    :default 3000
-    :parse-fn #(Integer/parseInt %)
-    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
-   ["-d" "--database URI" "Datomic database URI"
-    :default ""]
-   ["-h" "--help"]])
+(def app
+  (wrap-defaults (create-routes (if (d/create-database "datomic:mem://digitone")
+                                  (let [new-conn (d/connect "datomic:mem://digitone")]
+                                    (s/install-schema new-conn)
+                                    new-conn)
+                                  (d/connect "datomic:mem://digitone"))) api-defaults))
 
-(defn usage [options-summary]
-  (->> ["VTakt Project Server"
-        ""
-        "Usage: lein run [options]"
-        ""
-        "Options:"
-        options-summary]
-       (clojure.string/join \newline)))
+;; Function to start the server
+(defn start-server [port]
+  (j/run-jetty app {:port port :join? false}))
 
-(def s (let [db-uri "datomic:mem://vtakt"
-     conn (if (d/create-database db-uri)
-            (let [new-conn (d/connect db-uri)]
-              (schema/install-schema new-conn)
-              new-conn)
-            (d/connect db-uri))
-     server (api/start-server conn {:port (:port options)})]
-  server
-      ))
+(start-server 8080)
 
 

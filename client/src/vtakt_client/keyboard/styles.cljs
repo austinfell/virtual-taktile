@@ -24,7 +24,7 @@
    :bg-dark "#1e1e1e"})
 
 ;; Button styles
-(defclass seq-button []
+(defclass note-trigger-button []
   {:width (px 30)
    :display "flex"
    :align-items "center"
@@ -33,9 +33,13 @@
    :text-decoration "underline solid black 1px"
    :height (px 40)})
 
-(defclass seq-button-number [n]
-  (when (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
-    {:text-decoration "none"}))
+;; Active state style (when there's a note)
+(defclass note-trigger-active []
+  {:color "blue"})
+
+;; Inactive state style (when there's no note)
+(defclass note-trigger-inactive []
+  {:color "black"})
 
 (defclass seq-number-container []
   {:display "flex"

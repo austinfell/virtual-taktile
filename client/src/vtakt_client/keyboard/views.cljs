@@ -230,29 +230,38 @@
 ;; Keyboard UI Components
 ;; ------------------------------
 
-(defn seq-btn
-  "Button component for sequencer keys"
-  [n note chord chords scale scales keyboard-root keyboard-transpose]
-  [:div
-  {:key (str "seq-btn-" n "-" (when note (str (:name note) (:octave note))))}  ; Add unique key here
-  [re-com/button
-     :attr {
-            :on-mouse-down #(let [notes-to-press
-                                  (if (not= chord :off)
-                                    (if (= scale :chromatic)
-                                      (kb/build-chord (get-in chords [chord (:name note)]) (:octave note))
-                                      (kb/build-scale-chord (get-in scales [scale (:name (kb/transpose-note keyboard-root keyboard-transpose))]) note))
-                                    [note])]
-                              (re-frame/dispatch [::events/set-pressed-notes notes-to-press]))
-            :on-mouse-up #(re-frame/dispatch [::events/clear-pressed-notes])
-            :on-mouse-leave #(re-frame/dispatch [::events/clear-pressed-notes])
-            }
-     :class (styles/seq-button)
-     :style {:color (if (nil? note) "black" "blue")}
-     :label (if (and (not= n 1) (not= n 5) (not= n 9) (not= n 13))
-              (str n)
-              [:div {:class (styles/seq-number-container)}
-               [:p {:class (styles/seq-number)} (str n)]])]])
+(defn- note-trigger-impl
+  [position note]
+  (let [is-measure-start? (contains? #{1 5 9 13} position)
+        has-note? (some? note)]
+    [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
+     [re-com/button
+      :attr {:on-mouse-down #(when note (re-frame/dispatch [::events/trigger-note note]))
+             :on-mouse-up #(re-frame/dispatch [::events/clear-pressed-notes])
+             :on-mouse-leave #(re-frame/dispatch [::events/clear-pressed-notes])}
+      :class (str (styles/note-trigger-button) " "
+                  (if has-note?
+                    (styles/note-trigger-active)
+                    (styles/note-trigger-inactive)))
+      :label (if is-measure-start?
+               [:div {:class (styles/seq-number-container)}
+                [:p {:class (styles/seq-number)} (str position)]]
+               (str position))]]))
+
+(s/def ::keyboard-position (s/int-in 1 17))
+(s/def ::note-or-nil (s/nilable ::kb/note))
+(s/fdef note-trigger
+  :args (s/cat :position ::keyboard-position
+               :note ::note-or-nil)
+  :ret ::us/reagent-component)
+(def note-trigger
+  "A button component that triggers a note or chord when pressed.
+   Parameters:
+   - position: The position number in the keyboard layout (1-16)
+   - note: The note data to be played or nil if no note at this position
+
+   This component is memoized for performance when re-rendering with the same props."
+  (memoize note-trigger-impl))
 
 (defn octave-view
   "Renders a piano-like octave view showing which notes are in the current scale."
@@ -440,43 +449,21 @@
          ]]]])))
 
 (defn keyboard []
-  (let [ck (re-frame/subscribe [::subs/keyboard])
-        transpose (re-frame/subscribe [::subs/keyboard-transpose])
-        selected-chord (re-frame/subscribe [::subs/selected-chord])
-        available-chords (re-frame/subscribe [::subs/chords])
-        selected-scale (re-frame/subscribe [::subs/selected-scale])
-        available-scales (re-frame/subscribe [::subs/scales])
-        scale-root (re-frame/subscribe [::subs/keyboard-root])
-        keyboard-transpose (re-frame/subscribe [::subs/keyboard-transpose])]
-
-      :reagent-render
-      (fn []
+  (let [ck (re-frame/subscribe [::subs/keyboard])]
+    (fn []
+      (let [keyboard-rows (kb/rows @ck)
+            top-row (:top keyboard-rows)
+            bottom-row (:bottom keyboard-rows)]
         [re-com/v-box
          :justify :center
          :children [[re-com/h-box
-                     :children [(map-indexed
-                                 (fn [idx [n note chord chords scale scales keyboard-root keyboard-transpose]]
-                                   (seq-btn n note chord chords scale scales keyboard-root keyboard-transpose))
-                                 (map vector
-                                      (range 1 9)
-                                      (:top (kb/rows @ck))
-                                      (repeat @selected-chord)
-                                      (repeat @available-chords)
-                                      (repeat @selected-scale)
-                                      (repeat @available-scales)
-                                      (repeat @scale-root)
-                                      (repeat @keyboard-transpose)))]
-                     ]
+                     :children (map-indexed
+                                (fn [idx note]
+                                  [note-trigger (inc idx) note])
+                                top-row)]
                     [re-com/h-box
-                     :children [(map-indexed
-                                 (fn [idx [n note chord chords scale scales keyboard-root keyboard-transpose]]
-                                   (seq-btn n note chord chords scale scales keyboard-root keyboard-transpose))
-                                 (map vector
-                                      (range 9 17)
-                                      (:bottom (kb/rows @ck))
-                                      (repeat @selected-chord)
-                                      (repeat @available-chords)
-                                      (repeat @selected-scale)
-                                      (repeat @available-scales)
-                                      (repeat @scale-root)
-                                      (repeat @keyboard-transpose)))]]]])))
+                     :children (map-indexed
+                                (fn [idx note]
+                                  [note-trigger (+ 9 idx) note])
+                                bottom-row)]]]))))
+
