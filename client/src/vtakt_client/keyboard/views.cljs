@@ -263,6 +263,69 @@
    This component is memoized for performance when re-rendering with the same props."
   (memoize note-trigger-impl))
 
+(defn- is-note-pressed?
+  "Determines if a note should be shown as pressed based on the current state.
+
+   Parameters:
+   - note: The note to check
+   - idx: The position index in the keyboard
+   - pressed-notes: Collection of currently pressed notes
+   - chord-mode?: Whether chord mode is active"
+  [note idx pressed-notes chord-mode?]
+  (when (and note pressed-notes)
+    (if chord-mode?
+      ;; In chord mode, check note name and handle special case for idx 7
+      (and (some #(= (:name note) (:name %)) pressed-notes)
+           (or (not= idx 7) (not chord-mode?)))
+      ;; In normal mode, check exact note (name and octave)
+      (some #(and (= (:name note) (:name %))
+                 (= (:octave note) (:octave %)))
+            pressed-notes))))
+
+(defn- white-keys-layer
+  "Renders the white keys of the piano keyboard.
+
+   Parameters:
+   - white-notes: Collection of white notes to display
+   - pressed-notes: Collection of currently pressed notes
+   - chord-mode?: Whether chord mode is active"
+  [white-notes pressed-notes chord-mode?]
+  (mapv (fn [idx note]
+          [piano-key note (is-note-pressed? note idx pressed-notes chord-mode?) :white])
+        (range)
+        white-notes))
+
+(defn- black-keys-layer
+  "Renders the black keys of the piano keyboard as an overlay.
+
+   Parameters:
+   - black-key-positions: Collection of [note position-index octave-note] tuples
+   - pressed-notes: Collection of currently pressed notes"
+  [black-key-positions pressed-notes]
+  (mapv (fn [[note position-index _]]
+          (let [pressed? (when (and note pressed-notes)
+                           ;; For black keys, always just check the note name
+                           (some #(= (:name note) (:name %)) pressed-notes))]
+            [re-com/box
+             :class (styles/black-key-position position-index)
+             :child [piano-key note pressed? :black]]))
+        black-key-positions))
+
+(defn- prepare-black-key-positions
+  "Prepares the positioning data for black keys.
+   Parameters:
+   - black-notes: Collection of black notes from the keyboard
+   - keyboard-root: The root note of the keyboard"
+  [black-notes keyboard-root]
+  (let [octave-notes (take 12 (filter #(kb/natural-note? %)
+                                     (iterate #(kb/shift-note % :up)
+                                              (kb/transpose-note keyboard-root 1))))]
+    (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
+            (map vector
+                 (rest black-notes)
+                 [1 2 3 4 5 6 7]
+                 octave-notes))))
+
 (defn octave-view
   "Renders a piano-like octave view showing which notes are in the current scale."
   []
@@ -270,63 +333,29 @@
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
         selected-chord (re-frame/subscribe [::subs/selected-chord])
-        chord-mode? (not= @selected-chord :off)
-
-        ;; Extract white and black notes
-        white-notes (:bottom (kb/rows @keyboard))
-        black-notes (:top (kb/rows @keyboard))
-
-        octave-notes (take 12 (filter #(kb/natural-note? %)
-                                      (iterate #(kb/shift-note % :up)
-                                               (kb/transpose-note @keyboard-root 1))))
-
-        ;; Determine if a note is pressed, with special handling for idx 7 in chord mode
-        is-note-pressed? (fn [note idx]
-                           (when (and note @pressed-notes)
-                             (if chord-mode?
-                               ;; In chord mode, check note name and handle special case for idx 7
-                               (and (some #(= (:name note) (:name %)) @pressed-notes)
-                                    (or (not= idx 7) (not chord-mode?)))
-                               ;; In normal mode, check exact note (name and octave)
-                               (some #(and (= (:name note) (:name %))
-                                          (= (:octave note) (:octave %)))
-                                     @pressed-notes))))
-
-        ;; Create a sequence of [note position-index] for black keys
-        black-key-positions (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
-                              (map vector
-                                (rest black-notes)
-                                [1 2 3 4 5 6 7]
-                                octave-notes))]
-    [re-com/box
-     :class (styles/octave-view)
-     :child
-     [re-com/v-box
-      :gap "10px"
-      :children
-      [;; Main keys container with proper positioning
-       [re-com/box
-        :class (styles/keys-container)
-        :child
-        [re-com/h-box
-         :class (styles/keys-relative-container)
-         :children
-         ;; First place white keys as base layer
-         (concat
-          (mapv (fn [idx note]
-                  [piano-key note (is-note-pressed? note idx) :white])
-                (range)
-                white-notes)
-
-          ;; Then place black keys as overlay with class-based positioning
-          (mapv (fn [[note position-index]]
-                  (let [pressed? (when (and note @pressed-notes)
-                                   ;; For black keys, always just check the note name
-                                   (some #(= (:name note) (:name %)) @pressed-notes))]
-                    [re-com/box
-                     :class (styles/black-key-position position-index)
-                     :child [piano-key note pressed? :black]]))
-                black-key-positions))]]]]]))
+        chord-mode? (not= @selected-chord :off)]
+    (fn []
+      (let [;; Extract white and black notes
+            white-notes (:bottom (kb/rows @keyboard))
+            black-notes (:top (kb/rows @keyboard))
+            ;; Prepare the black key positions
+            black-key-positions (prepare-black-key-positions black-notes @keyboard-root)]
+        [re-com/box
+         :class (styles/octave-view)
+         :child
+         [re-com/v-box
+          :gap "10px"
+          :children
+          [[re-com/box
+            :class (styles/keys-container)
+            :child
+            [re-com/h-box
+             :class (styles/keys-relative-container)
+             :children
+             ;; Combine white and black key layers
+             (concat
+              (white-keys-layer white-notes @pressed-notes chord-mode?)
+              (black-keys-layer black-key-positions @pressed-notes))]]]]]))))
 
 (defn- note-column
   "Renders a column of note labels.
@@ -446,4 +475,3 @@
                                 (fn [idx note]
                                   [note-trigger (+ 9 idx) note])
                                 bottom-row)]]]))))
-
