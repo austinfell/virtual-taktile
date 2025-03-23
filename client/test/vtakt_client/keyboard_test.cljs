@@ -520,12 +520,46 @@
                                                          :valid ::kb/chromatic-note
                                                          :other keyword?))}})
           spec-result (first check-results)]
-      (if (true? (get-in spec-result [:clojure.spec.test.check/ret :pass?]))
-        (println "All generative tests passed!")
+      (if (false? (get-in spec-result [:clojure.spec.test.check/ret :pass?]))
         (println "Generative test failures:"
-                 (get-in spec-result [:clojure.spec.test.check/ret :fail])))))
+                 (get-in spec-result [:clojure.spec.test.check/ret :fail]))))))
 
-  )
+(deftest test-format-root-note
+  (testing "Format root note returns nil when nil is passed in"
+    (is (nil? (kb/format-root-note nil))))
+
+  (testing "Format root note correctly combines note name and octave"
+    (is (= "C4" (kb/format-root-note {:name :c :octave 4})))
+    (is (= "D2" (kb/format-root-note {:name :d :octave 2})))
+    (is (= "G7" (kb/format-root-note {:name :g :octave 7}))))
+
+  (testing "Format root note works with negative and zero octaves"
+    (is (= "F-1" (kb/format-root-note {:name :f :octave -1})))
+    (is (= "A0" (kb/format-root-note {:name :a :octave 0}))))
+
+  (testing "Format root note handles sharp notes properly"
+    (is (= "A♯3" (kb/format-root-note {:name :asbf :octave 3})))
+    (is (= "C♯5" (kb/format-root-note {:name :csdf :octave 5})))
+    (is (= "F♯2" (kb/format-root-note {:name :fsgf :octave 2}))))
+
+  (testing "Generative testing with various notes and octaves"
+    (let [note-gen (gen/hash-map
+                     :name (s/gen ::kb/chromatic-note)
+                     :octave (gen/choose -2 9))
+          samples (gen/sample note-gen 50)]
+      (doseq [note-map samples]
+        (let [result (kb/format-root-note note-map)
+              expected (str (kb/format-note (:name note-map)) (:octave note-map))]
+          (is (= expected result)
+              (str "For " note-map ", expected " expected ", but got " result))))))
+
+  (testing "Generative testing with spec check"
+    (let [check-results (stest/check `kb/format-root-note
+                          {:clojure.spec.test.check/opts {:num-tests 50}})
+          spec-result (first check-results)]
+      (is (true? (get-in spec-result [:clojure.spec.test.check/ret :pass?]))
+          (str "Spec check failed: "
+               (get-in spec-result [:clojure.spec.test.check/ret :fail] ""))))))
 
 (deftest test-create-note-predicate-from-collection
   (testing "Edge case: note passed into predicate is nil"

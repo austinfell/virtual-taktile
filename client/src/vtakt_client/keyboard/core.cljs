@@ -199,13 +199,13 @@
     (assoc note :name flat-name)))
 
 
-(s/def ::formatted-note
+(s/def ::formatted-note-name
   (s/nilable string?))
-(s/def ::optional-note
+(s/def ::optional-note-name
   (s/nilable ::chromatic-note))
 (s/fdef format-note
-  :args (s/cat :note-kw ::optional-note)
-  :ret ::formatted-note)
+  :args (s/cat :note-kw ::optional-note-name)
+  :ret ::formatted-note-name)
 (defn format-note
   "Formats a musical note keyword into a human-readable string with proper sharp/flat notation.
    Examples:
@@ -229,6 +229,13 @@
         pretty-name
         (clojure.string/upper-case note-str)))))
 
+(s/def ::optional-note
+  (s/nilable ::note))
+(s/def ::formatted-note
+  (s/nilable string?))
+(s/fdef format-root-note
+  :args (s/cat :note ::optional-note)
+  :ret ::formatted-note)
 (defn format-root-note
   "Formats a root note with octave number for display.
    Takes a map with :name and :octave keys."
