@@ -243,23 +243,18 @@
   (when root-note
     (str (format-note (:name root-note)) (:octave root-note))))
 
+(s/fdef note-at-or-below?
+  :args (s/cat :note1 ::note :note2 ::note)
+  :ret boolean?)
 (defn note-at-or-below?
-  "Compares two notes and returns true if first note is lower than second note."
+  "Compares two notes and returns true if first note is lower than or equal to second note."
   [note1 note2]
-  (let [octave1 (:octave note1)
-        octave2 (:octave note2)]
-    (cond
-      ;; Different octaves - straightforward comparison
-      (< octave1 octave2) true
-      (> octave1 octave2) false
-
-      ;; Same octave - compare note names
-      :else (let [note-values {:c 0, :csdf 1, :d 2, :dsef 3,
-                               :e 4, :f 5, :fsgf 6, :g 7,
-                               :gsaf 8, :a 9, :asbf 10, :b 11}
-                  name1 (:name note1)
-                  name2 (:name note2)]
-              (<= (get note-values name1) (get note-values name2))))))
+  (let [note-values {:c 0, :csdf 1, :d 2, :dsef 3,
+                     :e 4, :f 5, :fsgf 6, :g 7,
+                     :gsaf 8, :a 9, :asbf 10, :b 11}
+        absolute-value1 (+ (* 12 (:octave note1)) (get note-values (:name note1)))
+        absolute-value2 (+ (* 12 (:octave note2)) (get note-values (:name note2)))]
+    (<= absolute-value1 absolute-value2)))
 
 ;; Common note boundaries
 (def c0-note {:name :c, :octave 0})

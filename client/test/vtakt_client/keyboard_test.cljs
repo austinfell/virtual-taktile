@@ -561,6 +561,99 @@
           (str "Spec check failed: "
                (get-in spec-result [:clojure.spec.test.check/ret :fail] ""))))))
 
+(deftest test-note-at-or-below?
+  (testing "Same note comparison"
+    (is (kb/note-at-or-below? {:name :c :octave 4} {:name :c :octave 4})
+        "A note should be at-or-below itself")
+    (is (kb/note-at-or-below? {:name :fsgf :octave 3} {:name :fsgf :octave 3})
+        "A sharp note should be at-or-below itself"))
+
+  (testing "Different octaves"
+    (is (kb/note-at-or-below? {:name :c :octave 3} {:name :c :octave 4})
+        "C3 should be below C4")
+    (is (kb/note-at-or-below? {:name :g :octave 2} {:name :c :octave 3})
+        "G2 should be below C3")
+    (is (kb/note-at-or-below? {:name :asbf :octave 1} {:name :d :octave 2})
+        "A♯1 should be below D2")
+    (is (not (kb/note-at-or-below? {:name :c :octave 5} {:name :b :octave 4}))
+        "C5 should not be below B4"))
+
+  (testing "Same octave, different notes"
+    (is (kb/note-at-or-below? {:name :c :octave 4} {:name :d :octave 4})
+        "C4 should be below D4")
+    (is (kb/note-at-or-below? {:name :fsgf :octave 3} {:name :g :octave 3})
+        "F♯3 should be below G3")
+    (is (not (kb/note-at-or-below? {:name :e :octave 2} {:name :d :octave 2}))
+        "E2 should not be below D2")
+    (is (not (kb/note-at-or-below? {:name :asbf :octave 5} {:name :a :octave 5}))
+        "A♯5 should not be below A5"))
+
+  (testing "Notes at octave boundaries"
+    (is (kb/note-at-or-below? {:name :b :octave 3} {:name :c :octave 4})
+        "B3 should be below C4")
+    (is (kb/note-at-or-below? {:name :asbf :octave 2} {:name :c :octave 3})
+        "A♯2 should be below C3"))
+
+  (testing "Full chromatic scale ordering"
+    (let [scale-in-octave-4 [{:name :c :octave 4}
+                             {:name :csdf :octave 4}
+                             {:name :d :octave 4}
+                             {:name :dsef :octave 4}
+                             {:name :e :octave 4}
+                             {:name :f :octave 4}
+                             {:name :fsgf :octave 4}
+                             {:name :g :octave 4}
+                             {:name :gsaf :octave 4}
+                             {:name :a :octave 4}
+                             {:name :asbf :octave 4}
+                             {:name :b :octave 4}
+                             {:name :c :octave 5}]]
+
+      (doseq [i (range (count scale-in-octave-4))]
+        (let [note1 (nth scale-in-octave-4 i)]
+          (doseq [j (range (count scale-in-octave-4))]
+            (let [note2 (nth scale-in-octave-4 j)
+                  expected (<= i j)]
+              (is (= expected (kb/note-at-or-below? note1 note2))
+                  (str (name (:name note1)) (:octave note1)
+                       (if expected " should be " " should not be ")
+                       "at-or-below "
+                       (name (:name note2)) (:octave note2)))))))))
+
+  (testing "Generative testing"
+    (let [note-names [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b]
+          octaves (range 0 8)
+
+          ;; Generate 2 random notes
+          gen-random-note-pair (fn []
+                                 (let [name1 (rand-nth note-names)
+                                       name2 (rand-nth note-names)
+                                       octave1 (rand-nth octaves)
+                                       octave2 (rand-nth octaves)]
+                                   [{:name name1 :octave octave1}
+                                    {:name name2 :octave octave2}]))
+
+          ;; Get absolute value for comparison
+          note-to-absolute-value (fn [note]
+                                   (let [note-values {:c 0, :csdf 1, :d 2, :dsef 3,
+                                                      :e 4, :f 5, :fsgf 6, :g 7,
+                                                      :gsaf 8, :a 9, :asbf 10, :b 11}]
+                                     (+ (* 12 (:octave note))
+                                        (get note-values (:name note)))))
+
+          ;; Generate 30 random test cases
+          test-cases (repeatedly 30 gen-random-note-pair)]
+
+      (doseq [[note1 note2] test-cases]
+        (let [abs1 (note-to-absolute-value note1)
+              abs2 (note-to-absolute-value note2)
+              expected (<= abs1 abs2)]
+          (is (= expected (kb/note-at-or-below? note1 note2))
+              (str "Compare " (name (:name note1)) (:octave note1)
+                   " (value " abs1 ") to "
+                   (name (:name note2)) (:octave note2)
+                   " (value " abs2 ")")))))))
+
 (deftest test-create-note-predicate-from-collection
   (testing "Edge case: note passed into predicate is nil"
     (let [c-major-notes [:c :e :g]
