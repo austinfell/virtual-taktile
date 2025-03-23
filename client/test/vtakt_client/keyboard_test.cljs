@@ -1746,5 +1746,363 @@
           ;; All elements should be nil in result2
           (is (every? nil? (concat (:top result2) (:bottom result2)))
               "All elements should be nil after nil-returning mapper"))))))
+
+(deftest test-create-folding-keyboard
+  (testing "Basic record initialization"
+    (let [root (kb/create-note :c 4)
+          keyboard (kb/create-folding-keyboard root)]
+
+      ;; Test that root-note is set correctly
+      (is (= root (:root-note keyboard))
+          "Root note should be set to the provided note")
+
+      ;; Test that notes are initialized as a vector
+      (is (vector? (:notes keyboard))
+          "Notes should be a vector")
+      (is (= 16 (count (:notes keyboard)))
+          "Notes vector should contain 16 notes")
+
+      ;; Test that transformations is initially nil
+      (is (nil? (:transformations keyboard))
+          "transformations should initially be nil"))))
+
+
+(deftest test-folding-keyboard-rows
+  (testing "Basic rows structure with various root notes"
+    (doseq [root-note [[:c 4] [:e 3] [:fsgf 5] [:asbf 2] [:csdf 3]]]
+      (let [kb (kb/create-folding-keyboard (apply kb/create-note root-note))
+            rows (kb/rows kb)
+            [note-name octave] root-note]
+
+        ;; Check that the result has the expected keys
+        (is (contains? rows :top)
+            (str note-name octave " keyboard: Result should contain :top key"))
+        (is (contains? rows :bottom)
+            (str note-name octave " keyboard: Result should contain :bottom key"))
+
+        ;; Check that both rows are vectors
+        (is (vector? (:top rows))
+            (str note-name octave " keyboard: Top row should be a vector"))
+        (is (vector? (:bottom rows))
+            (str note-name octave " keyboard: Bottom row should be a vector"))
+
+        ;; Check the length of the rows
+        (is (= 8 (count (:top rows)))
+            (str note-name octave " keyboard: Top row should have 8 elements"))
+        (is (= 8 (count (:bottom rows)))
+            (str note-name octave " keyboard: Bottom row should have 8 elements"))))))
+
+(deftest test-folding-keyboard-sequential-notes
+  (testing "Sequential chromatic ordering of notes"
+    (let [root (kb/create-note :c 4)
+          keyboard (kb/create-folding-keyboard root)
+          all-notes (:notes keyboard)
+          rows (kb/rows keyboard)
+          bottom-row (:bottom rows)
+          top-row (:top rows)
+          combined (concat bottom-row top-row)]
+
+      ;; First note should be the root note
+      (is (= root (first all-notes))
+          "First note should be the root note")
+
+      ;; Notes should be in sequential chromatic order
+      (doseq [i (range (dec (count all-notes)))]
+        (let [current (nth all-notes i)
+              next-note (nth all-notes (inc i))]
+          (is (= next-note (kb/transpose-note current 1))
+              (str "Note at position " (inc i) " should be a semitone higher than position " i))))
+
+      ;; Combined rows should equal the notes vector
+      (is (= combined all-notes)
+          "Combined rows should match the notes vector"))))
+
+(deftest test-folding-keyboard-map-notes
+  (testing "Basic note transformation"
+    (let [kb (kb/create-folding-keyboard (kb/create-note :c 4))
+          ;; Simple transformation: transpose all notes up by 2 semitones
+          transpose-up (fn [note] (when note (kb/transpose-note note 2)))
+          mapped-kb (kb/map-notes kb transpose-up)
+          mapped-rows (kb/rows mapped-kb)
+          original-rows (kb/rows kb)]
+
+      ;; First note should be transposed from C4 to D4
+      (is (= (kb/create-note :d 4) (first (:bottom mapped-rows)))
+          "First note in bottom row should be D4 (C4 transposed up 2)")
+
+      ;; Check a few more examples to ensure transformation was applied
+      (is (= (kb/create-note :f 4) (nth (:bottom mapped-rows) 3))
+          "Fourth note in bottom row should be F4 (D4 transposed up 2)")
+
+      ;; Check the overall structure is preserved
+      (is (= (count (:bottom original-rows)) (count (:bottom mapped-rows)))
+          "Bottom row should have same length after mapping")
+      (is (= (count (:top original-rows)) (count (:top mapped-rows)))
+          "Top row should have same length after mapping"))))
+
+(deftest test-folding-keyboard-filter-notes
+  (testing "Filter with custom predicate"
+    (let [kb (kb/create-folding-keyboard (kb/create-note :c 4))
+          ;; Only keep C and G notes
+          c-g-only? (fn [note] (when note (#{:c :g} (:name note))))
+          filtered-kb (kb/filter-notes kb c-g-only?)
+          filtered-rows (kb/rows filtered-kb)
+          original-notes (:notes kb)]
+
+      ;; Check that only C and G notes remain
+      (is (every? #(#{:c :g} (:name %))
+                  (concat (:bottom filtered-rows) (:top filtered-rows)))
+          "Only C and G notes should remain after filtering")
+
+      ;; Check preservation of note positions (C and G notes should be in the same positions as original)
+      (is (= (count (:bottom filtered-rows)) 8))
+      (is (= (count (:top filtered-rows)) 8))))
+
+  (testing "Nil predicate preserves all notes"
+    (let [kb (kb/create-folding-keyboard (kb/create-note :d 3))
+          filtered-kb (kb/filter-notes kb nil)
+          original-rows (kb/rows kb)
+          filtered-rows (kb/rows filtered-kb)]
+
+      ;; Result should be identical to original keyboard
+      (is (= original-rows filtered-rows)
+          "Filtering with nil predicate should keep all notes unchanged")))
+
+  ;; TODO - What the heck should happen in this context? Max lazy queries?
+  (testing "false returning predicate preserves all notes"))
+
+(deftest test-folding-keyboard-integration
+  (testing "Chaining operations"
+    (let [kb (kb/create-folding-keyboard (kb/create-note :c 4))
+          ;; Chain operations: transpose up, filter to keep naturals
+          transposed-kb (kb/map-notes kb #(kb/transpose-note % 1))  ;; Up a semitone
+          filtered-kb (kb/filter-notes transposed-kb kb/natural-note?)
+          result-rows (kb/rows filtered-kb)]
+
+      ;; First note should be C# transposed to D
+      (is (= (kb/create-note :d 4) (first (:bottom result-rows)))
+          "First note should be D4 after transposing C4 up")
+
+      ;; All notes should be natural
+      (is (every? #(or (nil? %) (kb/natural-note? %))
+                  (concat (:bottom result-rows) (:top result-rows)))
+          "All notes should be natural after filtering"))))
+
+(deftest test-folding-keyboard-comparison
+  (testing "Comparison with chromatic keyboard"
+    (let [root (kb/create-note :c 4)
+          folding-kb (kb/create-folding-keyboard root)
+          chromatic-kb (kb/create-chromatic-keyboard root)
+          folding-rows (kb/rows folding-kb)
+          chromatic-rows (kb/rows chromatic-kb)]
+
+      ;; Folding keyboard should have a different layout than chromatic
+      (is (not= folding-rows chromatic-rows)
+          "Folding and chromatic keyboards should have different layouts")
+
+      ;; First note in folding should be root note
+      (is (= root (first (:bottom folding-rows)))
+          "First note in folding keyboard should be the root note")
+
+      ;; In chromatic, first bottom note is always a natural note (might not be root for accidentals)
+      (is (kb/natural-note? (first (:bottom chromatic-rows)))
+          "First note in chromatic keyboard bottom row should be a natural note"))))
+
+;; =========================================================
+;; Tests for build-scale-chord function
+;; =========================================================
+
+(deftest test-build-scale-chord-basic
+  (testing "Basic chord building in C major scale"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C major triad (C-E-G)
+          c-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4))
+          ;; G major triad (G-B-D) with D in next octave
+          g-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 4))
+          ;; E minor triad (E-G-B)
+          e-chord (kb/build-scale-chord c-major-scale (kb/create-note :e 4))]
+
+      ;; Check C chord
+      (is (= 3 (count c-chord))
+          "C chord should have 3 notes")
+      (is (= [:c :e :g] (mapv :name c-chord))
+          "C chord should contain C, E, G")
+      (is (= [4 4 4] (mapv :octave c-chord))
+          "All notes in C chord should be in octave 4")
+
+      ;; Check G chord
+      (is (= 3 (count g-chord))
+          "G chord should have 3 notes")
+      (is (= [:g :b :d] (mapv :name g-chord))
+          "G chord should contain G, B, D")
+      (is (= [4 4 5] (mapv :octave g-chord))
+          "G and B should be in octave 4, D should be in octave 5")
+
+      ;; Check E chord
+      (is (= 3 (count e-chord))
+          "E chord should have 3 notes")
+      (is (= [:e :g :b] (mapv :name e-chord))
+          "E chord should contain E, G, B")
+      (is (= [4 4 4] (mapv :octave e-chord))
+          "All notes in E chord should be in octave 4"))))
+
+(deftest test-build-scale-chord-edge-cases
+  (testing "Empty scale"
+    (let [empty-scale []
+          chord (kb/build-scale-chord empty-scale (kb/create-note :c 4))]
+      (is (empty? chord)
+          "Chord from empty scale should be empty")))
+
+  (testing "Note not in scale"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C# is not in C major
+          chord (kb/build-scale-chord c-major-scale (kb/create-note :csdf 4))]
+      (is (empty? chord)
+          "Chord from note not in scale should be empty")))
+
+  (testing "Nil input"
+    (let [c-major-scale [:c :d :e :f :g :a :b]]
+      (is (empty? (kb/build-scale-chord nil (kb/create-note :c 4)))
+          "Chord from nil scale should be empty")
+      (is (empty? (kb/build-scale-chord c-major-scale nil))
+          "Chord from nil root note should be empty"))))
+
+(deftest test-build-scale-chord-different-scales
+  (testing "Minor scale chords"
+    (let [a-minor-scale [:a :b :c :d :e :f :g]
+          ;; A minor triad (A-C-E)
+          a-chord (kb/build-scale-chord a-minor-scale (kb/create-note :a 3))
+          ;; D minor triad (D-F-A)
+          d-chord (kb/build-scale-chord a-minor-scale (kb/create-note :d 4))
+          ;; E major triad (E-G-B)
+          e-chord (kb/build-scale-chord a-minor-scale (kb/create-note :e 4))]
+
+      ;; Check A chord
+      (is (= 3 (count a-chord))
+          "A chord should have 3 notes")
+      (is (= [:a :c :e] (mapv :name a-chord))
+          "A chord should contain A, C, E")
+
+      ;; Check D chord
+      (is (= 3 (count d-chord))
+          "D chord should have 3 notes")
+      (is (= [:d :f :a] (mapv :name d-chord))
+          "D chord should contain D, F, A")
+
+      ;; Check E chord
+      (is (= 3 (count e-chord))
+          "E chord should have 3 notes")
+      (is (= [:e :g :b] (mapv :name e-chord))
+          "E chord should contain E, G, B"))))
+
+(deftest test-build-scale-chord-pentatonic
+  (testing "Pentatonic scale chords"
+    (let [c-pentatonic [:c :d :e :g :a]
+          ;; C major triad with no F (C-E-G)
+          c-chord (kb/build-scale-chord c-pentatonic (kb/create-note :c 4))
+          ;; G chord with no F (G-B-D would need B, but B is not in scale)
+          g-chord (kb/build-scale-chord c-pentatonic (kb/create-note :g 4))]
+
+      ;; Check C chord
+      (is (= 3 (count c-chord))
+          "C chord in pentatonic should have 3 notes")
+      (is (= [:c :e :a] (mapv :name c-chord))
+          "C chord should contain C, E, G")
+
+      ;; Check G chord (should use G, A, C)
+      (is (= 3 (count g-chord))
+          "G chord in pentatonic should have 3 notes")
+      (is (= [:g :c :e] (mapv :name g-chord))
+          "G chord in pentatonic should contain G, A, C due to scale constraints"))))
+
+(deftest test-build-scale-chord-cyclical-construction
+  (testing "Chord construction wraps around the scale"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; B triad (B-D-F) with D and F in next octave
+          b-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 3))]
+
+      ;; Check B chord
+      (is (= 3 (count b-chord))
+          "B chord should have 3 notes")
+      (is (= [:b :d :f] (mapv :name b-chord))
+          "B chord should contain B, D, F")
+      (is (= [3 4 4] (mapv :octave b-chord))
+          "B should be in octave 3, D and F should be in octave 4"))))
+
+(deftest test-build-scale-chord-octave-handling
+  (testing "Octave handling with different root positions"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C chord in octave 2
+          c2-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 2))
+          ;; C chord in octave 5
+          c5-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 5))]
+
+      ;; Check C2 chord
+      (is (= [2 2 2] (mapv :octave c2-chord))
+          "C2 chord should have all notes in octave 2")
+
+      ;; Check C5 chord
+      (is (= [5 5 5] (mapv :octave c5-chord))
+          "C5 chord should have all notes in octave 5")))
+
+  (testing "Octave handling near octave boundaries"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; B chord in octave 9 (highest reasonable octave)
+          b9-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 9))]
+
+      ;; Check B9 chord
+      (is (= [:b :d :f] (mapv :name b9-chord))
+          "B9 chord should contain B, D, F")
+      (is (= [9 10 10] (mapv :octave b9-chord))
+          "B9 chord should have B in octave 9, D and F in octave 10"))))
+
+(deftest test-build-scale-chord-generative
+  (testing "Property: Chord size is always 3 for valid scales/roots"
+    (let [scale-samples [[:c :d :e :f :g :a :b]  ;; Major
+                         [:a :b :c :d :e :f :g]  ;; Minor
+                         [:c :d :e :g :a]        ;; Pentatonic
+                         [:c :d :f :g :asbf]]    ;; Blues-like
+          note-samples (for [scale scale-samples
+                             note-name scale
+                             octave (range 2 6)]
+                         [scale note-name octave])]
+
+      (doseq [[scale note-name octave] note-samples]
+        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave))]
+          (is (= 3 (count chord))
+              (str "Chord for " note-name octave " in scale should have 3 notes"))))))
+
+  (testing "Property: Chord notes preserve the root note's octave or adjacent"
+    (let [scale-samples [[:c :d :e :f :g :a :b]  ;; Major
+                         [:a :b :c :d :e :f :g]]  ;; Minor
+          note-samples (for [scale scale-samples
+                             note-name scale
+                             octave (range 2 6)]
+                         [scale note-name octave])]
+
+      (doseq [[scale note-name octave] note-samples]
+        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave))
+              chord-octaves (set (map :octave chord))]
+          (is (<= (count chord-octaves) 2)
+              (str "Chord for " note-name octave " should span at most 2 octaves"))
+          (is (contains? chord-octaves octave)
+              (str "Chord should contain at least one note in the root octave " octave))))))
+
+  (testing "Property: First note of chord is always the root note"
+    (let [scale-samples [[:c :d :e :f :g :a :b]  ;; Major
+                         [:a :b :c :d :e :f :g]  ;; Minor
+                         [:c :d :e :g :a]]        ;; Pentatonic
+          note-samples (for [scale scale-samples
+                             note-name scale
+                             octave (range 2 6)]
+                         [scale note-name octave])]
+
+      (doseq [[scale note-name octave] note-samples]
+        (let [root-note (kb/create-note note-name octave)
+              chord (kb/build-scale-chord scale root-note)]
+          (when (seq chord)
+            (is (= root-note (first chord))
+                (str "First note of chord should be the root note " note-name octave))))))))
+
 ;; Run all tests
 (run-tests)

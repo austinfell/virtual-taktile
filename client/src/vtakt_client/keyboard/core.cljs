@@ -367,6 +367,7 @@
   :ret ::keyboard)
 (defn create-folding-keyboard
   "Creates a chromatic keyboard starting with the given root note, with optional filtering and mapping"
+  ;; TODO - Needs tests.
   ([root-note]
    (let [layout (generate-folding-layout root-note)]
      (->FoldingKeyboard root-note layout nil))))
@@ -424,8 +425,8 @@
                :root-note ::root-note)
   :ret ::chord)
 (defn build-scale-chord
+  ;; TODO - Needs tests.
   [scale-notes root-note]
-  (println (str scale-notes root-note))
   (if (empty? scale-notes)
     []
     (let [scale-size (count scale-notes)
