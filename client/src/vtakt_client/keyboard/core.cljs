@@ -198,19 +198,31 @@
   (when-let [flat-name (natural-note-to-flat-mapping (:name note))]
     (assoc note :name flat-name)))
 
+
+(s/def ::formatted-note
+  (s/nilable string?))
+(s/def ::optional-note
+  (s/nilable ::chromatic-note))
+(s/fdef format-note
+  :args (s/cat :note-kw ::optional-note)
+  :ret ::formatted-note)
 (defn format-note
   "Formats a musical note keyword into a human-readable string with proper sharp/flat notation.
    Examples:
    - :a      -> 'A'
-   - :asbf   -> 'A♯/B♭'
-   - :csdf   -> 'C♯/D♭'
-   - :fsgf   -> 'F♯/G♭'"
+   - :asbf   -> 'A♯'
+   - :csdf   -> 'C♯'
+   - :fsgf   -> 'F♯'"
   [note-kw]
   (when note-kw
     (let [note-str (name note-kw)
           enharmonic-map {"asbf" "A♯"
+                          ;; Little funky - but this is possible in certain contexts.
+                          "bscf" "B♯"
                           "csdf" "C♯"
                           "dsef" "D♯"
+                          ;; Same
+                          "esff" "E♯"
                           "fsgf" "F♯"
                           "gsaf" "G♯"}]
       (if-let [pretty-name (get enharmonic-map note-str)]

@@ -1,6 +1,6 @@
 (ns vtakt-client.keyboard-test
   (:require [cljs.test :refer-macros [deftest testing is are run-tests]]
-            [vtakt-client.components.keyboard :as kb]
+            [vtakt-client.keyboard.core :as kb]
             [clojure.spec.alpha :as s]
             [clojure.test.check :as tc]
             [clojure.test.check.properties :as tcp]
@@ -470,6 +470,62 @@
       (doseq [input non-notes]
         (is (nil? (kb/get-flat-equivalent input))
             (str "Non-note input " input " should be nil"))))))
+
+(deftest test-format-note
+  (testing "Format note returns nil when nil is passed in"
+    (is (nil? (kb/format-note nil))))
+
+  (testing "Format note upper-cases non-sharp, non-recognizable strings"
+    (is (= "LOL" (kb/format-note :lol)))
+    (is (= "C_SHARP" (kb/format-note :c_sharp))))
+
+  (testing "Format note handles rendering flat/sharp notes"
+    (is (= "A♯" (kb/format-note :asbf)))
+    (is (= "B♯" (kb/format-note :bscf)))
+    (is (= "C♯" (kb/format-note :csdf)))
+    (is (= "D♯" (kb/format-note :dsef)))
+    (is (= "E♯" (kb/format-note :esff)))
+    (is (= "F♯" (kb/format-note :fsgf)))
+    (is (= "G♯" (kb/format-note :gsaf))))
+
+  (testing "Format note handles non-sharp/non-flat notes"
+    (is (= "A" (kb/format-note :a)))
+    (is (= "B" (kb/format-note :b)))
+    (is (= "C" (kb/format-note :c)))
+    (is (= "D" (kb/format-note :d)))
+    (is (= "E" (kb/format-note :e)))
+    (is (= "F" (kb/format-note :f)))
+    (is (= "G" (kb/format-note :g))))
+
+
+  (testing "Testing arbitrary keywords excluding sharps"
+    (let [non-sharp-keyword-gen (gen/such-that
+                                 (fn [kw]
+                                   (and kw
+                                        (not (contains? #{"asbf" "bscf" "csdf" "dsef" "esff" "fsgf" "gsaf"}
+                                                        (name kw)))))
+                                 (gen/keyword)
+                                 100)
+          random-keywords (gen/sample non-sharp-keyword-gen 100)]
+      (doseq [kw random-keywords]
+        (let [result (kb/format-note kw)]
+          (is (string? result)
+              (str "Result for " kw " should be a string, got: " result))))))
+
+  (testing "Generative testing against expected output function"
+    (let [check-results (stest/check `format-note
+                                     {:clojure.spec.test.check/opts {:num-tests 100}
+                                      :gen {::kb/optional-note
+                                            (s/gen (s/or :nil nil?
+                                                         :valid ::kb/chromatic-note
+                                                         :other keyword?))}})
+          spec-result (first check-results)]
+      (if (true? (get-in spec-result [:clojure.spec.test.check/ret :pass?]))
+        (println "All generative tests passed!")
+        (println "Generative test failures:"
+                 (get-in spec-result [:clojure.spec.test.check/ret :fail])))))
+
+  )
 
 (deftest test-create-note-predicate-from-collection
   (testing "Edge case: note passed into predicate is nil"
