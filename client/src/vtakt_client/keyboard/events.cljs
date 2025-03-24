@@ -40,11 +40,6 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (re-frame/reg-event-fx
- ::set-pressed-notes
- (fn [{:keys [db]} [_ notes]]
-   {:db (assoc db :pressed-notes notes)}))
-
-(re-frame/reg-event-fx
  ::clear-pressed-notes
  (fn [{:keys [db]} _]
    {:db (assoc db :pressed-notes [])}))
@@ -60,5 +55,4 @@
              (kb/build-chord (-> chords selected-chord name) octave)
              (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))
            [note])]
-     {:db db
-      :dispatch [::set-pressed-notes notes-to-press]})))
+     {:db (assoc db :pressed-notes notes-to-press)})))
