@@ -58,7 +58,7 @@
            :class (str (styles/increment-button) " "
                        (when-not dec-disabled? (styles/increment-button-active)))
            :on-click #(when-not dec-disabled?
-                        (re-frame/dispatch (conj dec-event value)))]
+                        (re-frame/dispatch dec-event))]
           [re-com/box
            :class (styles/increment-value-box)
            :child [:p {:class (styles/increment-value)} (render-fn value)]]
@@ -68,7 +68,7 @@
            :class (str (styles/increment-button) " "
                        (when-not inc-disabled? (styles/increment-button-active)))
            :on-click #(when-not inc-disabled?
-                        (re-frame/dispatch (conj inc-event value)))]
+                        (re-frame/dispatch inc-event))]
          ]]))))
 
 ;; Root note control

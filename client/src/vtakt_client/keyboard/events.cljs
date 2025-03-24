@@ -6,12 +6,12 @@
 
 (re-frame/reg-event-fx
  ::inc-keyboard-root
- (fn [{:keys [db]} [_ keyboard-shift]]
+ (fn [{:keys [db]} _]
    {:db (update db :keyboard-root #(kb/transpose-note % 1))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-root
- (fn [{:keys [db]} [_ keyboard-shift]]
+ (fn [{:keys [db]} _]
    {:db (update db :keyboard-root #(kb/transpose-note % -1))}))
 
 (re-frame/reg-event-fx
@@ -44,12 +44,9 @@
  (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
    (let [{:keys [selected-chord selected-scale chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
-         notes-to-press
-         (if (nil? note)
-           []
-           (if (not= selected-chord :off)
-             (if (= selected-scale :chromatic)
-               (kb/build-chord (-> chords selected-chord name) octave)
-               (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))
-             [note]))]
+         notes-to-press (cond
+                          (nil? note) []
+                          (= selected-chord :off) [note]
+                          (= selected-scale :chromatic) (kb/build-chord (-> chords selected-chord name) octave)
+                          :else (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))]
      {:db (assoc db :pressed-notes notes-to-press)})))
