@@ -40,19 +40,16 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (re-frame/reg-event-fx
- ::clear-pressed-notes
- (fn [{:keys [db]} _]
-   {:db (assoc db :pressed-notes [])}))
-
-(re-frame/reg-event-fx
  ::trigger-note
  (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
    (let [{:keys [selected-chord selected-scale chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
          notes-to-press
-         (if (not= selected-chord :off)
-           (if (= selected-scale :chromatic)
-             (kb/build-chord (-> chords selected-chord name) octave)
-             (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))
-           [note])]
+         (if (nil? note)
+           []
+           (if (not= selected-chord :off)
+             (if (= selected-scale :chromatic)
+               (kb/build-chord (-> chords selected-chord name) octave)
+               (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))
+             [note]))]
      {:db (assoc db :pressed-notes notes-to-press)})))
