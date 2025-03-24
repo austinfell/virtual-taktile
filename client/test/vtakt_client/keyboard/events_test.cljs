@@ -6,11 +6,6 @@
             [vtakt-client.keyboard.events :as events]
             [vtakt-client.keyboard.core :as kb]))
 
-;; Reset app-db between tests
-(defn reset-db [f]
-  (reset! re-frame.db/app-db db/default-db)
-  (f))
-
 ;; =========================================================
 ;; Tests for Keyboard Root Events
 ;; =========================================================
@@ -26,6 +21,16 @@
       ;; Verify: Root note should be transposed up by 1 semitone (C4 to C#4)
       (let [updated-root (:keyboard-root @re-frame.db/app-db)]
         (is (= :csdf (:name updated-root))
+            "Root note name should be C#/Db after incrementing")
+        (is (= 4 (:octave updated-root))
+            "Root note octave should remain 4 after incrementing"))
+
+      ;; Inc again.
+      (re-frame/dispatch [::events/inc-keyboard-root])
+
+      ;; Verify: Root note should be transposed up by 1 semitone again (C#4 to D4)
+      (let [updated-root (:keyboard-root @re-frame.db/app-db)]
+        (is (= :d (:name updated-root))
             "Root note name should be C#/Db after incrementing")
         (is (= 4 (:octave updated-root))
             "Root note octave should remain 4 after incrementing")))))
@@ -44,7 +49,37 @@
         (is (= :b (:name updated-root))
             "Root note name should be B after decrementing")
         (is (= 3 (:octave updated-root))
+            "Root note octave should be 3 after decrementing"))
+
+      ;; Dec again.
+      (re-frame/dispatch [::events/dec-keyboard-root])
+
+      ;; Verify: Root note should be transposed down again by 1 semitone (B3 to A#3)
+      (let [updated-root (:keyboard-root @re-frame.db/app-db)]
+        (is (= :asbf (:name updated-root))
+            "Root note name should be B after decrementing")
+        (is (= 3 (:octave updated-root))
             "Root note octave should be 3 after decrementing")))))
+
+(deftest test-inc-and-dec-keyboard-root
+  (testing "Incrementing and decrementing keyboard root"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB value
+      (reset! re-frame.db/app-db db/default-db)
+
+      ;; Execute: dispatch the event
+      (let [operations (concat
+                        (repeat 5 [::events/inc-keyboard-root])
+                        (repeat 6 [::events/dec-keyboard-root]))]
+        (doseq [op operations]
+          (re-frame/dispatch op)))
+
+      ;; Verify: Root note should be transposed up by 1 semitone again (C4 to B3)
+      (let [updated-root (:keyboard-root @re-frame.db/app-db)]
+        (is (= :b (:name updated-root))
+            "Root note name should be C#/Db after incrementing")
+        (is (= 3 (:octave updated-root))
+            "Root note octave should remain 4 after incrementing")))))
 
 ;; =========================================================
 ;; Tests for Keyboard Transpose Events
