@@ -223,6 +223,16 @@
 
         ;; Verify: Pressed notes should be updated
         (is (= notes (:pressed-notes @re-frame.db/app-db))
+            "Pressed notes should match the provided notes after setting"))
+
+      ;; Another round
+      (let [notes [(kb/create-note :d 4) (kb/create-note :f 4) (kb/create-note :a 4)]]
+
+        ;; Execute: dispatch the event
+        (re-frame/dispatch [::events/set-pressed-notes notes])
+
+        ;; Verify: Pressed notes should be updated
+        (is (= notes (:pressed-notes @re-frame.db/app-db))
             "Pressed notes should match the provided notes after setting")))))
 
 (deftest test-clear-pressed-notes
