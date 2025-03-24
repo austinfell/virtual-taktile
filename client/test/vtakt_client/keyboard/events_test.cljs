@@ -84,7 +84,6 @@
 ;; =========================================================
 ;; Tests for Keyboard Transpose Events
 ;; =========================================================
-
 (deftest test-inc-keyboard-transpose
   (testing "Incrementing keyboard transpose value"
     (rf-test/run-test-sync
@@ -96,7 +95,14 @@
 
       ;; Verify: Transpose value should be incremented by 1
       (is (= 1 (:keyboard-transpose @re-frame.db/app-db))
-          "Transpose value should be 1 after incrementing"))))
+          "Transpose value should be 1 after incrementing")
+
+      ;; Inc again
+      (re-frame/dispatch [::events/inc-keyboard-transpose])
+
+      ;; Verify: Transpose value should be incremented by 1 again
+      (is (= 2 (:keyboard-transpose @re-frame.db/app-db))
+          "Transpose value should be 2 after incrementing twice"))))
 
 (deftest test-dec-keyboard-transpose
   (testing "Decrementing keyboard transpose value"
@@ -109,7 +115,31 @@
 
       ;; Verify: Transpose value should be decremented by 1
       (is (= 4 (:keyboard-transpose @re-frame.db/app-db))
-          "Transpose value should be 4 after decrementing from 5"))))
+          "Transpose value should be 4 after decrementing from 5")
+
+      ;; Dec again
+      (re-frame/dispatch [::events/dec-keyboard-transpose])
+
+      ;; Verify: Transpose value should be decremented by 1 again
+      (is (= 3 (:keyboard-transpose @re-frame.db/app-db))
+          "Transpose value should be 3 after decrementing twice"))))
+
+(deftest test-inc-and-dec-keyboard-transpose
+  (testing "Incrementing and decrementing keyboard transpose value"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB value
+      (reset! re-frame.db/app-db db/default-db)
+
+      ;; Execute: dispatch the event sequence
+      (let [operations (concat
+                        (repeat 5 [::events/inc-keyboard-transpose])
+                        (repeat 6 [::events/dec-keyboard-transpose]))]
+        (doseq [op operations]
+          (re-frame/dispatch op)))
+
+      ;; Verify: Transpose value should be -1 after operations
+      (is (= -1 (:keyboard-transpose @re-frame.db/app-db))
+          "Transpose value should be -1 after incrementing 5 times and decrementing 6 times"))))
 
 ;; =========================================================
 ;; Tests for Setting Scale, Chord, and Keyboard Mode
@@ -122,11 +152,18 @@
       (reset! re-frame.db/app-db db/default-db)
 
       ;; Execute: dispatch the event
-      (re-frame/dispatch [::events/set-scale :minor])
+      (re-frame/dispatch [::events/set-scale :ionian])
 
       ;; Verify: Selected scale should be updated
-      (is (= :minor (:selected-scale @re-frame.db/app-db))
-          "Selected scale should be minor after setting"))))
+      (is (= :ionian (:selected-scale @re-frame.db/app-db))
+          "Selected scale should be minor after setting")
+
+      ;; Execute: dispatch the event
+      (re-frame/dispatch [::events/set-scale :chromatic])
+
+      ;; Verify: Selected scale should be back on chromatic.
+      (is (= :chromatic (:selected-scale @re-frame.db/app-db))
+          "Selected scale should be chromatic after setting"))))
 
 (deftest test-set-chord
   (testing "Setting chord to minor"
@@ -139,7 +176,14 @@
 
       ;; Verify: Selected chord should be updated
       (is (= :minor (:selected-chord @re-frame.db/app-db))
-          "Selected chord should be minor after setting"))))
+          "Selected chord should be minor after setting")
+
+      ;; Execute: dispatch the event
+      (re-frame/dispatch [::events/set-chord :off])
+
+      ;; Verify: Selected chord should be updated
+      (is (= :off (:selected-chord @re-frame.db/app-db))
+          "Selected chord should be off after setting"))))
 
 (deftest test-set-keyboard-mode
   (testing "Setting keyboard mode to folding"
@@ -152,6 +196,13 @@
 
       ;; Verify: Keyboard mode should be updated
       (is (= :folding (:keyboard-mode @re-frame.db/app-db))
+          "Keyboard mode should be folding after setting")
+
+      ;; Execute: dispatch the event
+      (re-frame/dispatch [::events/set-keyboard-mode :chromatic])
+
+      ;; Verify: Keyboard mode should be updated
+      (is (= :chromatic (:keyboard-mode @re-frame.db/app-db))
           "Keyboard mode should be folding after setting"))))
 
 ;; =========================================================
