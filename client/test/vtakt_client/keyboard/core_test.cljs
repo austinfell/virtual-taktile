@@ -1,4 +1,4 @@
-(ns vtakt-client.keyboard-test
+(ns vtakt-client.keyboard.core-test
   (:require [cljs.test :refer-macros [deftest testing is are run-tests]]
             [vtakt-client.keyboard.core :as kb]
             [clojure.spec.alpha :as s]
@@ -11,7 +11,7 @@
 ;; Test Data
 ;; =========================================================
 
-(def gen-test-scale 2)
+(def gen-test-scale 1)
 
 (def all-notes [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b])
 
