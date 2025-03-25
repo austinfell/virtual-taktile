@@ -248,7 +248,7 @@
               (assoc db/default-db :pressed-notes [(kb/create-note :c 4) (kb/create-note :e 4)]))
 
       ;; Execute: dispatch the event
-      (re-frame/dispatch [::events/clear-pressed-notes])
+      (re-frame/dispatch [::events/trigger-note nil])
 
       ;; Verify: Pressed notes should be empty
       (is (empty? (:pressed-notes @re-frame.db/app-db))
@@ -327,7 +327,7 @@
             "Note should be in pressed notes after triggering"))
 
       ;; Step 4: Clear pressed notes
-      (re-frame/dispatch [::events/clear-pressed-notes])
+      (re-frame/dispatch [::events/trigger-note nil])
       (is (empty? (:pressed-notes @re-frame.db/app-db))
           "Pressed notes should be empty after clearing"))))
 
