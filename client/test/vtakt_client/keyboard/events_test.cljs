@@ -394,7 +394,34 @@
                 (kb/create-note :g 4)
                 (kb/create-note :asbf 4)]
                (:pressed-notes @re-frame.db/app-db))
+            "Notes should be in pressed notes after triggering"))
+
+      ;; Step 7: Clear pressed notes (again)
+      (re-frame/dispatch [::events/trigger-note nil])
+      (is (empty? (:pressed-notes @re-frame.db/app-db))
+          "Pressed notes should be empty after clearing")
+
+      ;; Step 8: Change keyboard mode to folding. It should affect much.
+      (re-frame/dispatch [::events/set-keyboard-mode :folding])
+      (is (= :folding (:keyboard-mode @re-frame.db/app-db))
+          "Folding should be the keyboard mode")
+
+      ;; Step 9: Trigger a note in chord mode again.
+      (let [test-note (kb/create-note :f 4)]
+        (re-frame/dispatch [::events/trigger-note test-note])
+        (is (= [(kb/create-note :f 4)
+                (kb/create-note :a 4)
+                (kb/create-note :c 5)]
+               (:pressed-notes @re-frame.db/app-db))
             "Notes should be in pressed notes after triggering")))))
+
+;; TODO - We also need test cases that switching chord mode on in a specific scale
+;; other than chromatic will default to major on the chromatic scale if we switch
+;; scale back while chord-mode is on.
+
+;; TODO - Same as above, but if you switched to a specific chord in chromatic, switched
+;; to a different scale it would be "on", and then switching back to chromatic will be the
+;; original chord you selected.
 
 ;; Run tests
 (run-tests)
