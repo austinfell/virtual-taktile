@@ -206,10 +206,9 @@
           "Keyboard mode should be folding after setting"))))
 
 ;; =========================================================
-;; Tests for Pressed Notes
+;; Tests for Trigger Note
 ;; =========================================================
-
-(deftest test-set-pressed-notes
+(deftest test-set-and-clear-pressed-notes
   (testing "Setting pressed notes"
     (rf-test/run-test-sync
       ;; Setup: use the test DB value
@@ -240,24 +239,6 @@
            (:pressed-notes @re-frame.db/app-db))
           "Pressed notes should match the provided notes after setting"))))
 
-(deftest test-clear-pressed-notes
-  (testing "Clearing pressed notes"
-    (rf-test/run-test-sync
-      ;; Setup: use the test DB with some existing pressed notes
-      (reset! re-frame.db/app-db
-              (assoc db/default-db :pressed-notes [(kb/create-note :c 4) (kb/create-note :e 4)]))
-
-      ;; Execute: dispatch the event
-      (re-frame/dispatch [::events/trigger-note nil])
-
-      ;; Verify: Pressed notes should be empty
-      (is (empty? (:pressed-notes @re-frame.db/app-db))
-          "Pressed notes should be empty after clearing"))))
-
-;; =========================================================
-;; Tests for Trigger Note
-;; =========================================================
-
 (deftest test-trigger-note-single-note
   (testing "Triggering a single note when chord mode is off"
     (rf-test/run-test-sync
@@ -279,8 +260,7 @@
     (rf-test/run-test-sync
       ;; Setup: use the test DB with chord mode set to major
       (let [initial-db (-> db/default-db
-                           (assoc :selected-chord :major)
-                           (assoc-in [:chords :major :d] [:d :fsgf :a]))]
+                           (assoc :selected-chord :major))]
         (reset! re-frame.db/app-db initial-db)
 
         ;; Note to trigger
@@ -296,6 +276,81 @@
           (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
               "Full chord should be in pressed notes when chord mode is active"))))))
 
+(deftest test-trigger-note-with-multiple-chords
+  (testing "Triggering multiple notes with chord mode active"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chord mode set to major
+      (let [initial-db (-> db/default-db
+                           (assoc :selected-chord :major))]
+        (reset! re-frame.db/app-db initial-db)
+
+        ;; Notes to trigger
+        (let [test-note-d (kb/create-note :d 4)
+              test-note-e (kb/create-note :e 4)
+              expected-notes [(kb/create-note :d 4)
+                              (kb/create-note :fsgf 4)
+                              (kb/create-note :a 4)
+                              (kb/create-note :e 4)
+                              (kb/create-note :gsaf 4)
+                              (kb/create-note :b 4)]]
+
+          ;; Execute: dispatch the event for both test-note-d and test-note-e
+          (re-frame/dispatch [::events/trigger-note test-note-d])
+          (re-frame/dispatch [::events/trigger-note test-note-e])
+
+          ;; Verify: Both chords should show up
+          (is (= expected-notes (:pressed-notes @re-frame.db/app-db))
+              "Full chord should be in pressed notes when chord mode is active"))))))
+
+(deftest test-trigger-note-with-chord-non-chromatic
+  (testing "Triggering a note with chord mode active"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chord mode set to major
+      (let [initial-db (-> db/default-db
+                           (assoc :selected-chord :on)
+                           (assoc :selected-scale :ionian))]
+        (reset! re-frame.db/app-db initial-db)
+
+        ;; Note to trigger
+        (let [test-note (kb/create-note :d 4)
+              expected-chord [(kb/create-note :d 4)
+                              (kb/create-note :f 4)
+                              (kb/create-note :a 4)]]
+
+          ;; Execute: dispatch the event
+          (re-frame/dispatch [::events/trigger-note test-note])
+
+          ;; Verify: The full chord should be in pressed notes
+          (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
+              "Full chord D minor should be in pressed notes when chord mode is active"))))))
+
+(deftest test-trigger-note-with-multiple-chords-non-chromatic
+  (testing "Triggering multiple notes with chord mode active"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chord mode set to major
+      (let [initial-db (-> db/default-db
+                           (assoc :selected-scale :ionian)
+                           (assoc :selected-chord :on))]
+        (reset! re-frame.db/app-db initial-db)
+
+        ;; Notes to trigger
+        (let [test-note-d (kb/create-note :d 4)
+              test-note-e (kb/create-note :e 4)
+              expected-notes [(kb/create-note :d 4)
+                              (kb/create-note :f 4)
+                              (kb/create-note :a 4)
+                              (kb/create-note :e 4)
+                              (kb/create-note :g 4)
+                              (kb/create-note :b 4)]]
+
+          ;; Execute: dispatch the event for both test-note-d and test-note-e
+          (re-frame/dispatch [::events/trigger-note test-note-d])
+          (re-frame/dispatch [::events/trigger-note test-note-e])
+
+          ;; Verify: Both chords should show up
+          (is (= expected-notes (:pressed-notes @re-frame.db/app-db))
+              "Full chord should be in pressed notes when chord mode is active"))))))
+
 ;; =========================================================
 ;; Test Combined Events (Multiple Dispatch Sequence)
 ;; =========================================================
@@ -306,12 +361,12 @@
       ;; Setup: Start with clean test DB
       (reset! re-frame.db/app-db db/default-db)
 
-      ;; Step 1: Change scale to minor
-      (re-frame/dispatch [::events/set-scale :minor])
-      (is (= :minor (:selected-scale @re-frame.db/app-db))
+      ;; Step 1: Change scale to minor (Currently in C Minor)
+      (re-frame/dispatch [::events/set-scale :aeolian])
+      (is (= :aeolian (:selected-scale @re-frame.db/app-db))
           "Scale should be set to minor")
 
-      ;; Step 2: Change root note up 2 semitones
+      ;; Step 2: Change root note up 2 semitones (Tranposed up to D Minor)
       (re-frame/dispatch [::events/inc-keyboard-root])
       (re-frame/dispatch [::events/inc-keyboard-root])
       (let [root (:keyboard-root @re-frame.db/app-db)]
@@ -329,7 +384,17 @@
       ;; Step 4: Clear pressed notes
       (re-frame/dispatch [::events/trigger-note nil])
       (is (empty? (:pressed-notes @re-frame.db/app-db))
-          "Pressed notes should be empty after clearing"))))
+          "Pressed notes should be empty after clearing")
+
+      ;; Step 5: Switch to chord mode, trigger a note.
+      (let [test-note (kb/create-note :e 4)]
+        (re-frame/dispatch [::events/set-chord :on])
+        (re-frame/dispatch [::events/trigger-note test-note])
+        (is (= [(kb/create-note :e 4)
+                (kb/create-note :g 4)
+                (kb/create-note :asbf 4)]
+               (:pressed-notes @re-frame.db/app-db))
+            "Notes should be in pressed notes after triggering")))))
 
 ;; Run tests
 (run-tests)
