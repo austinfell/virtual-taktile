@@ -215,25 +215,30 @@
       ;; Setup: use the test DB value
       (reset! re-frame.db/app-db db/default-db)
 
-      ;; Sample note values to set
-      (let [notes [(kb/create-note :c 4) (kb/create-note :e 4) (kb/create-note :g 4)]]
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :c 4)])
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :e 4)])
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :g 4)])
 
-        ;; Execute: dispatch the event
-        (re-frame/dispatch [::events/set-pressed-notes notes])
+      (is (=
+           [{:name :c, :octave 4} {:name :e, :octave 4} {:name :g, :octave 4}]
+           (:pressed-notes @re-frame.db/app-db))
+        "Pressed notes should match the provided notes after setting")
 
-        ;; Verify: Pressed notes should be updated
-        (is (= notes (:pressed-notes @re-frame.db/app-db))
-            "Pressed notes should match the provided notes after setting"))
+      (re-frame/dispatch [::events/trigger-note nil])
+      (is (=
+           []
+           (:pressed-notes @re-frame.db/app-db))
+          "Pressed notes should be empty after clearing")
+
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :d 4)])
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :f 4)])
+      (re-frame/dispatch [::events/trigger-note (kb/create-note :a 4)])
 
       ;; Another round
-      (let [notes [(kb/create-note :d 4) (kb/create-note :f 4) (kb/create-note :a 4)]]
-
-        ;; Execute: dispatch the event
-        (re-frame/dispatch [::events/set-pressed-notes notes])
-
-        ;; Verify: Pressed notes should be updated
-        (is (= notes (:pressed-notes @re-frame.db/app-db))
-            "Pressed notes should match the provided notes after setting")))))
+      (is (=
+           [{:name :d, :octave 4} {:name :f, :octave 4} {:name :a, :octave 4}]
+           (:pressed-notes @re-frame.db/app-db))
+          "Pressed notes should match the provided notes after setting"))))
 
 (deftest test-clear-pressed-notes
   (testing "Clearing pressed notes"

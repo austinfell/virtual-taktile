@@ -236,9 +236,9 @@
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-note note])
-             :on-mouse-up #(re-frame/dispatch [::events/trigger-note nil])
-             :on-mouse-leave #(re-frame/dispatch [::events/trigger-note nil])}
+      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-notes note])
+             :on-mouse-up #(re-frame/dispatch [::events/trigger-notes nil])
+             :on-mouse-leave #(re-frame/dispatch [::events/trigger-notes nil])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
