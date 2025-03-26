@@ -53,11 +53,10 @@
 (re-frame/reg-event-fx
  ::trigger-note
  (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
-   (let [{:keys [selected-chord selected-scale chords scales keyboard-root keyboard-transpose]} db
+   (let [{:keys [selected-chromatic-chord selected-scale chromatic-chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
      (cond
        (nil? note) {:db (assoc db :pressed-notes [])}
-       (= selected-chord :off) {:db (update db :pressed-notes conj note)}
-       (= selected-scale :chromatic) {:db (update db :pressed-notes concat (kb/build-chord (-> chords selected-chord name) octave))}
+       (= selected-scale :chromatic) {:db (update db :pressed-notes concat (kb/build-chord (-> chromatic-chords selected-chromatic-chord name) octave))}
        :else {:db (update db :pressed-notes concat (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))}))))
 
