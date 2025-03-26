@@ -434,6 +434,8 @@
           root-index (.indexOf (vec scale-notes) (:name root-note))]
       (if (= root-index -1)
         []
+        ;; TODO - This is currently hardcoded, we should really make this dynamic so we can do things like
+        ;; have 7th, 9th, etc chromatic chords.
         (let [positions [0 2 4]
               chord-note-names (mapv (fn [pos]
                                       (nth scale-notes
