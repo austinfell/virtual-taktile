@@ -442,3 +442,17 @@
                                            (mod (+ root-index pos) scale-size)))
                                     positions)]
           (build-chord chord-note-names (:octave root-note)))))))
+(def diatonic-chords
+  {:single-note [0]
+   :diad [0 2]
+   :triad [0 2 4]
+   :seventh [0 2 4 6]
+   :ninth [0 2 4 6 8]
+   :eleventh [0 2 4 6 8 10]
+   :thirteenth [0 2 4 6 8 12]
+   :sus-2 [0 1 4]
+   :sus-4 [0 3 4]
+   :six-nine [0 2 4 5 8]
+   :quartal-within-scale [0 3 6]
+   :shell-seventh [0 2 6]})
+
