@@ -436,6 +436,14 @@
         []
         ;; TODO - This is currently hardcoded, we should really make this dynamic so we can do things like
         ;; have 7th, 9th, etc chromatic chords.
+        ;;
+        ;; TODO If we do the above... we really need to know if the hardware retains keyboard state within
+        ;; its sequences... if it does, this breaks backwards compatability with it (as would a potential
+        ;; "scale builder" functionality) - so, if that becomes the case, we really need a UX around handling
+        ;; that. "Compatability mode?" Or maybe we just make the assumption that if a user uses any extra features
+        ;; "user defined scales", "user defined chords" that it will map back during project export to the
+        ;; scale/chord that most resembles the user defined one... But again, if the sequencer actually
+        ;; depends on that as part of its playback routine... that might be a problem!
         (let [positions [0 2 4]
               chord-note-names (mapv (fn [pos]
                                       (nth scale-notes
