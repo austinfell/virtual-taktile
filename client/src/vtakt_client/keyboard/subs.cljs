@@ -75,9 +75,16 @@
 (re-frame/reg-sub
  ::selected-scale-chord
  (fn [db _]
-   (if (= (:selected-chromatic-chord db) :single-note)
-     :single-note
-     :triad)))
+   (cond
+     ;; If the current selected chromatic chord is a single note, it will be a single
+     ;; note when a scale is selected.
+     (= (:selected-chromatic-chord db) :single-note) :single-note
+     ;; If any other specific chord is selected when in chromatic scale mode, then the
+     ;; corresponding chord when any other scale is selected will be triad (1 3 5) because
+     ;; there will not be a guarantee that the notes in the chord selected for chromatic
+     ;; scale will be in the scale that has been selected. Think: minor chord is selected
+     ;; in chromatic mode, but c major is selected...
+     :else :triad)))
 
 (re-frame/reg-sub
  ::scales
