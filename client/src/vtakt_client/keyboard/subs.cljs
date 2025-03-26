@@ -58,37 +58,26 @@
     #(kb/transpose-note % keyboard-transpose))))
 
 (re-frame/reg-sub
- ::internal-chord
+ ::chromatic-chords
  (fn [db _]
-   (:selected-chord db)))
+   (:chromatic-chords db)))
 
 (re-frame/reg-sub
- ::internal-chords
+ ::scale-chords
  (fn [db _]
-   (:chords db)))
+   (:scale-chords db)))
 
 (re-frame/reg-sub
- ::chords
- (fn [_]
-   [(re-frame/subscribe [::selected-scale])
-    (re-frame/subscribe [::internal-chords])])
- (fn [[selected-scale internal-chords] _]
-   (if (= selected-scale :chromatic)
-     (into {:off {}} internal-chords)
-     {:off {} :on {}})))
+ ::selected-chromatic-chord
+ (fn [db _]
+   (:selected-chromatic-chord db)))
 
 (re-frame/reg-sub
- ::selected-chord
- (fn [_]
-   [(re-frame/subscribe [::selected-scale])
-    (re-frame/subscribe [::internal-chord])
-    (re-frame/subscribe [::chords])])
- (fn [[selected-scale internal-chord chords] _]
-   (if (= selected-scale :chromatic)
-     (if (contains? (set (keys chords)) internal-chord)
-       internal-chord
-       :major)
-     (if (= :off internal-chord) :off :on))))
+ ::selected-scale-chord
+ (fn [db _]
+   (if (= (:selected-chromatic-chord db) :single-note)
+     :single-note
+     :triad)))
 
 (re-frame/reg-sub
  ::scales

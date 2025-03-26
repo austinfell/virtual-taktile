@@ -25,9 +25,20 @@
    {:db (update db :keyboard-transpose dec)}))
 
 (re-frame/reg-event-fx
- ::set-chord
+ ::set-selected-chromatic-chord
  (fn [{:keys [db]} [_ chord]]
-   {:db (assoc db :selected-chord chord)}))
+   {:db (assoc db :selected-chromatic-chord
+               (cond
+                 ;; If the chord sent to the event is in the list of chords we know about,
+                 ;; then the current selected chromatic chord to that value.
+                 ((db :chromatic-chords) chord) chord
+                 ;; Otherwise, if the chord is a triad, we just map it to the chromatic
+                 ;; chord of a major. Hardware doesn't have any sophisticated state management
+                 ;; that will remember that last chord that was selected.
+                 (= chord :triad) :major
+                 ;; This really shouldn't happen, but if it does, we will throw up our hands
+                 ;; and set the chord to be a major.
+                 :else :major))}))
 
 (re-frame/reg-event-fx
  ::set-scale

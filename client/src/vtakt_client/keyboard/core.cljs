@@ -374,7 +374,8 @@
 
 ;; Chords
 (def chords
-  {:major (create-scale-group [0 4 7])
+  {:single-note (create-scale-group [0])
+   :major (create-scale-group [0 4 7])
    :minor (create-scale-group [0 3 7])
    :dominant-7 (create-scale-group [0 4 7 10])
    :minor-7 (create-scale-group [0 3 7 10])

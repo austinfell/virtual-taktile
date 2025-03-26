@@ -112,36 +112,27 @@
    Parameters:
    - on-change-event: Event to dispatch when selection changes
    - width: Width of the dropdown (default: '125px')
-   - filter-box?: Whether to show a filter box (default: true)
-   - pinned-items: Set of item keys that should appear at the top of the list
-   - sort-fn: Function to sort the non-pinned options (default: alphabetical by name)"
-  [on-change-event & {:keys [width filter-box? pinned-items sort-fn]
-                       :or {width "125px"
-                            filter-box? true
-                            pinned-items #{}
-                            sort-fn (fn [options]
-                                     (sort-by (comp name first) options))}}]
+   - pinned-items: Set of item keys that should appear at the top of the list"
+  [on-change-event & {:keys [width pinned-items sort-fn]
+                        :or {width "125px"
+                             pinned-items #{}}}]
   (memoize
     (fn [options selected]
-      (let [;; Split options into pinned and regular items
-            pinned (filter #(contains? pinned-items (first %)) options)
-            regular (filter #(not (contains? pinned-items (first %))) options)
-            ;; Sort the regular items
-            sorted-regular (sort-fn regular)
-            ;; Combine pinned items (in original order) with sorted regular items
-            combined-options (concat pinned sorted-regular)]
+      (let [pinned-at-top (filter #(contains? pinned-items %) options)
+            regular (filter #(not (contains? pinned-items %)) options)
+            combined-options (concat (sort-by name pinned-at-top) (sort-by name regular))]
         [re-com/single-dropdown
          :src (at)
          :class (styles/dropdown)
-         :choices (mapv (fn [v] {:id (first v)}) (into [] combined-options))
+         :choices (mapv (fn [v] {:id v}) combined-options)
          :model selected
          :width width
-         :filter-box? filter-box?
+         :filter-box? true
          :label-fn #(uc/format-keyword (:id %))
          :on-change #(re-frame/dispatch [on-change-event %])]))))
 
 ;; Scale selector
-(s/def ::scale-options (s/map-of keyword? (s/coll-of ::kb/chromatic-note :kind sequential?)))
+(s/def ::scale-options (s/coll-of keyword?))
 (s/def ::selected-scale keyword?)
 (s/fdef scale-selector
   :args (s/cat :options ::scale-options :selected ::selected-scale)
@@ -153,15 +144,15 @@
    :pinned-items #{:chromatic}))
 
 ;; Chord selector
-(s/def ::chord-options (s/map-of keyword? (s/map-of ::kb/chromatic-note (s/coll-of ::kb/chromatic-note :kind sequential?))))
-(s/def ::selected-chord keyword?)
+(s/def ::chord-options (s/coll-of keyword?))
+(s/def ::selected-chromatic-chord keyword?)
 (s/fdef chord-selector
-  :args (s/cat :options ::chord-options :selected ::selected-chord)
+  :args (s/cat :options ::chord-options :selected ::selected-chromatic-chord)
   :ret ::us/reagent-component)
 (def chord-selector
   (make-dropdown-selector
-   ::events/set-chord
-   :pinned-items #{:off}))
+   ::events/set-selected-chromatic-chord
+   :pinned-items #{:single-note}))
 
 ;; Keyboard mode selector.
 (s/def ::keyboard-mode #{:chromatic :folding})
@@ -236,9 +227,9 @@
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-notes note])
-             :on-mouse-up #(re-frame/dispatch [::events/trigger-notes nil])
-             :on-mouse-leave #(re-frame/dispatch [::events/trigger-notes nil])}
+      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-note note])
+             :on-mouse-up #(re-frame/dispatch [::events/trigger-note nil])
+             :on-mouse-leave #(re-frame/dispatch [::events/trigger-note nil])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -336,8 +327,8 @@
   (let [keyboard (re-frame/subscribe [::subs/chromatic-keyboard])
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
-        selected-chord (re-frame/subscribe [::subs/selected-chord])
-        chord-mode? (not= @selected-chord :off)]
+        selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
+        chord-mode? (not= @selected-chromatic-chord :off)]
     (fn []
       (let [white-notes (:bottom (kb/rows @keyboard))
             black-notes (:top (kb/rows @keyboard))
@@ -463,13 +454,15 @@
 
   See also:
     control-section, pressed-notes-display, octave-view, keyboard-mode-selector,
-    scale-selector, root-note-control, chord-selector, transpose-control"
+    scale-selector, root-note-control, chromatic-chord-selector, transpose-control"
   []
   (let [ck (re-frame/subscribe [::subs/keyboard])
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
         keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])
-        selected-chord (re-frame/subscribe [::subs/selected-chord])
-        available-chords (re-frame/subscribe [::subs/chords])
+        selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
+        selected-scale-chord (re-frame/subscribe [::subs/selected-scale-chord])
+        chromatic-chords (re-frame/subscribe [::subs/chromatic-chords])
+        scale-chords (re-frame/subscribe [::subs/scale-chords])
         selected-scale (re-frame/subscribe [::subs/selected-scale])
         available-scales (re-frame/subscribe [::subs/scales])]
     (fn []
@@ -492,9 +485,11 @@
          :gap "20px"
          :align :center
          :children
-         [[control-section "Scale" [scale-selector @available-scales @selected-scale]]
+         [[control-section "Scale" [scale-selector (keys @available-scales) @selected-scale]]
           [control-section "Root" [root-note-control (:root-note @ck)]]
-          [control-section "Chord" [chord-selector @available-chords @selected-chord]]
+          (if (= @selected-scale :chromatic)
+            [control-section "Chord" [chord-selector (keys @chromatic-chords) @selected-chromatic-chord]]
+            [control-section "Chord" [chord-selector (keys @scale-chords) @selected-scale-chord]])
           [control-section "Transpose" [transpose-control @transpose]]]]]])))
 
 (s/fdef keyboard
