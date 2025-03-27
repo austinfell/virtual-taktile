@@ -373,15 +373,15 @@
      (->FoldingKeyboard root-note layout nil))))
 
 ;; Chords
-(def chords
-  {:single-note (create-scale-group [0])
-   :major (create-scale-group [0 4 7])
-   :minor (create-scale-group [0 3 7])
-   :dominant-7 (create-scale-group [0 4 7 10])
-   :minor-7 (create-scale-group [0 3 7 10])
-   :major-7 (create-scale-group [0 4 7 11])
-   :diminished (create-scale-group [0 3 6])
-   :diminished-7 (create-scale-group [0 3 6 9])})
+(def chromatic-chords
+  {:single-note [0]
+   :major [0 4 7]
+   :minor [0 3 7]
+   :dominant-7 [0 4 7 10]
+   :minor-7 [0 3 7 10]
+   :major-7 [0 4 7 11]
+   :diminished [0 3 6]
+   :diminished-7 [0 3 6 9]})
 
 (s/def ::chord-notes (s/coll-of ::chromatic-note :min-count 0 :kind sequential?))
 (s/def ::octave int?)
@@ -427,25 +427,14 @@
   :ret ::chord)
 (defn build-scale-chord
   ;; TODO - Needs tests.
-  [scale-notes root-note]
+  [scale-notes root-note positions]
   (if (empty? scale-notes)
     []
     (let [scale-size (count scale-notes)
           root-index (.indexOf (vec scale-notes) (:name root-note))]
       (if (= root-index -1)
         []
-        ;; TODO - This is currently hardcoded, we should really make this dynamic so we can do things like
-        ;; have 7th, 9th, etc chromatic chords.
-        ;;
-        ;; TODO If we do the above... we really need to know if the hardware retains keyboard state within
-        ;; its sequences... if it does, this breaks backwards compatability with it (as would a potential
-        ;; "scale builder" functionality) - so, if that becomes the case, we really need a UX around handling
-        ;; that. "Compatability mode?" Or maybe we just make the assumption that if a user uses any extra features
-        ;; "user defined scales", "user defined chords" that it will map back during project export to the
-        ;; scale/chord that most resembles the user defined one... But again, if the sequencer actually
-        ;; depends on that as part of its playback routine... that might be a problem!
-        (let [positions [0 2 4]
-              chord-note-names (mapv (fn [pos]
+        (let [chord-note-names (mapv (fn [pos]
                                       (nth scale-notes
                                            (mod (+ root-index pos) scale-size)))
                                     positions)]

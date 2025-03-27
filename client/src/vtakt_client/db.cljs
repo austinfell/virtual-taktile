@@ -15,11 +15,11 @@
    ;;
    ;; Chord mode
    ;;
-   :chromatic-chords kb/chords
-   ;; TODO - Eventually we will want to use these instead of hardcoding assumptions in
-   ;; event handler...
-   :scale-chords {:single-note [0] :triad [0 2 4]}
+   :chromatic-chords kb/chromatic-chords
+   :diatonic-chords kb/diatonic-chords
+
    :selected-chromatic-chord :single-note
+   :selected-diatonic-chord :single-note
 
    :pressed-notes []
    })

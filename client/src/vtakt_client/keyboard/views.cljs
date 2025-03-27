@@ -145,13 +145,22 @@
 
 ;; Chord selector
 (s/def ::chord-options (s/coll-of keyword?))
-(s/def ::selected-chromatic-chord keyword?)
-(s/fdef chord-selector
-  :args (s/cat :options ::chord-options :selected ::selected-chromatic-chord)
+(s/def ::selected-chord keyword?)
+
+(s/fdef chromatic-chord-selector
+  :args (s/cat :options ::chord-options :selected ::selected-chord)
   :ret ::us/reagent-component)
-(def chord-selector
+(def chromatic-chord-selector
   (make-dropdown-selector
    ::events/set-selected-chromatic-chord
+   :pinned-items #{:single-note}))
+
+(s/fdef diatonic-chord-selector
+  :args (s/cat :options ::chord-options :selected ::selected-chord)
+  :ret ::us/reagent-component)
+(def diatonic-chord-selector
+  (make-dropdown-selector
+   ::events/set-selected-diatonic-chord
    :pinned-items #{:single-note}))
 
 ;; Keyboard mode selector.
@@ -460,9 +469,9 @@
         transpose (re-frame/subscribe [::subs/keyboard-transpose])
         keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])
         selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
-        selected-scale-chord (re-frame/subscribe [::subs/selected-scale-chord])
+        selected-diatonic-chord (re-frame/subscribe [::subs/selected-diatonic-chord])
         chromatic-chords (re-frame/subscribe [::subs/chromatic-chords])
-        scale-chords (re-frame/subscribe [::subs/scale-chords])
+        diatonic-chords (re-frame/subscribe [::subs/diatonic-chords])
         selected-scale (re-frame/subscribe [::subs/selected-scale])
         available-scales (re-frame/subscribe [::subs/scales])]
     (fn []
@@ -488,8 +497,8 @@
          [[control-section "Scale" [scale-selector (keys @available-scales) @selected-scale]]
           [control-section "Root" [root-note-control (:root-note @ck)]]
           (if (= @selected-scale :chromatic)
-            [control-section "Chord" [chord-selector (keys @chromatic-chords) @selected-chromatic-chord]]
-            [control-section "Chord" [chord-selector (keys @scale-chords) @selected-scale-chord]])
+            [control-section "Chord" [chromatic-chord-selector (keys @chromatic-chords) @selected-chromatic-chord]]
+            [control-section "Chord" [diatonic-chord-selector (keys @diatonic-chords) @selected-diatonic-chord]])
           [control-section "Transpose" [transpose-control @transpose]]]]]])))
 
 (s/fdef keyboard

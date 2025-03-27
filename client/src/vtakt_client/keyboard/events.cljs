@@ -27,18 +27,35 @@
 (re-frame/reg-event-fx
  ::set-selected-chromatic-chord
  (fn [{:keys [db]} [_ chord]]
-   {:db (assoc db :selected-chromatic-chord
-               (cond
-                 ;; If the chord sent to the event is in the list of chords we know about,
-                 ;; then the current selected chromatic chord to that value.
-                 ((db :chromatic-chords) chord) chord
-                 ;; Otherwise, if the chord is a triad, we just map it to the chromatic
-                 ;; chord of a major. Hardware doesn't have any sophisticated state management
-                 ;; that will remember that last chord that was selected.
-                 (= chord :triad) :major
-                 ;; This really shouldn't happen, but if it does, we will throw up our hands
-                 ;; and set the chord to be a major.
-                 :else :major))}))
+   (let [current-chromatic-chord (:selected-chromatic-chord db)
+         current-diatonic-chord (:selected-diatonic-chord db)
+         new-diatonic-chord (cond
+                              (= chord :single-note) :single-note
+                              ;; If changing from single-note to something else, set diatonic to triad
+                              (and (= current-chromatic-chord :single-note)
+                                   (not= chord :single-note)) :triad
+                              ;; Otherwise keep current diatonic chord
+                              :else current-diatonic-chord)]
+     {:db (-> db
+              (assoc :selected-chromatic-chord chord)
+              (assoc :selected-diatonic-chord new-diatonic-chord))})))
+
+(re-frame/reg-event-fx
+ ::set-selected-diatonic-chord
+ (fn [{:keys [db]} [_ chord]]
+   (let [current-chromatic-chord (:selected-chromatic-chord db)
+         current-diatonic-chord (:selected-diatonic-chord db)
+         new-chromatic-chord (cond
+                               ;; If setting diatonic to single-note, sync chromatic to single-note too
+                               (= chord :single-note) :single-note
+                               ;; If changing from single-note to something else, set chromatic to major
+                               (and (= current-diatonic-chord :single-note)
+                                    (not= chord :single-note)) :major
+                               ;; Otherwise keep current chromatic chord
+                               :else current-chromatic-chord)]
+     {:db (-> db
+              (assoc :selected-diatonic-chord chord)
+              (assoc :selected-chromatic-chord new-chromatic-chord))})))
 
 (re-frame/reg-event-fx
  ::set-scale
@@ -53,10 +70,21 @@
 (re-frame/reg-event-fx
  ::trigger-note
  (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
-   (let [{:keys [selected-chromatic-chord selected-scale chromatic-chords scales keyboard-root keyboard-transpose]} db
+   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
      (cond
-       (nil? note) {:db (assoc db :pressed-notes [])}
-       (= selected-scale :chromatic) {:db (update db :pressed-notes concat (kb/build-chord (-> chromatic-chords selected-chromatic-chord name) octave))}
-       :else {:db (update db :pressed-notes concat (kb/build-scale-chord (-> scales selected-scale transposed-root-name) note))}))))
+       (nil? note)
+       {:db (assoc db :pressed-notes [])}
+
+       (= selected-scale :chromatic)
+       {:db (update db :pressed-notes concat (kb/build-scale-chord
+                                              (-> scales selected-scale transposed-root-name)
+                                              note
+                                              (chromatic-chords selected-chromatic-chord)))}
+
+       :else
+       {:db (update db :pressed-notes concat (kb/build-scale-chord
+                                              (-> scales selected-scale transposed-root-name)
+                                              note
+                                              (diatonic-chords selected-diatonic-chord)))}))))
 
