@@ -78,12 +78,18 @@
 
        (= selected-scale :chromatic)
        {:db (update db :pressed-notes concat (kb/build-scale-chord
+                                              ;; The selected scale needs transposition. The note passed in
+                                              ;; is already derived from the keyboard data structure which
+                                              ;; is itself tranposed.
                                               (-> scales selected-scale transposed-root-name)
                                               note
                                               (chromatic-chords selected-chromatic-chord)))}
 
        :else
        {:db (update db :pressed-notes concat (kb/build-scale-chord
+                                              ;; The selected scale needs transposition. The note passed in
+                                              ;; is already derived from the keyboard data structure which
+                                              ;; is itself tranposed.
                                               (-> scales selected-scale transposed-root-name)
                                               note
                                               (diatonic-chords selected-diatonic-chord)))}))))

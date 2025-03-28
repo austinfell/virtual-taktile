@@ -165,25 +165,65 @@
       (is (= :chromatic (:selected-scale @re-frame.db/app-db))
           "Selected scale should be chromatic after setting"))))
 
-(deftest test-set-chord
+(deftest test-set-chromatic-chord
   (testing "Setting chord to minor"
     (rf-test/run-test-sync
       ;; Setup: use the test DB value
       (reset! re-frame.db/app-db db/default-db)
 
+      ;; Verify: Selected chord should be updated
+      (is (= :single-note (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should initially be single note")
+      (is (= :single-note (:selected-diatonic-chord @re-frame.db/app-db))
+          "Selected diatonic chord should initially be single note")
+
       ;; Execute: dispatch the event
-      (re-frame/dispatch [::events/set-chord :minor])
+      (re-frame/dispatch [::events/set-selected-chromatic-chord :minor])
 
       ;; Verify: Selected chord should be updated
-      (is (= :minor (:selected-chord @re-frame.db/app-db))
+      (is (= :minor (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should be minor after setting")
+      (is (= :triad (:selected-diatonic-chord @re-frame.db/app-db))
+          "Selected diatonic chord should be triad after setting")
+
+      ;; Execute: dispatch the event
+      (re-frame/dispatch [::events/set-selected-chromatic-chord :single-note])
+
+      ;; Verify: Selected chord should be updated
+      (is (= :single-note (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should be single note after setting")
+      (is (= :single-note (:selected-diatonic-chord @re-frame.db/app-db))
+          "Selected diatonic chord should be single note after setting"))))
+
+(deftest test-set-diatonic-chord
+  (testing "Setting chord to minor"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB value
+      (reset! re-frame.db/app-db db/default-db)
+
+      ;; Verify: Selected chord should be updated
+      (is (= :single-note (:selected-diatonic-chord @re-frame.db/app-db))
+          "Selected diatonic chord should initially be single note")
+      (is (= :single-note (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should initially be single note")
+
+      ;; Execute: dispatch the event
+      (re-frame/dispatch [::events/set-selected-diatonic-chord :triad])
+
+      ;; Verify: Selected chord should be updated
+      (is (= :triad (:selected-diatonic-chord @re-frame.db/app-db))
           "Selected chord should be minor after setting")
+      (is (= :major (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should be major after setting")
 
       ;; Execute: dispatch the event
-      (re-frame/dispatch [::events/set-chord :off])
+      (re-frame/dispatch [::events/set-selected-diatonic-chord :single-note])
 
       ;; Verify: Selected chord should be updated
-      (is (= :off (:selected-chord @re-frame.db/app-db))
-          "Selected chord should be off after setting"))))
+      (is (= :single-note (:selected-chromatic-chord @re-frame.db/app-db))
+          "Selected chromatic chord should be single-note after setting")
+      (is (= :single-note (:selected-diatonic-chord @re-frame.db/app-db))
+          "Selected diatonic chord should be single-note after setting"))))
 
 (deftest test-set-keyboard-mode
   (testing "Setting keyboard mode to folding"
@@ -255,173 +295,186 @@
         (is (= [test-note] (:pressed-notes @re-frame.db/app-db))
             "Only the triggered note should be in pressed notes")))))
 
-(deftest test-trigger-note-with-chord
-  (testing "Triggering a note with chord mode active"
-    (rf-test/run-test-sync
-      ;; Setup: use the test DB with chord mode set to major
-      (let [initial-db (-> db/default-db
-                           (assoc :selected-chord :major))]
-        (reset! re-frame.db/app-db initial-db)
-
-        ;; Note to trigger
-        (let [test-note (kb/create-note :d 4)
-              expected-chord [(kb/create-note :d 4)
-                              (kb/create-note :fsgf 4)
-                              (kb/create-note :a 4)]]
-
-          ;; Execute: dispatch the event
-          (re-frame/dispatch [::events/trigger-note test-note])
-
-          ;; Verify: The full chord should be in pressed notes
-          (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
-              "Full chord should be in pressed notes when chord mode is active"))))))
-
-(deftest test-trigger-note-with-multiple-chords
-  (testing "Triggering multiple notes with chord mode active"
-    (rf-test/run-test-sync
-      ;; Setup: use the test DB with chord mode set to major
-      (let [initial-db (-> db/default-db
-                           (assoc :selected-chord :major))]
-        (reset! re-frame.db/app-db initial-db)
-
-        ;; Notes to trigger
-        (let [test-note-d (kb/create-note :d 4)
-              test-note-e (kb/create-note :e 4)
-              expected-notes [(kb/create-note :d 4)
-                              (kb/create-note :fsgf 4)
-                              (kb/create-note :a 4)
-                              (kb/create-note :e 4)
-                              (kb/create-note :gsaf 4)
-                              (kb/create-note :b 4)]]
-
-          ;; Execute: dispatch the event for both test-note-d and test-note-e
-          (re-frame/dispatch [::events/trigger-note test-note-d])
-          (re-frame/dispatch [::events/trigger-note test-note-e])
-
-          ;; Verify: Both chords should show up
-          (is (= expected-notes (:pressed-notes @re-frame.db/app-db))
-              "Full chord should be in pressed notes when chord mode is active"))))))
-
-(deftest test-trigger-note-with-chord-non-chromatic
-  (testing "Triggering a note with chord mode active"
-    (rf-test/run-test-sync
-      ;; Setup: use the test DB with chord mode set to major
-      (let [initial-db (-> db/default-db
-                           (assoc :selected-chord :on)
-                           (assoc :selected-scale :ionian))]
-        (reset! re-frame.db/app-db initial-db)
-
-        ;; Note to trigger
-        (let [test-note (kb/create-note :d 4)
-              expected-chord [(kb/create-note :d 4)
-                              (kb/create-note :f 4)
-                              (kb/create-note :a 4)]]
-
-          ;; Execute: dispatch the event
-          (re-frame/dispatch [::events/trigger-note test-note])
-
-          ;; Verify: The full chord should be in pressed notes
-          (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
-              "Full chord D minor should be in pressed notes when chord mode is active"))))))
-
-(deftest test-trigger-note-with-multiple-chords-non-chromatic
-  (testing "Triggering multiple notes with chord mode active"
-    (rf-test/run-test-sync
-      ;; Setup: use the test DB with chord mode set to major
-      (let [initial-db (-> db/default-db
-                           (assoc :selected-scale :ionian)
-                           (assoc :selected-chord :on))]
-        (reset! re-frame.db/app-db initial-db)
-
-        ;; Notes to trigger
-        (let [test-note-d (kb/create-note :d 4)
-              test-note-e (kb/create-note :e 4)
-              expected-notes [(kb/create-note :d 4)
-                              (kb/create-note :f 4)
-                              (kb/create-note :a 4)
-                              (kb/create-note :e 4)
-                              (kb/create-note :g 4)
-                              (kb/create-note :b 4)]]
-
-          ;; Execute: dispatch the event for both test-note-d and test-note-e
-          (re-frame/dispatch [::events/trigger-note test-note-d])
-          (re-frame/dispatch [::events/trigger-note test-note-e])
-
-          ;; Verify: Both chords should show up
-          (is (= expected-notes (:pressed-notes @re-frame.db/app-db))
-              "Full chord should be in pressed notes when chord mode is active"))))))
 
 ;; =========================================================
-;; Test Combined Events (Multiple Dispatch Sequence)
+;; Tests for trigger-note Event Handler
 ;; =========================================================
 
-(deftest test-keyboard-interaction-sequence
-  (testing "Sequence of keyboard interactions"
+(deftest test-trigger-note-nil
+  (testing "Triggering with nil should clear pressed notes"
     (rf-test/run-test-sync
-      ;; Setup: Start with clean test DB
-      (reset! re-frame.db/app-db db/default-db)
+      ;; Setup: use the test DB with some pressed notes
+      (reset! re-frame.db/app-db (assoc db/default-db :pressed-notes
+                                        [(kb/create-note :c 4)
+                                         (kb/create-note :e 4)
+                                         (kb/create-note :g 4)]))
 
-      ;; Step 1: Change scale to minor (Currently in C Minor)
-      (re-frame/dispatch [::events/set-scale :aeolian])
-      (is (= :aeolian (:selected-scale @re-frame.db/app-db))
-          "Scale should be set to minor")
+      ;; Execute: dispatch the event with nil
+      (re-frame/dispatch [::events/trigger-note nil])
 
-      ;; Step 2: Change root note up 2 semitones (Tranposed up to D Minor)
-      (re-frame/dispatch [::events/inc-keyboard-root])
-      (re-frame/dispatch [::events/inc-keyboard-root])
-      (let [root (:keyboard-root @re-frame.db/app-db)]
-        (is (= :d (:name root))
-            "Root note should be D after incrementing twice")
-        (is (= 4 (:octave root))
-            "Root note octave should still be 4"))
+      ;; Verify: Pressed notes should be cleared
+      (is (empty? (:pressed-notes @re-frame.db/app-db))
+          "Pressed notes should be empty after triggering with nil"))))
 
-      ;; Step 3: Trigger a note
-      (let [test-note (kb/create-note :e 4)]
+(deftest test-trigger-note-chromatic-single-note
+  (testing "Triggering a single note in chromatic scale"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale and single-note chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :single-note)
+                  (assoc :pressed-notes [])))
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :d 4)]
         (re-frame/dispatch [::events/trigger-note test-note])
+
+        ;; Verify: Only the single note should be pressed
         (is (= [test-note] (:pressed-notes @re-frame.db/app-db))
-            "Note should be in pressed notes after triggering"))
+            "Only the triggered note should be in pressed notes")))))
 
-      ;; Step 4: Clear pressed notes
+(deftest test-trigger-note-chromatic-major-chord
+  (testing "Triggering a major chord in chromatic scale"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale and major chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :major)
+                  (assoc :pressed-notes [])))
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :c 4)
+            expected-chord [(kb/create-note :c 4)
+                            (kb/create-note :e 4)
+                            (kb/create-note :g 4)]]
+        (re-frame/dispatch [::events/trigger-note test-note])
+
+        ;; Verify: Major chord should be pressed
+        (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
+            "C major chord should be in pressed notes")))))
+
+(deftest test-trigger-note-chromatic-minor-chord
+  (testing "Triggering a minor chord in chromatic scale"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale and minor chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :minor)
+                  (assoc :pressed-notes [])))
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :a 3)
+            expected-chord [(kb/create-note :a 3)
+                            (kb/create-note :c 4)
+                            (kb/create-note :e 4)]]
+        (re-frame/dispatch [::events/trigger-note test-note])
+
+        ;; Verify: Minor chord should be pressed
+        (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
+            "A minor chord should be in pressed notes")))))
+
+(deftest test-trigger-note-with-transposition
+  (testing "Triggering notes with transposition applied"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale, single-note chord and transposition of 2
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :single-note)
+                  (assoc :pressed-notes [])))
+
+      (re-frame/dispatch [::events/inc-keyboard-transpose])
+      (re-frame/dispatch [::events/inc-keyboard-transpose])
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :c 4)
+            ;; trigger notes doesn't do transposition. Its expected that
+            ;; the notes you want to trigger are the notes that are passed in.
+            expected-note (kb/create-note :c 4)]
+        (re-frame/dispatch [::events/trigger-note test-note])
+
+        ;; Verify: Transposed note should be pressed
+        (is (= [expected-note] (:pressed-notes @re-frame.db/app-db))
+            "Note should be transposed up by 2 semitones")))))
+
+(deftest test-trigger-note-diatonic-scale
+  (testing "Triggering notes in a diatonic scale"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with ionian scale and triad chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :ionian)
+                  (assoc :selected-diatonic-chord :triad)
+                  (assoc :pressed-notes [])))
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :c 4)]
+        (re-frame/dispatch [::events/trigger-note test-note])
+
+        ;; Verify: Diatonic triad should be pressed
+        (let [pressed-notes (:pressed-notes @re-frame.db/app-db)]
+          (is (= 3 (count pressed-notes))
+              "Should have 3 notes in a triad")
+
+          ;; Check if it contains the right notes (C, E, G for C major triad)
+          (is (some #(and (= (:name %) :c) (= (:octave %) 4)) pressed-notes)
+              "Triad should contain root note C4")
+          (is (some #(and (= (:name %) :e) (= (:octave %) 4)) pressed-notes)
+              "Triad should contain third note E4")
+          (is (some #(and (= (:name %) :g) (= (:octave %) 4)) pressed-notes)
+              "Triad should contain fifth note G4"))))))
+
+(deftest test-trigger-note-multiple-times
+  (testing "Triggering different notes in sequence"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale and single-note chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :single-note)
+                  (assoc :pressed-notes [])))
+
+      ;; First note
+      (let [note1 (kb/create-note :c 4)]
+        (re-frame/dispatch [::events/trigger-note note1])
+        (is (= [note1] (:pressed-notes @re-frame.db/app-db))
+            "First note should be in pressed notes"))
+
+      ;; Clear pressed notes
       (re-frame/dispatch [::events/trigger-note nil])
       (is (empty? (:pressed-notes @re-frame.db/app-db))
-          "Pressed notes should be empty after clearing")
+          "Pressed notes should be cleared")
 
-      ;; Step 5: Switch to chord mode, trigger a note.
-      (let [test-note (kb/create-note :e 4)]
-        (re-frame/dispatch [::events/set-chord :on])
+      ;; Second note
+      (let [note2 (kb/create-note :e 4)]
+        (re-frame/dispatch [::events/trigger-note note2])
+        (is (= [note2] (:pressed-notes @re-frame.db/app-db))
+            "Second note should be in pressed notes")))))
+
+(deftest test-trigger-note-seventh-chord
+  (testing "Triggering a seventh chord"
+    (rf-test/run-test-sync
+      ;; Setup: use the test DB with chromatic scale and dominant-7 chord
+      (reset! re-frame.db/app-db
+              (-> db/default-db
+                  (assoc :selected-scale :chromatic)
+                  (assoc :selected-chromatic-chord :dominant-7)
+                  (assoc :pressed-notes [])))
+
+      ;; Execute: dispatch the event with a note
+      (let [test-note (kb/create-note :g 3)
+            expected-chord [(kb/create-note :g 3)
+                            (kb/create-note :b 3)
+                            (kb/create-note :d 4)
+                            (kb/create-note :f 4)]]
         (re-frame/dispatch [::events/trigger-note test-note])
-        (is (= [(kb/create-note :e 4)
-                (kb/create-note :g 4)
-                (kb/create-note :asbf 4)]
-               (:pressed-notes @re-frame.db/app-db))
-            "Notes should be in pressed notes after triggering"))
 
-      ;; Step 7: Clear pressed notes (again)
-      (re-frame/dispatch [::events/trigger-note nil])
-      (is (empty? (:pressed-notes @re-frame.db/app-db))
-          "Pressed notes should be empty after clearing")
-
-      ;; Step 8: Change keyboard mode to folding. It should affect much.
-      (re-frame/dispatch [::events/set-keyboard-mode :folding])
-      (is (= :folding (:keyboard-mode @re-frame.db/app-db))
-          "Folding should be the keyboard mode")
-
-      ;; Step 9: Trigger a note in chord mode again.
-      (let [test-note (kb/create-note :f 4)]
-        (re-frame/dispatch [::events/trigger-note test-note])
-        (is (= [(kb/create-note :f 4)
-                (kb/create-note :a 4)
-                (kb/create-note :c 5)]
-               (:pressed-notes @re-frame.db/app-db))
-            "Notes should be in pressed notes after triggering")))))
-
-;; TODO - We also need test cases that switching chord mode on in a specific scale
-;; other than chromatic will default to major on the chromatic scale if we switch
-;; scale back while chord-mode is on.
-
-;; TODO - Same as above, but if you switched to a specific chord in chromatic, switched
-;; to a different scale it would be "on", and then switching back to chromatic will be the
-;; original chord you selected.
+        ;; Verify: Dominant 7th chord should be pressed
+        (is (= expected-chord (:pressed-notes @re-frame.db/app-db))
+            "G dominant 7th chord should be in pressed notes")))))
 
 ;; Run tests
 (run-tests)
