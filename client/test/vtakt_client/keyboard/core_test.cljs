@@ -2104,5 +2104,188 @@
             (is (= root-note (first chord))
                 (str "First note of chord should be the root note " note-name octave))))))))
 
+(deftest test-build-scale-chord-seventh-chords
+  (testing "Building 7th chords with positions [0 2 4 6]"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C major 7th (C-E-G-B)
+          c-maj7-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 2 4 6])
+          ;; F major 7th (F-A-C-E)
+          f-maj7-chord (kb/build-scale-chord c-major-scale (kb/create-note :f 4) [0 2 4 6])
+          ;; G dominant 7th (G-B-D-F)
+          g-dom7-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 4) [0 2 4 6])]
+
+      ;; Check C major 7th chord
+      (is (= 4 (count c-maj7-chord))
+          "C major 7th chord should have 4 notes")
+      (is (= [:c :e :g :b] (mapv :name c-maj7-chord))
+          "C major 7th chord should contain C, E, G, B")
+      (is (= [4 4 4 4] (mapv :octave c-maj7-chord))
+          "All notes in C major 7th chord should be in octave 4")
+
+      ;; Check F major 7th chord
+      (is (= 4 (count f-maj7-chord))
+          "F major 7th chord should have 4 notes")
+      (is (= [:f :a :c :e] (mapv :name f-maj7-chord))
+          "F major 7th chord should contain F, A, C, E")
+      (is (= [4 4 5 5] (mapv :octave f-maj7-chord))
+          "F and A should be in octave 4, C and E should be in octave 5")
+
+      ;; Check G dominant 7th chord
+      (is (= 4 (count g-dom7-chord))
+          "G dominant 7th chord should have 4 notes")
+      (is (= [:g :b :d :f] (mapv :name g-dom7-chord))
+          "G dominant 7th chord should contain G, B, D, F")
+      (is (= [4 4 5 5] (mapv :octave g-dom7-chord))
+          "G and B should be in octave 4, D and F should be in octave 5"))))
+
+(deftest test-build-scale-chord-suspended-chords
+  (testing "Building suspended chords with different positions"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C sus2 (C-D-G) using positions [0 1 4]
+          c-sus2-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 1 4])
+          ;; C sus4 (C-F-G) using positions [0 3 4]
+          c-sus4-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 3 4])
+          ;; G sus2 (G-A-D) using positions [0 1 4]
+          g-sus2-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 4) [0 1 4])]
+
+      ;; Check C sus2 chord
+      (is (= 3 (count c-sus2-chord))
+          "C sus2 chord should have 3 notes")
+      (is (= [:c :d :g] (mapv :name c-sus2-chord))
+          "C sus2 chord should contain C, D, G")
+      (is (= [4 4 4] (mapv :octave c-sus2-chord))
+          "All notes in C sus2 chord should be in octave 4")
+
+      ;; Check C sus4 chord
+      (is (= 3 (count c-sus4-chord))
+          "C sus4 chord should have 3 notes")
+      (is (= [:c :f :g] (mapv :name c-sus4-chord))
+          "C sus4 chord should contain C, F, G")
+      (is (= [4 4 4] (mapv :octave c-sus4-chord))
+          "All notes in C sus4 chord should be in octave 4")
+
+      ;; Check G sus2 chord
+      (is (= 3 (count g-sus2-chord))
+          "G sus2 chord should have 3 notes")
+      (is (= [:g :a :d] (mapv :name g-sus2-chord))
+          "G sus2 chord should contain G, A, D")
+      (is (= [4 4 5] (mapv :octave g-sus2-chord))
+          "G and A should be in octave 4, D should be in octave 5"))))
+
+(deftest test-build-scale-chord-ninth-chords
+  (testing "Building 9th chords with positions [0 2 4 6 8]"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C major 9th (C-E-G-B-D)
+          c-maj9-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 3) [0 2 4 6 8])
+          ;; D minor 9th (D-F-A-C-E)
+          d-min9-chord (kb/build-scale-chord c-major-scale (kb/create-note :d 3) [0 2 4 6 8])
+          ;; G dominant 9th (G-B-D-F-A)
+          g-dom9-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 3) [0 2 4 6 8])]
+
+      ;; Check C major 9th chord
+      (is (= 5 (count c-maj9-chord))
+          "C major 9th chord should have 5 notes")
+      (is (= [:c :e :g :b :d] (mapv :name c-maj9-chord))
+          "C major 9th chord should contain C, E, G, B, D")
+      (is (= [3 3 3 3 4] (mapv :octave c-maj9-chord))
+          "C, E, G, B should be in octave 3, D should be in octave 4")
+
+      ;; Check D minor 9th chord
+      (is (= 5 (count d-min9-chord))
+          "D minor 9th chord should have 5 notes")
+      (is (= [:d :f :a :c :e] (mapv :name d-min9-chord))
+          "D minor 9th chord should contain D, F, A, C, E")
+      (is (= [3 3 3 4 4] (mapv :octave d-min9-chord))
+          "D, F, A should be in octave 3, C and E should be in octave 4")
+
+      ;; Check G dominant 9th chord
+      (is (= 5 (count g-dom9-chord))
+          "G dominant 9th chord should have 5 notes")
+      (is (= [:g :b :d :f :a] (mapv :name g-dom9-chord))
+          "G dominant 9th chord should contain G, B, D, F, A")
+      (is (= [3 3 4 4 4] (mapv :octave g-dom9-chord))
+          "G and B should be in octave 3, D, F, and A should be in octave 4"))))
+
+(deftest test-build-scale-chord-6th-chords
+  (testing "Building 6th chords with positions [0 2 4 5]"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C6 (C-E-G-A) 
+          c6-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 2 4 5])
+          ;; F6 (F-A-C-D)
+          f6-chord (kb/build-scale-chord c-major-scale (kb/create-note :f 4) [0 2 4 5])
+          ;; Am6 (A-C-E-F♯), but F♯ isn't in the C major scale, should be F
+          a-min6-chord (kb/build-scale-chord c-major-scale (kb/create-note :a 3) [0 2 4 5])]
+
+      ;; Check C6 chord
+      (is (= 4 (count c6-chord))
+          "C6 chord should have 4 notes")
+      (is (= [:c :e :g :a] (mapv :name c6-chord))
+          "C6 chord should contain C, E, G, A")
+      (is (= [4 4 4 4] (mapv :octave c6-chord))
+          "All notes in C6 chord should be in octave 4")
+
+      ;; Check F6 chord
+      (is (= 4 (count f6-chord))
+          "F6 chord should have 4 notes")
+      (is (= [:f :a :c :d] (mapv :name f6-chord))
+          "F6 chord should contain F, A, C, D")
+      (is (= [4 4 5 5] (mapv :octave f6-chord))
+          "F and A should be in octave 4, C and D should be in octave 5")
+
+      ;; Check Am6 chord (using notes from C major scale)
+      (is (= 4 (count a-min6-chord))
+          "Am6 chord should have 4 notes")
+      (is (= [:a :c :e :f] (mapv :name a-min6-chord))
+          "Am6 chord should contain A, C, E, F (F instead of F♯ due to scale constraints)")
+      (is (= [3 4 4 4] (mapv :octave a-min6-chord))
+          "A should be in octave 3, C, E, and F should be in octave 4"))))
+
+(deftest test-build-scale-chord-quartal-and-cluster-chords
+  (testing "Building quartal chords with positions [0 3 6 9]"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C quartal (C-F-B-E) 
+          c-quartal-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 3 6 9])
+          ;; G quartal (G-C-F-B)
+          g-quartal-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 3) [0 3 6 9])]
+
+      ;; Check C quartal chord
+      (is (= 4 (count c-quartal-chord))
+          "C quartal chord should have 4 notes")
+      (is (= [:c :f :b :e] (mapv :name c-quartal-chord))
+          "C quartal chord should contain C, F, B, E")
+      (is (= [4 4 4 5] (mapv :octave c-quartal-chord))
+          "C, F, and B should be in octave 4, E should be in octave 5")
+
+      ;; Check G quartal chord
+      (is (= 4 (count g-quartal-chord))
+          "G quartal chord should have 4 notes")
+      (is (= [:g :c :f :b] (mapv :name g-quartal-chord))
+          "G quartal chord should contain G, C, F, B")
+      (is (= [3 4 4 4] (mapv :octave g-quartal-chord))
+          "G should be in octave 3, C, F, and B should be in octave 4")))
+
+  (testing "Building cluster chords with positions [0 1 2]"
+    (let [c-major-scale [:c :d :e :f :g :a :b]
+          ;; C cluster (C-D-E) 
+          c-cluster-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 1 2])
+          ;; B cluster (B-C-D)
+          b-cluster-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 3) [0 1 2])]
+
+      ;; Check C cluster chord
+      (is (= 3 (count c-cluster-chord))
+          "C cluster chord should have 3 notes")
+      (is (= [:c :d :e] (mapv :name c-cluster-chord))
+          "C cluster chord should contain C, D, E")
+      (is (= [4 4 4] (mapv :octave c-cluster-chord))
+          "All notes in C cluster chord should be in octave 4")
+
+      ;; Check B cluster chord
+      (is (= 3 (count b-cluster-chord))
+          "B cluster chord should have 3 notes")
+      (is (= [:b :c :d] (mapv :name b-cluster-chord))
+          "B cluster chord should contain B, C, D")
+      (is (= [3 4 4] (mapv :octave b-cluster-chord))
+          "B should be in octave 3, C and D should be in octave 4"))))
+
 ;; Run all tests
 (run-tests)
