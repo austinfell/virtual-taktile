@@ -1916,11 +1916,11 @@
   (testing "Basic chord building in C major scale"
     (let [c-major-scale [:c :d :e :f :g :a :b]
           ;; C major triad (C-E-G)
-          c-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4))
+          c-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 4) [0 2 4])
           ;; G major triad (G-B-D) with D in next octave
-          g-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 4))
+          g-chord (kb/build-scale-chord c-major-scale (kb/create-note :g 4) [0 2 4])
           ;; E minor triad (E-G-B)
-          e-chord (kb/build-scale-chord c-major-scale (kb/create-note :e 4))]
+          e-chord (kb/build-scale-chord c-major-scale (kb/create-note :e 4) [0 2 4])]
 
       ;; Check C chord
       (is (= 3 (count c-chord))
@@ -1949,33 +1949,33 @@
 (deftest test-build-scale-chord-edge-cases
   (testing "Empty scale"
     (let [empty-scale []
-          chord (kb/build-scale-chord empty-scale (kb/create-note :c 4))]
+          chord (kb/build-scale-chord empty-scale (kb/create-note :c 4) [0 2 4])]
       (is (empty? chord)
           "Chord from empty scale should be empty")))
 
   (testing "Note not in scale"
     (let [c-major-scale [:c :d :e :f :g :a :b]
           ;; C# is not in C major
-          chord (kb/build-scale-chord c-major-scale (kb/create-note :csdf 4))]
+          chord (kb/build-scale-chord c-major-scale (kb/create-note :csdf 4) [0 2 4])]
       (is (empty? chord)
           "Chord from note not in scale should be empty")))
 
   (testing "Nil input"
     (let [c-major-scale [:c :d :e :f :g :a :b]]
-      (is (empty? (kb/build-scale-chord nil (kb/create-note :c 4)))
+      (is (empty? (kb/build-scale-chord nil (kb/create-note :c 4) [0 2 4]))
           "Chord from nil scale should be empty")
-      (is (empty? (kb/build-scale-chord c-major-scale nil))
+      (is (empty? (kb/build-scale-chord c-major-scale nil [0 2 4]))
           "Chord from nil root note should be empty"))))
 
 (deftest test-build-scale-chord-different-scales
   (testing "Minor scale chords"
     (let [a-minor-scale [:a :b :c :d :e :f :g]
           ;; A minor triad (A-C-E)
-          a-chord (kb/build-scale-chord a-minor-scale (kb/create-note :a 3))
+          a-chord (kb/build-scale-chord a-minor-scale (kb/create-note :a 3) [0 2 4])
           ;; D minor triad (D-F-A)
-          d-chord (kb/build-scale-chord a-minor-scale (kb/create-note :d 4))
+          d-chord (kb/build-scale-chord a-minor-scale (kb/create-note :d 4) [0 2 4])
           ;; E major triad (E-G-B)
-          e-chord (kb/build-scale-chord a-minor-scale (kb/create-note :e 4))]
+          e-chord (kb/build-scale-chord a-minor-scale (kb/create-note :e 4) [0 2 4])]
 
       ;; Check A chord
       (is (= 3 (count a-chord))
@@ -1999,9 +1999,9 @@
   (testing "Pentatonic scale chords"
     (let [c-pentatonic [:c :d :e :g :a]
           ;; C major triad with no F (C-E-G)
-          c-chord (kb/build-scale-chord c-pentatonic (kb/create-note :c 4))
+          c-chord (kb/build-scale-chord c-pentatonic (kb/create-note :c 4) [0 2 4])
           ;; G chord with no F (G-B-D would need B, but B is not in scale)
-          g-chord (kb/build-scale-chord c-pentatonic (kb/create-note :g 4))]
+          g-chord (kb/build-scale-chord c-pentatonic (kb/create-note :g 4) [0 2 4])]
 
       ;; Check C chord
       (is (= 3 (count c-chord))
@@ -2019,7 +2019,7 @@
   (testing "Chord construction wraps around the scale"
     (let [c-major-scale [:c :d :e :f :g :a :b]
           ;; B triad (B-D-F) with D and F in next octave
-          b-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 3))]
+          b-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 3) [0 2 4])]
 
       ;; Check B chord
       (is (= 3 (count b-chord))
@@ -2033,9 +2033,9 @@
   (testing "Octave handling with different root positions"
     (let [c-major-scale [:c :d :e :f :g :a :b]
           ;; C chord in octave 2
-          c2-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 2))
+          c2-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 2) [0 2 4])
           ;; C chord in octave 5
-          c5-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 5))]
+          c5-chord (kb/build-scale-chord c-major-scale (kb/create-note :c 5) [0 2 4])]
 
       ;; Check C2 chord
       (is (= [2 2 2] (mapv :octave c2-chord))
@@ -2048,7 +2048,7 @@
   (testing "Octave handling near octave boundaries"
     (let [c-major-scale [:c :d :e :f :g :a :b]
           ;; B chord in octave 9 (highest reasonable octave)
-          b9-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 9))]
+          b9-chord (kb/build-scale-chord c-major-scale (kb/create-note :b 9) [0 2 4])]
 
       ;; Check B9 chord
       (is (= [:b :d :f] (mapv :name b9-chord))
@@ -2068,7 +2068,7 @@
                          [scale note-name octave])]
 
       (doseq [[scale note-name octave] note-samples]
-        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave))]
+        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave) [0 2 4])]
           (is (= 3 (count chord))
               (str "Chord for " note-name octave " in scale should have 3 notes"))))))
 
@@ -2081,7 +2081,7 @@
                          [scale note-name octave])]
 
       (doseq [[scale note-name octave] note-samples]
-        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave))
+        (let [chord (kb/build-scale-chord scale (kb/create-note note-name octave) [0 2 4])
               chord-octaves (set (map :octave chord))]
           (is (<= (count chord-octaves) 2)
               (str "Chord for " note-name octave " should span at most 2 octaves"))
@@ -2099,7 +2099,7 @@
 
       (doseq [[scale note-name octave] note-samples]
         (let [root-note (kb/create-note note-name octave)
-              chord (kb/build-scale-chord scale root-note)]
+              chord (kb/build-scale-chord scale root-note [0 2 4])]
           (when (seq chord)
             (is (= root-note (first chord))
                 (str "First note of chord should be the root note " note-name octave))))))))
