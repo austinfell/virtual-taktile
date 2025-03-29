@@ -304,32 +304,198 @@
      (swap! re-frame.db/app-db assoc :keyboard-mode :chromatic)
 
       ;; Test ::keyboard subscription in chromatic mode
-     (let [keyboard @(re-frame/subscribe [::subs/keyboard])]
+     (let [keyboard @(re-frame/subscribe [::subs/keyboard])
+           rows (kb/rows keyboard)
+           bottom-row (:bottom rows)
+           top-row (:top rows)]
+       ;; Basic protocol checks
        (is (satisfies? kb/Keyboard keyboard)
            "::keyboard should return a Keyboard implementation")
+       (is (contains? rows :top)
+           "Keyboard rows should contain :top key")
+       (is (contains? rows :bottom)
+           "Keyboard rows should contain :bottom key")
 
-       (let [rows (kb/rows keyboard)]
-         (is (contains? rows :top)
-             "Keyboard rows should contain :top key")
-         (is (contains? rows :bottom)
-             "Keyboard rows should contain :bottom key"))))
+       ;; Check specific notes in C ionian (default setup)
+       (is (some #(and (= (:name %) :c) (= (:octave %) 4)) bottom-row)
+           "C4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :d) (= (:octave %) 4)) bottom-row)
+           "D4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :e) (= (:octave %) 4)) bottom-row)
+           "E4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :f) (= (:octave %) 4)) bottom-row)
+           "F4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :g) (= (:octave %) 4)) bottom-row)
+           "G4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :a) (= (:octave %) 4)) bottom-row)
+           "A4 should be present in the bottom row for C ionian scale")
+       (is (some #(and (= (:name %) :b) (= (:octave %) 4)) bottom-row)
+           "B4 should be present in the bottom row for C ionian scale")
 
-    (testing "Keyboard subscription with folding mode returns expected keyboard"
-      (rf-test/run-test-sync
-        ;; Setup the test database with folding mode
-       (setup-default-test-db)
-       (swap! re-frame.db/app-db assoc :keyboard-mode :folding)
+       ;; Verify non-scale notes are properly filtered
+       (is (nil? (some #(and (= (:name %) :csdf) (= (:octave %) 4)) top-row))
+           "C#4 should not be present in the top row for C ionian scale")
+       (is (nil? (some #(and (= (:name %) :dsef) (= (:octave %) 4)) top-row))
+           "D#4 should not be present in the top row for C ionian scale")
 
-        ;; Test ::keyboard subscription in folding mode
-       (let [keyboard @(re-frame/subscribe [::subs/keyboard])]
-         (is (satisfies? kb/Keyboard keyboard)
-             "::keyboard should return a Keyboard implementation")
+       ;; Test with different scale
+       (swap! re-frame.db/app-db assoc :selected-scale :minor-pentatonic)
+       (let [pentatonic-keyboard @(re-frame/subscribe [::subs/keyboard])
+             pentatonic-rows (kb/rows pentatonic-keyboard)
+             pentatonic-bottom (:bottom pentatonic-rows)
+             pentatonic-top (:top pentatonic-rows)]
 
-         (let [rows (kb/rows keyboard)]
-           (is (contains? rows :top)
-               "Keyboard rows should contain :top key")
-           (is (contains? rows :bottom)
-               "Keyboard rows should contain :bottom key")))))))
+         ;; C minor pentatonic has C, Eb, F, G, Bb
+         (is (some #(and (= (:name %) :c) (= (:octave %) 4)) pentatonic-bottom)
+             "C4 should be present in C minor pentatonic")
+         (is (some #(and (= (:name %) :f) (= (:octave %) 4)) pentatonic-bottom)
+             "F4 should be present in C minor pentatonic")
+         (is (some #(and (= (:name %) :g) (= (:octave %) 4)) pentatonic-bottom)
+             "G4 should be present in C minor pentatonic")
+         (is (some #(and (= (:name %) :dsef) (= (:octave %) 4)) pentatonic-top)
+             "Eb4 should be present in C minor pentatonic")
+         (is (some #(and (= (:name %) :asbf) (= (:octave %) 4)) pentatonic-top)
+             "Bb4 should be present in C minor pentatonic")
+
+         ;; Verify excluded notes
+         (is (nil? (some #(and (= (:name %) :d) (= (:octave %) 4))
+                         (concat pentatonic-bottom pentatonic-top)))
+             "D4 should not be present in C minor pentatonic")
+         (is (nil? (some #(and (= (:name %) :a) (= (:octave %) 4))
+                         (concat pentatonic-bottom pentatonic-top)))
+             "A4 should not be present in C minor pentatonic"))
+
+       ;; Test transposition
+       (swap! re-frame.db/app-db assoc
+              :selected-scale :ionian
+              :keyboard-transpose 2)
+       (let [transposed-keyboard @(re-frame/subscribe [::subs/keyboard])
+             transposed-rows (kb/rows transposed-keyboard)
+             transposed-bottom (:bottom transposed-rows)
+             transposed-top (:top transposed-rows)]
+
+         ;; With +2 transposition, C becomes D, etc.
+         (is (some #(and (= (:name %) :d) (= (:octave %) 4)) transposed-bottom)
+             "D4 should be present after transposing C4 up 2 semitones")
+         (is (some #(and (= (:name %) :e) (= (:octave %) 4)) transposed-bottom)
+             "E4 should be present after transposing D4 up 2 semitones")
+         (is (some #(and (= (:name %) :fsgf) (= (:octave %) 4)) transposed-bottom)
+             "F#4 should be present after transposing E4 up 2 semitones")
+         (is (some #(and (= (:name %) :g) (= (:octave %) 4)) transposed-bottom)
+             "G4 should be present after transposing F4 up 2 semitones"))
+
+       ;; Test different root note
+       (swap! re-frame.db/app-db assoc
+              :keyboard-root (kb/create-note :fsgf 4)
+              :keyboard-transpose 0)
+       (let [fsharp-keyboard @(re-frame/subscribe [::subs/keyboard])
+             fsharp-rows (kb/rows fsharp-keyboard)
+             fsharp-bottom (:bottom fsharp-rows)
+             fsharp-top (:top fsharp-rows)]
+
+         ;; F# major scale: F#, G#, A#, B, C#, D#, E#(F)
+         (is (some #(and (= (:name %) :fsgf) (= (:octave %) 4)) fsharp-top)
+             "F#4 should be present in F# ionian scale")
+         (is (some #(and (= (:name %) :b) (= (:octave %) 4)) fsharp-bottom)
+             "B4 should be present in F# ionian scale")
+         (is (some #(and (= (:name %) :gsaf) (= (:octave %) 4)) fsharp-top)
+             "G#4 should be present in F# ionian scale")
+         (is (some #(and (= (:name %) :asbf) (= (:octave %) 4)) fsharp-top)
+             "A#4 should be present in F# ionian scale")
+         (is (some #(and (= (:name %) :csdf) (= (:octave %) 5)) fsharp-top)
+             "C#5 should be present in F# ionian scale")
+         (is (some #(and (= (:name %) :dsef) (= (:octave %) 5)) fsharp-top)
+             "D#5 should be present in F# ionian scale")))))
+
+  (testing "Keyboard subscription with folding mode returns expected keyboard"
+    (rf-test/run-test-sync
+      ;; Setup the test database with folding mode
+     (setup-default-test-db)
+     (swap! re-frame.db/app-db assoc :keyboard-mode :folding)
+
+      ;; Test ::keyboard subscription in folding mode
+     (let [keyboard @(re-frame/subscribe [::subs/keyboard])
+           rows (kb/rows keyboard)
+           bottom-row (:bottom rows)
+           top-row (:top rows)]
+       (is (satisfies? kb/Keyboard keyboard)
+           "::keyboard should return a Keyboard implementation")
+       (is (contains? rows :top)
+           "Keyboard rows should contain :top key")
+       (is (contains? rows :bottom)
+           "Keyboard rows should contain :bottom key")
+
+       ;; Check note distribution in folding mode
+       (is (= 8 (count bottom-row))
+           "Bottom row should contain 8 notes in folding mode")
+       (is (= 8 (count top-row))
+           "Top row should contain 8 notes in folding mode")
+
+       ;; Test with a different scale
+       (swap! re-frame.db/app-db assoc :selected-scale :dorian)
+       (let [dorian-keyboard @(re-frame/subscribe [::subs/keyboard])
+             dorian-rows (kb/rows dorian-keyboard)
+             dorian-bottom (:bottom dorian-rows)
+             dorian-top (:top dorian-rows)]
+
+         ;; C Dorian has: C, D, Eb, F, G, A, Bb
+         (is (some #(and (= (:name %) :c) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "C4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :d) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "D4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :dsef) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "Eb4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :f) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "F4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :g) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "G4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :a) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "A4 should be present in C dorian scale")
+         (is (some #(and (= (:name %) :asbf) (= (:octave %) 4))
+                   (concat dorian-bottom dorian-top))
+             "Bb4 should be present in C dorian scale"))
+
+       ;; Test boundary handling by changing to a high octave
+       (swap! re-frame.db/app-db assoc
+              :keyboard-root (kb/create-note :g 6)
+              :selected-scale :ionian)
+       (let [high-keyboard @(re-frame/subscribe [::subs/keyboard])
+             high-rows (kb/rows high-keyboard)
+             high-notes (concat (:bottom high-rows) (:top high-rows))]
+
+         ;; Check for high octave notes
+         (is (some #(and (= (:name %) :g) (= (:octave %) 6)) high-notes)
+             "G6 should be present in high octave keyboard")
+         (is (some #(and (= (:name %) :a) (= (:octave %) 6)) high-notes)
+             "A6 should be present in high octave keyboard")
+         (is (some #(and (= (:name %) :b) (= (:octave %) 6)) high-notes)
+             "B6 should be present in high octave keyboard")
+         (is (some #(and (= (:name %) :c) (= (:octave %) 7)) high-notes)
+             "C7 should be present in high octave keyboard")
+         (is (some #(and (= (:name %) :d) (= (:octave %) 7)) high-notes)
+             "D7 should be present in high octave keyboard"))
+
+       ;; Test octave wrapping in folding keyboard
+       (swap! re-frame.db/app-db assoc
+              :keyboard-root (kb/create-note :b 3)
+              :selected-scale :chromatic)
+       (let [wrap-keyboard @(re-frame/subscribe [::subs/keyboard])
+             wrap-rows (kb/rows wrap-keyboard)
+             wrap-notes (concat (:bottom wrap-rows) (:top wrap-rows))]
+
+         ;; Check for octave wrapping at B3 to C4
+         (is (some #(and (= (:name %) :b) (= (:octave %) 3)) wrap-notes)
+             "B3 should be present in octave-wrapping keyboard")
+         (is (some #(and (= (:name %) :c) (= (:octave %) 4)) wrap-notes)
+             "C4 should be present in octave-wrapping keyboard")
+         (is (some #(and (= (:name %) :csdf) (= (:octave %) 4)) wrap-notes)
+             "C#4 should be present in octave-wrapping keyboard"))))))
 
 ;; =========================================================
 ;; Tests for Subscription Behavior with State Changes
