@@ -10,8 +10,8 @@
 ;; Helper Functions
 ;; =========================================================
 
-(defn setup-test-db
-  "Initialize the app-db with test values"
+(defn setup-default-test-db
+  "Initialize the app-db with default test values"
   []
   (reset! re-frame.db/app-db
           (-> db/default-db
@@ -23,15 +23,28 @@
               (assoc :selected-diatonic-chord :triad)
               (assoc :pressed-notes []))))
 
+(defn setup-alternative-test-db
+  "Initialize the app-db with alternative test values"
+  []
+  (reset! re-frame.db/app-db
+          (-> db/default-db
+              (assoc :keyboard-root (kb/create-note :d 5))
+              (assoc :keyboard-transpose 3)
+              (assoc :keyboard-mode :folding)
+              (assoc :selected-scale :dorian)
+              (assoc :selected-chromatic-chord :minor)
+              (assoc :selected-diatonic-chord :triad)
+              (assoc :pressed-notes [:c :d]))))
+
 ;; =========================================================
 ;; Tests for Basic Subscriptions
 ;; =========================================================
 
-(deftest test-basic-subscriptions
+(deftest test-default-subscriptions
   (testing "Basic subscriptions return expected values"
     (rf-test/run-test-sync
       ;; Setup the test database
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Test ::keyboard-root subscription
      (let [keyboard-root @(re-frame/subscribe [::subs/keyboard-root])]
@@ -68,6 +81,46 @@
        (is (= [] pressed-notes)
            "::pressed-notes should return empty vector")))))
 
+(deftest test-alternative-subscriptions
+  (testing "Basic subscriptions return expected values"
+    (rf-test/run-test-sync
+      ;; Setup the test database
+     (setup-alternative-test-db)
+
+      ;; Test ::keyboard-root subscription
+     (let [keyboard-root @(re-frame/subscribe [::subs/keyboard-root])]
+       (is (= (kb/create-note :d 5) keyboard-root)
+           "::keyboard-root should return D4"))
+
+      ;; Test ::keyboard-transpose subscription
+     (let [keyboard-transpose @(re-frame/subscribe [::subs/keyboard-transpose])]
+       (is (= 3 keyboard-transpose)
+           "::keyboard-transpose should return 0"))
+
+      ;; Test ::selected-scale subscription
+     (let [selected-scale @(re-frame/subscribe [::subs/selected-scale])]
+       (is (= :dorian selected-scale)
+           "::selected-scale should return :ionian"))
+
+      ;; Test ::keyboard-mode subscription
+     (let [keyboard-mode @(re-frame/subscribe [::subs/keyboard-mode])]
+       (is (= :folding keyboard-mode)
+           "::keyboard-mode should return :chromatic"))
+
+      ;; Test ::selected-chromatic-chord subscription
+     (let [selected-chord @(re-frame/subscribe [::subs/selected-chromatic-chord])]
+       (is (= :minor selected-chord)
+           "::selected-chromatic-chord should return :major"))
+
+      ;; Test ::selected-diatonic-chord subscription
+     (let [selected-diatonic-chord @(re-frame/subscribe [::subs/selected-diatonic-chord])]
+       (is (= :triad selected-diatonic-chord)
+           "::selected-diatonic-chord should return :triad"))
+
+      ;; Test ::pressed-notes subscription
+     (let [pressed-notes @(re-frame/subscribe [::subs/pressed-notes])]
+       (is (= [:c :d] pressed-notes)
+           "::pressed-notes should return empty vector")))))
 ;; =========================================================
 ;; Tests for Derived Subscriptions
 ;; =========================================================
@@ -76,7 +129,7 @@
   (testing "Scales subscription returns expected scales"
     (rf-test/run-test-sync
       ;; Setup the test database
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Test ::scales subscription
      (let [scales @(re-frame/subscribe [::subs/scales])]
@@ -93,7 +146,7 @@
   (testing "Chord subscriptions return expected chords"
     (rf-test/run-test-sync
       ;; Setup the test database
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Test ::chromatic-chords subscription
      (let [chromatic-chords @(re-frame/subscribe [::subs/chromatic-chords])]
@@ -125,7 +178,7 @@
   (testing "Chromatic keyboard subscription returns expected keyboard"
     (rf-test/run-test-sync
       ;; Setup the test database
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Test ::chromatic-keyboard subscription
      (let [chromatic-keyboard @(re-frame/subscribe [::subs/chromatic-keyboard])]
@@ -163,7 +216,7 @@
   (testing "Keyboard subscription with chromatic mode returns expected keyboard"
     (rf-test/run-test-sync
       ;; Setup the test database with chromatic mode
-     (setup-test-db)
+     (setup-default-test-db)
      (swap! re-frame.db/app-db assoc :keyboard-mode :chromatic)
 
       ;; Test ::keyboard subscription in chromatic mode
@@ -180,7 +233,7 @@
     (testing "Keyboard subscription with folding mode returns expected keyboard"
       (rf-test/run-test-sync
         ;; Setup the test database with folding mode
-       (setup-test-db)
+       (setup-default-test-db)
        (swap! re-frame.db/app-db assoc :keyboard-mode :folding)
 
         ;; Test ::keyboard subscription in folding mode
@@ -202,7 +255,7 @@
   (testing "Keyboard subscriptions respond to transposition changes"
     (rf-test/run-test-sync
       ;; Setup the test database
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Get the initial keyboard with no transposition
      (let [initial-keyboard @(re-frame/subscribe [::subs/keyboard])
@@ -235,7 +288,7 @@
   (testing "Keyboard subscriptions respond to scale changes"
     (rf-test/run-test-sync
       ;; Setup the test database with ionian scale
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Get the initial keyboard with ionian scale
      (let [initial-keyboard @(re-frame/subscribe [::subs/keyboard])
@@ -266,7 +319,7 @@
   (testing "Keyboard subscriptions respond to root note changes"
     (rf-test/run-test-sync
       ;; Setup the test database with C4 root
-     (setup-test-db)
+     (setup-default-test-db)
 
       ;; Get the initial keyboard with C4 root
      (let [initial-keyboard @(re-frame/subscribe [::subs/keyboard])
