@@ -253,7 +253,48 @@
          (is (some #(and (= (:name %) :dsef) (= (:octave %) 6)) bottom-row)
              "D# should be present in the bottom row for dorian scale")
          (is (every? nil? top-row)
-             "All keys in top row should be nil for D tranposed dorian scale"))))))
+             "All keys in top row should be nil for D tranposed dorian scale")))))
+
+  (testing "Chromatic keyboard subscription properly handles scales with notes in top row"
+    (rf-test/run-test-sync
+      ;; Setup test database with F# as root and lydian scale (has many sharps)
+     (setup-default-test-db)
+     (swap! re-frame.db/app-db assoc
+            :keyboard-root (kb/create-note :fsgf 4)
+            :selected-scale :ionian)
+
+      ;; Test ::chromatic-keyboard subscription
+     (let [chromatic-keyboard @(re-frame/subscribe [::subs/chromatic-keyboard])]
+       (is (satisfies? kb/Keyboard chromatic-keyboard)
+           "::chromatic-keyboard should return a Keyboard implementation")
+
+        ;; Get the keyboard rows for further testing
+       (let [rows (kb/rows chromatic-keyboard)
+             bottom-row (:bottom rows)
+             top-row (:top rows)]
+
+          ;; Test row structure
+         (is (contains? rows :top)
+             "Keyboard rows should contain :top key")
+         (is (contains? rows :bottom)
+             "Keyboard rows should contain :bottom key")
+         (is (vector? top-row)
+             "Top row should be a vector")
+         (is (vector? bottom-row)
+             "Bottom row should be a vector")
+
+          ;; Verify sharp notes are present in F# lydian scale
+          ;; The lydian scale in F# has F#, G#, A#, B, C#, D#, E#(F)
+         (is (some #(and (= (:name %) :fsgf) (= (:octave %) 4)) top-row)
+             "F#4 should be present in the bottom row for F# lydian scale")
+         (is (some #(and (= (:name %) :gsaf) (= (:octave %) 4)) top-row)
+             "G#4 should be present in the top row for F# lydian scale")
+         (is (some #(and (= (:name %) :asbf) (= (:octave %) 4)) top-row)
+             "A#4 should be present in the top row for F# lydian scale")
+         (is (some #(and (= (:name %) :csdf) (= (:octave %) 5)) top-row)
+             "C#5 should be present in the top row for F# lydian scale")
+         (is (some #(and (= (:name %) :dsef) (= (:octave %) 5)) top-row)
+             "D#5 should be present in the top row for F# lydian scale"))))))
 
 (deftest test-keyboard-subscription
   (testing "Keyboard subscription with chromatic mode returns expected keyboard"
