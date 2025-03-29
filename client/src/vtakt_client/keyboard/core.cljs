@@ -426,7 +426,6 @@
                :root-note ::root-note)
   :ret ::chord)
 (defn build-scale-chord
-  ;; TODO - Needs tests.
   [scale-notes root-note positions]
   (if (empty? scale-notes)
     []
