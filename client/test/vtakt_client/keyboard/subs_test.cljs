@@ -175,7 +175,7 @@
 ;; =========================================================
 
 (deftest test-chromatic-keyboard-subscription
-  (testing "Chromatic keyboard subscription returns expected keyboard"
+  (testing "Chromatic keyboard subscription returns expected data"
     (rf-test/run-test-sync
       ;; Setup the test database
      (setup-default-test-db)
@@ -210,7 +210,50 @@
 
           ;; Non-scale notes should be filtered out in :ionian mode
          (is (nil? (some #(and (= (:name %) :csdf) (= (:octave %) 4)) top-row))
-             "C#4 should not be present in the top row for ionian scale"))))))
+             "C#4 should not be present in the top row for ionian scale")))))
+
+  (testing "Chromatic keyboard subscription returns expected data even when in folding mode"
+    (rf-test/run-test-sync
+      ;; Setup the test database
+     (setup-alternative-test-db)
+
+      ;; Test ::chromatic-keyboard subscription
+     (let [chromatic-keyboard @(re-frame/subscribe [::subs/chromatic-keyboard])]
+       (is (satisfies? kb/Keyboard chromatic-keyboard)
+           "::chromatic-keyboard should return a Keyboard implementation")
+
+        ;; Get the keyboard rows for further testing
+       (let [rows (kb/rows chromatic-keyboard)
+             bottom-row (:bottom rows)
+             top-row (:top rows)]
+
+          ;; Test row structure
+         (is (contains? rows :top)
+             "Keyboard rows should contain :top key")
+         (is (contains? rows :bottom)
+             "Keyboard rows should contain :bottom key")
+         (is (vector? top-row)
+             "Top row should be a vector")
+         (is (vector? bottom-row)
+             "Bottom row should be a vector")
+
+          ;; Note that keyboard is transposed 3 semi-tones up.
+         (is (some #(and (= (:name %) :f) (= (:octave %) 5)) bottom-row)
+             "E5 should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :g) (= (:octave %) 5)) bottom-row)
+             "G5 should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :c) (= (:octave %) 6)) bottom-row)
+             "B5 should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :d) (= (:octave %) 6)) bottom-row)
+             "C6 should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :gsaf) (= (:octave %) 5)) bottom-row)
+             "G# should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :asbf) (= (:octave %) 5)) bottom-row)
+             "A# should be present in the bottom row for dorian scale")
+         (is (some #(and (= (:name %) :dsef) (= (:octave %) 6)) bottom-row)
+             "D# should be present in the bottom row for dorian scale")
+         (is (every? nil? top-row)
+             "All keys in top row should be nil for D tranposed dorian scale"))))))
 
 (deftest test-keyboard-subscription
   (testing "Keyboard subscription with chromatic mode returns expected keyboard"

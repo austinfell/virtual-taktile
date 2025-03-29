@@ -40,8 +40,8 @@
      (kb/create-note-predicate-from-collection
       (get-in scales [selected-scale (:name keyboard-root)])))
     #(kb/transpose-note % keyboard-transpose))))
-(re-frame/reg-sub
 
+(re-frame/reg-sub
  ::chromatic-keyboard
  (fn [_]
    [(re-frame/subscribe [::selected-scale])
