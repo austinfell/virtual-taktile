@@ -7,6 +7,7 @@
    [vtakt-client.keyboard.events :as events]
    [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.keyboard.styles :as styles]
+   [vtakt-client.keyboard.keyboard-controls :as kbd-ctrl]
    [vtakt-client.styles :as app-styles]
    [vtakt-client.routes :as routes]
    [vtakt-client.utils.core :as uc]
@@ -18,7 +19,7 @@
 ;; ------------------------------
 
 (defn- make-increment-control
-  "Higher-order function that creates increment/decrement controls with consistent styling.
+  "Higher-order junction that creates increment/decrement controls with consistent styling.
    Returns a memoized component function that accepts a complex value to display.
    Parameters:
    - label: Text label for the control
@@ -42,34 +43,33 @@
            max-value nil}}]
 
   (memoize
-    (fn [value]
-      (let [dec-disabled? (and (some? min-value)
-                            (at-or-below-fn value min-value))
-            at-or-above-fn (fn [l r] (at-or-below-fn r l))
-            inc-disabled? (and (some? max-value)
-                            (at-or-above-fn value max-value))]
-        [re-com/h-box
-         :align :center
-         :gap "5px"
-         :children
-         [[re-com/button
-           :label "♭"
-           :disabled? dec-disabled?
-           :class (str (styles/increment-button) " "
-                       (when-not dec-disabled? (styles/increment-button-active)))
-           :on-click #(when-not dec-disabled?
-                        (re-frame/dispatch dec-event))]
-          [re-com/box
-           :class (styles/increment-value-box)
-           :child [:p {:class (styles/increment-value)} (render-fn value)]]
-          [re-com/button
-           :label "♯"
-           :disabled? inc-disabled?
-           :class (str (styles/increment-button) " "
-                       (when-not inc-disabled? (styles/increment-button-active)))
-           :on-click #(when-not inc-disabled?
-                        (re-frame/dispatch inc-event))]
-         ]]))))
+   (fn [value]
+     (let [dec-disabled? (and (some? min-value)
+                              (at-or-below-fn value min-value))
+           at-or-above-fn (fn [l r] (at-or-below-fn r l))
+           inc-disabled? (and (some? max-value)
+                              (at-or-above-fn value max-value))]
+       [re-com/h-box
+        :align :center
+        :gap "5px"
+        :children
+        [[re-com/button
+          :label "♭"
+          :disabled? dec-disabled?
+          :class (str (styles/increment-button) " "
+                      (when-not dec-disabled? (styles/increment-button-active)))
+          :on-click #(when-not dec-disabled?
+                       (re-frame/dispatch dec-event))]
+         [re-com/box
+          :class (styles/increment-value-box)
+          :child [:p {:class (styles/increment-value)} (render-fn value)]]
+         [re-com/button
+          :label "♯"
+          :disabled? inc-disabled?
+          :class (str (styles/increment-button) " "
+                      (when-not inc-disabled? (styles/increment-button-active)))
+          :on-click #(when-not inc-disabled?
+                       (re-frame/dispatch inc-event))]]]))))
 
 ;; Root note control
 (s/def ::root-note-in-range
@@ -114,22 +114,22 @@
    - width: Width of the dropdown (default: '125px')
    - pinned-items: Set of item keys that should appear at the top of the list"
   [on-change-event & {:keys [width pinned-items sort-fn]
-                        :or {width "125px"
-                             pinned-items #{}}}]
+                      :or {width "125px"
+                           pinned-items #{}}}]
   (memoize
-    (fn [options selected]
-      (let [pinned-at-top (filter #(contains? pinned-items %) options)
-            regular (filter #(not (contains? pinned-items %)) options)
-            combined-options (concat (sort-by name pinned-at-top) (sort-by name regular))]
-        [re-com/single-dropdown
-         :src (at)
-         :class (styles/dropdown)
-         :choices (mapv (fn [v] {:id v}) combined-options)
-         :model selected
-         :width width
-         :filter-box? true
-         :label-fn #(uc/format-keyword (:id %))
-         :on-change #(re-frame/dispatch [on-change-event %])]))))
+   (fn [options selected]
+     (let [pinned-at-top (filter #(contains? pinned-items %) options)
+           regular (filter #(not (contains? pinned-items %)) options)
+           combined-options (concat (sort-by name pinned-at-top) (sort-by name regular))]
+       [re-com/single-dropdown
+        :src (at)
+        :class (styles/dropdown)
+        :choices (mapv (fn [v] {:id v}) combined-options)
+        :model selected
+        :width width
+        :filter-box? true
+        :label-fn #(uc/format-keyword (:id %))
+        :on-change #(re-frame/dispatch [on-change-event %])]))))
 
 ;; Scale selector
 (s/def ::scale-options (s/coll-of keyword?))
@@ -176,6 +176,7 @@
         ;; who knows, maybe one day we will have a 31TET keyboard or something...
         mode-options [{:id :chromatic :label "Chromatic"}
                       {:id :folding :label "Folding"}]]
+
     [re-com/v-box
      :gap "5px"
      :children
@@ -203,28 +204,28 @@
   :ret ::us/reagent-component)
 (def piano-key
   (memoize
-    (fn [note pressed? key-type]
-      (let [is-white? (= key-type :white)]
-        [re-com/box
-         :class (if is-white?
-                  (styles/white-key pressed?)
-                  (styles/black-key pressed?))
-         :child [re-com/v-box
-                 :justify (if is-white? :end :start)
-                 :align :center
-                 :style {:height "100%"}
-                 :children
-                 [(when pressed?
-                    [re-com/box
-                     :class (if is-white?
-                              (styles/white-key-indicator)
-                              (styles/black-key-indicator))
-                     :child ""])
-                  [re-com/box
-                   :class (if is-white?
-                            (styles/white-key-label note)
-                            (styles/black-key-label))
-                   :child (if note (kb/format-note (:name note)) "")]]]]))))
+   (fn [note pressed? key-type]
+     (let [is-white? (= key-type :white)]
+       [re-com/box
+        :class (if is-white?
+                 (styles/white-key pressed?)
+                 (styles/black-key pressed?))
+        :child [re-com/v-box
+                :justify (if is-white? :end :start)
+                :align :center
+                :style {:height "100%"}
+                :children
+                [(when pressed?
+                   [re-com/box
+                    :class (if is-white?
+                             (styles/white-key-indicator)
+                             (styles/black-key-indicator))
+                    :child ""])
+                 [re-com/box
+                  :class (if is-white?
+                           (styles/white-key-label note)
+                           (styles/black-key-label))
+                  :child (if note (kb/format-note (:name note)) "")]]]]))))
 
 ;; ------------------------------
 ;; Keyboard UI Components
@@ -279,7 +280,7 @@
            (or (not= idx 7) (not chord-mode?)))
       ;; In normal mode, check exact note (name and octave)
       (some #(and (= (:name note) (:name %))
-                 (= (:octave note) (:octave %)))
+                  (= (:octave note) (:octave %)))
             pressed-notes))))
 
 (defn- white-keys-layer
@@ -319,8 +320,8 @@
    - keyboard-root: The root note of the keyboard"
   [black-notes keyboard-root]
   (let [octave-notes (take 12 (filter #(kb/natural-note? %)
-                                     (iterate #(kb/shift-note % :up)
-                                              (kb/transpose-note keyboard-root 1))))]
+                                      (iterate #(kb/shift-note % :up)
+                                               (kb/transpose-note keyboard-root 1))))]
     (filter #(contains? #{:d :e :g :a :b} (:name (nth % 2)))
             (map vector
                  (rest black-notes)
@@ -546,19 +547,29 @@
     note-trigger, keyboard-configurator, kb/rows"
   []
   (let [ck (re-frame/subscribe [::subs/keyboard])]
-    (fn []
-      (let [keyboard-rows (kb/rows @ck)
-            top-row (:top keyboard-rows)
-            bottom-row (:bottom keyboard-rows)]
-        [re-com/v-box
-         :justify :center
-         :children [[re-com/h-box
-                     :children (map-indexed
-                                (fn [idx note]
-                                  [note-trigger (inc idx) note])
-                                top-row)]
-                    [re-com/h-box
-                     :children (map-indexed
-                                (fn [idx note]
-                                  [note-trigger (+ 9 idx) note])
-                                bottom-row)]]]))))
+    (reagent/create-class
+     {:component-did-mount
+      (fn [_]
+        (kbd-ctrl/init-keyboard-listeners))
+
+      :component-will-unmount
+      (fn [_]
+        (kbd-ctrl/cleanup-keyboard-listeners))
+
+      :reagent-render
+      (fn []
+        (let [keyboard-rows (kb/rows @ck)
+              top-row (:top keyboard-rows)
+              bottom-row (:bottom keyboard-rows)]
+          [re-com/v-box
+           :justify :center
+           :children [[re-com/h-box
+                       :children (map-indexed
+                                  (fn [idx note]
+                                    [note-trigger (inc idx) note])
+                                  top-row)]
+                      [re-com/h-box
+                       :children (map-indexed
+                                  (fn [idx note]
+                                    [note-trigger (+ 9 idx) note])
+                                  bottom-row)]]]))})))
