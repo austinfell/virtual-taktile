@@ -7,22 +7,30 @@
 (re-frame/reg-event-fx
  ::inc-keyboard-root
  (fn [{:keys [db]} _]
-   {:db (update db :keyboard-root #(kb/transpose-note % 1))}))
+   {:db (-> db
+            (update :keyboard-root #(kb/transpose-note % 1))
+            (assoc :pressed-notes #{}))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-root
  (fn [{:keys [db]} _]
-   {:db (update db :keyboard-root #(kb/transpose-note % -1))}))
+   {:db (-> db
+            (update :keyboard-root #(kb/transpose-note % -1))
+            (assoc :pressed-notes #{}))}))
 
 (re-frame/reg-event-fx
  ::inc-keyboard-transpose
  (fn [{:keys [db]} [_ keyboard-mode]]
-   {:db (update db :keyboard-transpose inc)}))
+   {:db (-> db
+            (update :keyboard-transpose inc)
+            (assoc :pressed-notes #{}))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-transpose
  (fn [{:keys [db]} [_ keyboard-mode]]
-   {:db (update db :keyboard-transpose dec)}))
+   {:db (-> db
+            (update :keyboard-transpose dec)
+            (assoc :pressed-notes #{}))}))
 
 (re-frame/reg-event-fx
  ::set-selected-chromatic-chord
@@ -74,23 +82,31 @@
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
      (cond
        (nil? note)
-       {:db (assoc db :pressed-notes [])}
-
+       {:db #{}} 
        (= selected-scale :chromatic)
-       {:db (update db :pressed-notes concat (kb/build-scale-chord
+       {:db (update db :pressed-notes into (kb/build-scale-chord
                                               ;; The selected scale needs transposition. The note passed in
                                               ;; is already derived from the keyboard data structure which
                                               ;; is itself tranposed.
-                                              (-> scales selected-scale transposed-root-name)
-                                              note
-                                              (chromatic-chords selected-chromatic-chord)))}
+                                            (-> scales selected-scale transposed-root-name)
+                                            note
+                                            (chromatic-chords selected-chromatic-chord)))}
 
        :else
-       {:db (update db :pressed-notes concat (kb/build-scale-chord
+       {:db (update db :pressed-notes into (kb/build-scale-chord
                                               ;; The selected scale needs transposition. The note passed in
                                               ;; is already derived from the keyboard data structure which
                                               ;; is itself tranposed.
-                                              (-> scales selected-scale transposed-root-name)
-                                              note
-                                              (diatonic-chords selected-diatonic-chord)))}))))
+                                            (-> scales selected-scale transposed-root-name)
+                                            note
+                                            (diatonic-chords selected-diatonic-chord)))}))))
+
+(re-frame/reg-event-fx
+ ::untrigger-note
+ (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
+   (let [{:keys [pressed-notes]} db]
+     (cond
+       (nil? note) {:db db}
+       (contains? pressed-notes note) {:db (update db :pressed-notes disj note)}
+       :else {:db db}))))
 
