@@ -82,7 +82,7 @@
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
      (cond
        (nil? note)
-       {:db #{}} 
+       {:db (update db :pressed-notes #{})}
        (= selected-scale :chromatic)
        {:db (update db :pressed-notes into (kb/build-scale-chord
                                               ;; The selected scale needs transposition. The note passed in

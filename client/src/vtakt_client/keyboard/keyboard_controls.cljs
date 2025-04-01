@@ -58,9 +58,7 @@
           (if chord-mode?
             ;; Chord mode (monophonic/legato)
             (do
-              ;; First clear all notes
               (re-frame/dispatch [::events/trigger-note nil])
-              ;; Then trigger the new note
               (re-frame/dispatch [::events/trigger-note note]))
 
             ;; Single note mode (polyphonic)
