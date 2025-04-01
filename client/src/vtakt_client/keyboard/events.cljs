@@ -107,6 +107,5 @@
    (let [{:keys [pressed-notes]} db]
      (cond
        (nil? note) {:db db}
-       (contains? pressed-notes note) {:db (update db :pressed-notes disj note)}
-       :else {:db db}))))
+       :else {:db (update db :pressed-notes disj note)}))))
 
