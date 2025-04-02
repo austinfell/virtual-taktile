@@ -338,7 +338,7 @@
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
         selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
-        chord-mode? (not= @selected-chromatic-chord :off)]
+        chord-mode? (not= @selected-chromatic-chord :single-note)]
     (fn []
       (let [white-notes (:bottom (kb/rows @keyboard))
             black-notes (:top (kb/rows @keyboard))
