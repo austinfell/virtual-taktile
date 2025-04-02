@@ -420,7 +420,7 @@
 
 (s/def ::scale-notes (s/coll-of ::chromatic-note :min-count 0 :kind sequential?))
 (s/def ::root-note ::note)
-(s/def ::chord (s/coll-of ::note :kind vector?))
+(s/def ::chord (s/coll-of ::note :kind set?))
 (s/fdef build-scale-chord
   :args (s/cat :scale-notes ::scale-notes
                :root-note ::root-note)
@@ -428,11 +428,11 @@
 (defn build-scale-chord
   [scale-notes root-note positions]
   (if (empty? scale-notes)
-    []
+    #{}
     (let [scale-size (count scale-notes)
           root-index (.indexOf (vec scale-notes) (:name root-note))]
       (if (= root-index -1)
-        []
+        #{}
         (let [chord-note-names (mapv (fn [pos]
                                       (nth scale-notes
                                            (mod (+ root-index pos) scale-size)))
