@@ -1,18 +1,16 @@
 (ns vtakt-client.keyboard.views
   (:require
+   [clojure.spec.alpha :as s]
+   [re-com.core :as re-com :refer [at]]
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]
-   [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.core :as kb]
    [vtakt-client.keyboard.events :as events]
-   [vtakt-client.keyboard.subs :as subs]
-   [vtakt-client.keyboard.styles :as styles]
    [vtakt-client.keyboard.keyboard-controls :as kbd-ctrl]
-   [vtakt-client.styles :as app-styles]
-   [vtakt-client.routes :as routes]
+   [vtakt-client.keyboard.styles :as styles]
+   [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.utils.core :as uc]
-   [vtakt-client.utils.specs :as us]
-   [clojure.spec.alpha :as s]))
+   [vtakt-client.utils.specs :as us]))
 
 ;; ------------------------------
 ;; Control Components
@@ -264,25 +262,6 @@
    This component is memoized for performance when re-rendering with the same props."
   (memoize note-trigger-impl))
 
-(defn- is-note-pressed?
-  "Determines if a note should be shown as pressed based on the current state.
-
-   Parameters:
-   - note: The note to check
-   - idx: The position index in the keyboard
-   - pressed-notes: Collection of currently pressed notes
-   - chord-mode?: Whether chord mode is active"
-  [note idx pressed-notes chord-mode?]
-  (when (and note pressed-notes)
-    (if chord-mode?
-      ;; In chord mode, check note name and handle special case for idx 7
-      (and (some #(= (:name note) (:name %)) pressed-notes)
-           (or (not= idx 7) (not chord-mode?)))
-      ;; In normal mode, check exact note (name and octave)
-      (some #(and (= (:name note) (:name %))
-                  (= (:octave note) (:octave %)))
-            pressed-notes))))
-
 (defn- white-keys-layer
   "Renders the white keys of the piano keyboard.
 
@@ -292,7 +271,7 @@
    - chord-mode?: Whether chord mode is active"
   [white-notes pressed-notes chord-mode?]
   (mapv (fn [idx note]
-          [piano-key note (is-note-pressed? note idx pressed-notes chord-mode?) :white])
+          [piano-key note (and (some #(= (:name note) (:name %)) pressed-notes) (not (and chord-mode? (= idx 7)))) :white])
         (range)
         white-notes))
 
