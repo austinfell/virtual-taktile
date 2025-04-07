@@ -5,6 +5,9 @@
    [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.keyboard.core :as kb]))
 
+;; TODO - This entire module needs to be re-written. It is using subscriptions
+;; totally wrong.
+
 ;; Map keyboard keys to positions in the keyboard layout
 ;; First row: a s d f g h j k (positions 1-8)  <- TOP row
 ;; Second row: z x c v b n m , (positions 9-16) <- BOTTOM row
@@ -58,7 +61,7 @@
           (if chord-mode?
             ;; Chord mode (monophonic/legato)
             (do
-              (re-frame/dispatch [::events/trigger-note nil])
+              (re-frame/dispatch [::events/untrigger-note note])
               (re-frame/dispatch [::events/trigger-note note]))
 
             ;; Single note mode (polyphonic)

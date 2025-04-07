@@ -236,7 +236,10 @@
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
       :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-note note])
-             :on-mouse-up #(re-frame/dispatch [::events/trigger-note nil])
+             ;; TODO - Problem: Multiple sources of truth mean this can go into a weird state if
+             ;; we are clicking around AND using keyboard to play notes... Certainly a possible
+             ;; when multiple users are concurrently using our application.
+             :on-mouse-up #(re-frame/dispatch [::events/untrigger-note note])
              :on-mouse-leave #(re-frame/dispatch [::events/untrigger-note note])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
@@ -263,24 +266,27 @@
   (memoize note-trigger-impl))
 
 (defn- chromatic-white-keys-layer
-  "Renders the white keys of the piano keyboard.
+  [white-notes pressed-notes]
+  (mapv (fn [note] [piano-key note (some #(= note %) pressed-notes) :white]) white-notes))
 
-   Parameters:
-   - white-notes: Collection of white notes to display
-   - pressed-notes: Collection of currently pressed notes
-   - chord-mode?: Whether chord mode is active"
-  [white-notes pressed-notes chord-mode?]
+(defn- nonchromatic-white-keys-layer
+  [white-notes pressed-notes]
   (mapv (fn [idx note]
-          [piano-key note (and (some #(= (:name note) (:name %)) pressed-notes) (not (and chord-mode? (= idx 7)))) :white])
+          [piano-key note (and (some #(= (:name note) (:name %)) pressed-notes) (not (= idx 7))) :white])
         (range)
         white-notes))
 
 (defn- chromatic-black-keys-layer
-  "Renders the black keys of the piano keyboard as an overlay.
+  [black-key-positions pressed-notes]
+  (mapv (fn [[note position-index _]]
+          (let [pressed? (when (and note pressed-notes) ;; the position is non-nil...
+                           (some #(= note %) pressed-notes))] ;; The note at the position is actually pressed.
+            [re-com/box
+             :class (styles/black-key-position position-index)
+             :child [piano-key note pressed? :black]]))
+        black-key-positions))
 
-   Parameters:
-   - black-key-positions: Collection of [note position-index octave-note] tuples
-   - pressed-notes: Collection of currently pressed notes"
+(defn- nonchromatic-black-keys-layer
   [black-key-positions pressed-notes]
   (mapv (fn [[note position-index _]]
           (let [pressed? (when (and note pressed-notes)
@@ -337,9 +343,11 @@
              :class (styles/keys-relative-container)
              :children
              (if (or folding-mode? chord-mode?)
-               [:p "test"]
                (concat
-                (chromatic-white-keys-layer white-notes @pressed-notes chord-mode?)
+                (nonchromatic-white-keys-layer white-notes @pressed-notes)
+                (nonchromatic-black-keys-layer black-key-positions @pressed-notes))
+               (concat
+                (chromatic-white-keys-layer white-notes @pressed-notes)
                 (chromatic-black-keys-layer black-key-positions @pressed-notes)))]]]]]))))
 
 (defn- note-column

@@ -104,7 +104,20 @@
 (re-frame/reg-event-fx
  ::untrigger-note
  (fn [{:keys [db]} [_ note]]
-   (cond
-     (nil? note) {:db db}
-     :else {:db (update db :pressed-notes disj note)})))
-
+   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
+         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
+     (cond
+       (:nil? note)
+       {:db db}
+       (= selected-scale :chromatic)
+       (do
+         (println (:pressed-notes db))
+         {:db (update db :pressed-notes clojure.set/difference (kb/build-scale-chord
+                                                               (-> scales selected-scale transposed-root-name)
+                                                               note
+                                                               (chromatic-chords selected-chromatic-chord)))})
+       :else
+       {:db (update db :pressed-notes clojure.set/difference (kb/build-scale-chord
+                                                               (-> scales selected-scale transposed-root-name)
+                                                               note
+                                                               (diatonic-chords selected-diatonic-chord)))}))))
