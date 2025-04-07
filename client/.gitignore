@@ -9,6 +9,7 @@
 /.nrepl-port
 /.clj-kondo/
 /.lsp/
+/*.DS_STORE
 
 # Node.js dependencies
 /node_modules/
