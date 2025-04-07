@@ -437,7 +437,7 @@
                                       (nth scale-notes
                                            (mod (+ root-index pos) scale-size)))
                                     positions)]
-          (build-chord chord-note-names (:octave root-note)))))))
+          (build-chord chord-note-names (:octave root-note))))))) 
 (def diatonic-chords
   {:single-note [0]
    :diad [0 2]

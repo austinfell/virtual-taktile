@@ -77,17 +77,17 @@
 
 (re-frame/reg-event-fx
  ::trigger-note
- (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
+ (fn [{:keys [db]} [_ note]]
    (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
      (cond
-       (nil? note)
+       (:nil? note)
        {:db (update db :pressed-notes #{})}
        (= selected-scale :chromatic)
        {:db (update db :pressed-notes into (kb/build-scale-chord
                                               ;; The selected scale needs transposition. The note passed in
                                               ;; is already derived from the keyboard data structure which
-                                              ;; is itself tranposed.
+                                              ;; is itself transposed.
                                             (-> scales selected-scale transposed-root-name)
                                             note
                                             (chromatic-chords selected-chromatic-chord)))}
@@ -96,16 +96,15 @@
        {:db (update db :pressed-notes into (kb/build-scale-chord
                                               ;; The selected scale needs transposition. The note passed in
                                               ;; is already derived from the keyboard data structure which
-                                              ;; is itself tranposed.
+                                              ;; is itself transposed.
                                             (-> scales selected-scale transposed-root-name)
                                             note
                                             (diatonic-chords selected-diatonic-chord)))}))))
 
 (re-frame/reg-event-fx
  ::untrigger-note
- (fn [{:keys [db]} [_ {:keys [name octave] :as note}]]
-   (let [{:keys [pressed-notes]} db]
-     (cond
-       (nil? note) {:db db}
-       :else {:db (update db :pressed-notes disj note)}))))
+ (fn [{:keys [db]} [_ note]]
+   (cond
+     (nil? note) {:db db}
+     :else {:db (update db :pressed-notes disj note)})))
 

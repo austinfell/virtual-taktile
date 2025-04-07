@@ -237,7 +237,7 @@
      [re-com/button
       :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-note note])
              :on-mouse-up #(re-frame/dispatch [::events/trigger-note nil])
-             :on-mouse-leave #(re-frame/dispatch [::events/trigger-note nil])}
+             :on-mouse-leave #(re-frame/dispatch [::events/untrigger-note note])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -262,7 +262,7 @@
    This component is memoized for performance when re-rendering with the same props."
   (memoize note-trigger-impl))
 
-(defn- white-keys-layer
+(defn- chromatic-white-keys-layer
   "Renders the white keys of the piano keyboard.
 
    Parameters:
@@ -275,7 +275,7 @@
         (range)
         white-notes))
 
-(defn- black-keys-layer
+(defn- chromatic-black-keys-layer
   "Renders the black keys of the piano keyboard as an overlay.
 
    Parameters:
@@ -317,11 +317,13 @@
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
         pressed-notes (re-frame/subscribe [::subs/pressed-notes])
         selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
-        chord-mode? (not= @selected-chromatic-chord :single-note)]
+        keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])]
     (fn []
       (let [white-notes (:bottom (kb/rows @keyboard))
             black-notes (:top (kb/rows @keyboard))
-            black-key-positions (prepare-black-key-positions black-notes @keyboard-root)]
+            black-key-positions (prepare-black-key-positions black-notes @keyboard-root)
+            folding-mode? (not= @keyboard-mode :chromatic)
+            chord-mode? (not= @selected-chromatic-chord :single-note)]
         [re-com/box
          :class (styles/octave-view)
          :child
@@ -334,9 +336,11 @@
             [re-com/h-box
              :class (styles/keys-relative-container)
              :children
-             (concat
-              (white-keys-layer white-notes @pressed-notes chord-mode?)
-              (black-keys-layer black-key-positions @pressed-notes))]]]]]))))
+             (if (or folding-mode? chord-mode?)
+               [:p "test"]
+               (concat
+                (chromatic-white-keys-layer white-notes @pressed-notes chord-mode?)
+                (chromatic-black-keys-layer black-key-positions @pressed-notes)))]]]]]))))
 
 (defn- note-column
   "Renders a column of note labels.
