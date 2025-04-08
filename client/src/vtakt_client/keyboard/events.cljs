@@ -80,6 +80,8 @@
  (fn [{:keys [db]} [_ note]]
    (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
+     ;; TODO - Glitchy. In chord mode, we need to implement legato here. We need to make sure
+     ;; that events that hit this come in order (sync) otherwise we risk getting into an invalid state.
      (cond
        (:nil? note)
        {:db (update db :pressed-physical-notes #{})}
