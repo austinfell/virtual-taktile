@@ -1,6 +1,7 @@
 (ns vtakt-client.keyboard.subs
   (:require
    [vtakt-client.keyboard.core :as kb]
+   [clojure.set :as set]
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
@@ -85,4 +86,4 @@
 (re-frame/reg-sub
  ::pressed-notes
  (fn [db _]
-   (:pressed-notes db)))
+   (set/union (:pressed-physical-notes db) (:pressed-visual-notes db))))

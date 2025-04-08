@@ -235,12 +235,12 @@
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-note note])
+      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-visual-note note])
              ;; TODO - Problem: Multiple sources of truth mean this can go into a weird state if
              ;; we are clicking around AND using keyboard to play notes... Certainly a possible
              ;; when multiple users are concurrently using our application.
-             :on-mouse-up #(re-frame/dispatch [::events/untrigger-note note])
-             :on-mouse-leave #(re-frame/dispatch [::events/untrigger-note note])}
+             :on-mouse-up #(re-frame/dispatch [::events/untrigger-visual-note note])
+             :on-mouse-leave #(re-frame/dispatch [::events/untrigger-visual-note note])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -345,7 +345,7 @@
              (if (or folding-mode? chord-mode?)
                (concat
                 (nonchromatic-white-keys-layer white-notes @pressed-notes)
-                (nonchromatic-black-keys-layer black-key-positions @pressed-notes))
+                (nonchromatic-black-keys-layer black-key-positions @ressed-notes))
                (concat
                 (chromatic-white-keys-layer white-notes @pressed-notes)
                 (chromatic-black-keys-layer black-key-positions @pressed-notes)))]]]]]))))

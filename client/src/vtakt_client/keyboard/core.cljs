@@ -95,12 +95,12 @@
   :ret (s/nilable ::note))
 (defn create-note
   "Creates a note map with the given name and octave."
-  [name octave]
-  {:pre [(s/valid? (s/nilable ::chromatic-note) name)
-         (s/valid? (s/nilable int?) octave)]}
-  (if (or (nil? name) (nil? octave))
-    nil
-    {:name name :octave octave}))
+   [name octave]
+   {:pre [(s/valid? (s/nilable ::chromatic-note) name)
+          (s/valid? (s/nilable int?) octave)]}
+   (if (or (nil? name) (nil? octave))
+     nil
+     {:name name :octave octave}))
 
 (defn- pshift-note
   "Shifts a note up or down by the specified delta.

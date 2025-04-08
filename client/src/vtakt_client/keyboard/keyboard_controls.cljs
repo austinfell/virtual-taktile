@@ -40,9 +40,9 @@
 
         (when note
           (if chord-mode?
-            (re-frame/dispatch [::events/trigger-note nil])
+            (re-frame/dispatch [::events/trigger-physical-note nil])
             (let [current-pressed @(re-frame/subscribe [::subs/pressed-notes])]
-              (re-frame/dispatch [::events/untrigger-note note]))))))))
+              (re-frame/dispatch [::events/untrigger-physical-note note]))))))))
 
 (defn handle-key-down [event]
   (let [key (.-key event)
@@ -61,14 +61,14 @@
           (if chord-mode?
             ;; Chord mode (monophonic/legato)
             (do
-              (re-frame/dispatch [::events/untrigger-note note])
-              (re-frame/dispatch [::events/trigger-note note]))
+              (re-frame/dispatch [::events/untrigger-physical-note note])
+              (re-frame/dispatch [::events/trigger-physical-note note]))
 
             ;; Single note mode (polyphonic)
             ;; In single note mode, we need to set pressed-notes directly
             ;; to avoid duplicating notes
             (let [current-pressed @(re-frame/subscribe [::subs/pressed-notes])]
-              (re-frame/dispatch [::events/trigger-note note]))))))))
+              (re-frame/dispatch [::events/trigger-physical-note note]))))))))
 
 ;; Initialize keyboard event listeners
 (defn init-keyboard-listeners []
