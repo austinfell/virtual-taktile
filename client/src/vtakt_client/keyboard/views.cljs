@@ -235,12 +235,12 @@
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch [::events/trigger-visual-note note])
+      :attr {:on-mouse-down #(re-frame/dispatch-sync [::events/trigger-visual-note note])
              ;; TODO - Problem: Multiple sources of truth mean this can go into a weird state if
              ;; we are clicking around AND using keyboard to play notes... Certainly a possible
              ;; when multiple users are concurrently using our application.
-             :on-mouse-up #(re-frame/dispatch [::events/untrigger-visual-note note])
-             :on-mouse-leave #(re-frame/dispatch [::events/untrigger-visual-note note])}
+             :on-mouse-up #(re-frame/dispatch-sync [::events/untrigger-visual-note note])
+             :on-mouse-leave #(re-frame/dispatch-sync [::events/untrigger-visual-note note])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -541,8 +541,7 @@
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners))
-
+        (kbd-ctrl/init-keyboard-listeners @ck))
       :component-will-unmount
       (fn [_]
         (kbd-ctrl/cleanup-keyboard-listeners))

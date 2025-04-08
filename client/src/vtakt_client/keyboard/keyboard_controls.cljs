@@ -2,11 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [vtakt-client.keyboard.events :as events]
-   [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.keyboard.core :as kb]))
-
-;; TODO - This entire module needs to be re-written. It is using subscriptions
-;; totally wrong.
 
 ;; Map keyboard keys to positions in the keyboard layout
 ;; First row: a s d f g h j k (positions 1-8)  <- TOP row
@@ -25,58 +21,31 @@
         notes (get keyboard-rows row)]
     (get notes index)))
 
-(defn handle-key-up [event]
+(defn handle-key-up [event keyboard]
   (let [key (.-key event)
         position (get key-to-position-map key)]
-
     (when position
-      ;; Prevent default browser behavior
       (.preventDefault event)
-
-      (let [keyboard @(re-frame/subscribe [::subs/keyboard])
-            note (position-to-note position keyboard)
-            ;; Should make this a bit more robust, can't just assume we can use selected chromatic chord.
-            chord-mode? (not= @(re-frame/subscribe [::subs/selected-chromatic-chord]) :single-note)]
-
+      (let [note (position-to-note position keyboard)]
         (when note
-          (if chord-mode?
-            (re-frame/dispatch [::events/trigger-physical-note nil])
-            (let [current-pressed @(re-frame/subscribe [::subs/pressed-notes])]
-              (re-frame/dispatch [::events/untrigger-physical-note note]))))))))
+          (re-frame/dispatch-sync [::events/untrigger-physical-note note]))))))
 
-(defn handle-key-down [event]
+(defn handle-key-down [event keyboard]
   (let [key (.-key event)
         position (get key-to-position-map key)]
-
     (when position
-      ;; Prevent default browser behavior
       (.preventDefault event)
-
-      (let [keyboard @(re-frame/subscribe [::subs/keyboard])
-            note (position-to-note position keyboard)
-            ;; Should make this a bit more robust, can't just assume we can use selected chromatic chord.
-            chord-mode? (not= @(re-frame/subscribe [::subs/selected-chromatic-chord]) :single-note)]
-
+      (let [note (position-to-note position keyboard)]
         (when note
-          (if chord-mode?
-            ;; Chord mode (monophonic/legato)
-            (do
-              (re-frame/dispatch [::events/untrigger-physical-note note])
-              (re-frame/dispatch [::events/trigger-physical-note note]))
-
-            ;; Single note mode (polyphonic)
-            ;; In single note mode, we need to set pressed-notes directly
-            ;; to avoid duplicating notes
-            (let [current-pressed @(re-frame/subscribe [::subs/pressed-notes])]
-              (re-frame/dispatch [::events/trigger-physical-note note]))))))))
+          (re-frame/dispatch-sync [::events/trigger-physical-note note]))))))
 
 ;; Initialize keyboard event listeners
-(defn init-keyboard-listeners []
-  ;; Bug - weird polling behavior on keydown. We should render the entire chord
-  ;; if the user has one pressed down and switches the tranpose value or the
+(defn init-keyboard-listeners [keyboard]
+  ;; Bug - weird polling behavior on key-down. We should render the entire chord
+  ;; if the user has one pressed down and switches the transpose value or the
   ;; root value.
-  (.addEventListener js/window "keydown" handle-key-down)
-  (.addEventListener js/window "keyup" handle-key-up)
+  (.addEventListener js/window "keydown" #(handle-key-down % keyboard))
+  (.addEventListener js/window "keyup" #(handle-key-up % keyboard))
   (js/console.log "Keyboard listeners initialized"))
 
 ;; Clean up event listeners when no longer needed
