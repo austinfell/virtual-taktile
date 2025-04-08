@@ -345,7 +345,7 @@
              (if (or folding-mode? chord-mode?)
                (concat
                 (nonchromatic-white-keys-layer white-notes @pressed-notes)
-                (nonchromatic-black-keys-layer black-key-positions @ressed-notes))
+                (nonchromatic-black-keys-layer black-key-positions @pressed-notes))
                (concat
                 (chromatic-white-keys-layer white-notes @pressed-notes)
                 (chromatic-black-keys-layer black-key-positions @pressed-notes)))]]]]]))))
