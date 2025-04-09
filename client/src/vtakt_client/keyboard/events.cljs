@@ -1,7 +1,7 @@
 (ns vtakt-client.keyboard.events
   (:require
    [re-frame.core :as re-frame]
-   [vtakt-client.db :as db]
+   [clojure.set :as set]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
@@ -20,14 +20,14 @@
 
 (re-frame/reg-event-fx
  ::inc-keyboard-transpose
- (fn [{:keys [db]} [_ keyboard-mode]]
+ (fn [{:keys [db]} _]
    {:db (-> db
             (update :keyboard-transpose inc)
             (assoc :pressed-notes #{}))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-transpose
- (fn [{:keys [db]} [_ keyboard-mode]]
+ (fn [{:keys [db]}]
    {:db (-> db
             (update :keyboard-transpose dec)
             (assoc :pressed-notes #{}))}))
@@ -78,96 +78,19 @@
 (re-frame/reg-event-fx
  ::trigger-physical-note
  (fn [{:keys [db]} [_ note]]
-   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
-         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
-     ;; TODO - Glitchy. In chord mode, we need to implement legato here. We need to make sure
-     ;; that events that hit this come in order (sync) otherwise we risk getting into an invalid state.
-     (cond
-       (:nil? note)
-       {:db (update db :pressed-physical-notes #{})}
-       (= selected-scale :chromatic)
-       {:db (update db :pressed-physical-notes into (kb/build-scale-chord
-                                              ;; The selected scale needs transposition. The note passed in
-                                              ;; is already derived from the keyboard data structure which
-                                              ;; is itself transposed.
-                                            (-> scales selected-scale transposed-root-name)
-                                            note
-                                            (chromatic-chords selected-chromatic-chord)))}
-
-       :else
-       {:db (update db :pressed-physical-notes into (kb/build-scale-chord
-                                              ;; The selected scale needs transposition. The note passed in
-                                              ;; is already derived from the keyboard data structure which
-                                              ;; is itself transposed.
-                                            (-> scales selected-scale transposed-root-name)
-                                            note
-                                            (diatonic-chords selected-diatonic-chord)))}))))
+   {:db (update db :pressed-physical-notes conj note)}))
 
 (re-frame/reg-event-fx
  ::untrigger-physical-note
  (fn [{:keys [db]} [_ note]]
-   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
-         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
-     (cond
-       (:nil? note)
-       {:db db}
-       (= selected-scale :chromatic)
-       (do
-         (println (:pressed-physical-notes db))
-         {:db (update db :pressed-physical-notes clojure.set/difference (kb/build-scale-chord
-                                                               (-> scales selected-scale transposed-root-name)
-                                                               note
-                                                               (chromatic-chords selected-chromatic-chord)))})
-       :else
-       {:db (update db :pressed-physical-notes clojure.set/difference (kb/build-scale-chord
-                                                               (-> scales selected-scale transposed-root-name)
-                                                               note
-                                                               (diatonic-chords selected-diatonic-chord)))}))))
-
+   {:db (update db :pressed-physical-notes disj note)}))
 
 (re-frame/reg-event-fx
  ::trigger-visual-note
  (fn [{:keys [db]} [_ note]]
-   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
-         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
-     (cond
-       (:nil? note)
-       {:db (update db :pressed-visual-notes #{})}
-       (= selected-scale :chromatic)
-       {:db (update db :pressed-visual-notes into (kb/build-scale-chord
-                                              ;; The selected scale needs transposition. The note passed in
-                                              ;; is already derived from the keyboard data structure which
-                                              ;; is itself transposed.
-                                            (-> scales selected-scale transposed-root-name)
-                                            note
-                                            (chromatic-chords selected-chromatic-chord)))}
-
-       :else
-       {:db (update db :pressed-visual-notes into (kb/build-scale-chord
-                                              ;; The selected scale needs transposition. The note passed in
-                                              ;; is already derived from the keyboard data structure which
-                                              ;; is itself transposed.
-                                            (-> scales selected-scale transposed-root-name)
-                                            note
-                                            (diatonic-chords selected-diatonic-chord)))}))))
+   {:db (update db :pressed-visual-notes conj note)}))
 
 (re-frame/reg-event-fx
  ::untrigger-visual-note
  (fn [{:keys [db]} [_ note]]
-   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
-         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))]
-     (cond
-       (:nil? note)
-       {:db db}
-       (= selected-scale :chromatic)
-       (do
-         (println (:pressed-visual-notes db))
-         {:db (update db :pressed-visual-notes clojure.set/difference (kb/build-scale-chord
-                                                               (-> scales selected-scale transposed-root-name)
-                                                               note
-                                                               (chromatic-chords selected-chromatic-chord)))})
-       :else
-       {:db (update db :pressed-visual-notes clojure.set/difference (kb/build-scale-chord
-                                                               (-> scales selected-scale transposed-root-name)
-                                                               note
-                                                               (diatonic-chords selected-diatonic-chord)))}))))
+   {:db (update db :pressed-visual-notes disj note)}))

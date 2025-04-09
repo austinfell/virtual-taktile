@@ -541,9 +541,15 @@
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners @ck))
+        (kbd-ctrl/init-keyboard-listeners @ck)
+        (add-watch ck ::keyboard-listeners
+                   (fn [_ _ old-val new-val]
+                     (when (not= old-val new-val)
+                       (kbd-ctrl/cleanup-keyboard-listeners)
+                       (kbd-ctrl/init-keyboard-listeners new-val)))))
       :component-will-unmount
       (fn [_]
+        (remove-watch ck ::keyboard-listeners)
         (kbd-ctrl/cleanup-keyboard-listeners))
 
       :reagent-render

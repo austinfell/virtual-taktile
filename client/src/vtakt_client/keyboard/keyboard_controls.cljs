@@ -39,16 +39,29 @@
         (when note
           (re-frame/dispatch-sync [::events/trigger-physical-note note]))))))
 
-;; Initialize keyboard event listeners
-(defn init-keyboard-listeners [keyboard]
-  ;; Bug - weird polling behavior on key-down. We should render the entire chord
-  ;; if the user has one pressed down and switches the transpose value or the
-  ;; root value.
-  (.addEventListener js/window "keydown" #(handle-key-down % keyboard))
-  (.addEventListener js/window "keyup" #(handle-key-up % keyboard))
-  (js/console.log "Keyboard listeners initialized"))
+(defonce keyboard-event-handlers (atom {}))
 
-;; Clean up event listeners when no longer needed
+(defn init-keyboard-listeners [keyboard]
+  ;; First clean up any existing listeners
+  ;; Create the bound handler functions with the current keyboard
+  (let [key-down-handler #(handle-key-down % keyboard)
+        key-up-handler #(handle-key-up % keyboard)]
+
+    ;; Store references to these handlers
+    (reset! keyboard-event-handlers
+            {:key-down key-down-handler
+             :key-up key-up-handler})
+
+    ;; Add event listeners with these specific handlers
+    (.addEventListener js/window "keydown" key-down-handler)
+    (.addEventListener js/window "keyup" key-up-handler)
+    (js/console.log "Keyboard listeners initialized")))
+
 (defn cleanup-keyboard-listeners []
-  (.removeEventListener js/window "keydown" handle-key-down)
-  (.removeEventListener js/window "keyup" handle-key-up))
+  (when-let [handlers @keyboard-event-handlers]
+    (when-let [key-down-handler (:key-down handlers)]
+      (.removeEventListener js/window "keydown" key-down-handler))
+    (when-let [key-up-handler (:key-up handlers)]
+      (.removeEventListener js/window "keyup" key-up-handler))
+    (reset! keyboard-event-handlers nil)
+    (js/console.log "Keyboard listeners cleaned up")))
