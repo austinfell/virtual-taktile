@@ -91,11 +91,11 @@
          all-pressed-note (set/union (:pressed-physical-notes db) (:pressed-visual-notes db))]
      (cond
        (= selected-scale :chromatic)
-       (mapcat
+       (into #{} (mapcat
         #(kb/build-scale-chord (-> scales selected-scale transposed-root-name) % (chromatic-chords selected-chromatic-chord))
-        all-pressed-note)
+        all-pressed-note))
 
        :else
-       (mapcat
+       (into #{} (mapcat
         #(kb/build-scale-chord (-> scales selected-scale transposed-root-name) % (diatonic-chords selected-diatonic-chord))
-        all-pressed-note)))))
+        all-pressed-note))))))

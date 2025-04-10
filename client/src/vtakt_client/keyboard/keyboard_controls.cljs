@@ -11,6 +11,8 @@
   {"a" 1, "s" 2, "d" 3, "f" 4, "g" 5, "h" 6, "j" 7, "k" 8,
    "z" 9, "x" 10, "c" 11, "v" 12, "b" 13, "n" 14, "m" 15, "," 16})
 
+(defonce active-notes (atom []))
+
 ;; Convert keyboard position to the corresponding note
 (defn- position-to-note [position keyboard]
   (let [keyboard-rows (kb/rows keyboard)
@@ -21,31 +23,35 @@
         notes (get keyboard-rows row)]
     (get notes index)))
 
-(defn handle-key-up [event keyboard]
+(defn handle-key-up [event keyboard legato?]
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when position
       (.preventDefault event)
       (let [note (position-to-note position keyboard)]
         (when note
-          (re-frame/dispatch-sync [::events/untrigger-physical-note note]))))))
+          (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
+            (re-frame/dispatch-sync [::events/set-physical-notes
+                                     (if legato? [(last current-notes)] current-notes)])))))))
 
-(defn handle-key-down [event keyboard]
+(defn handle-key-down [event keyboard legato?]
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when position
       (.preventDefault event)
       (let [note (position-to-note position keyboard)]
         (when note
-          (re-frame/dispatch-sync [::events/trigger-physical-note note]))))))
+          (let [current-notes (swap! active-notes conj note)]
+            (re-frame/dispatch-sync [::events/set-physical-notes (if legato? [(last current-notes)] current-notes)])))))))
+
 
 (defonce keyboard-event-handlers (atom {}))
 
-(defn init-keyboard-listeners [keyboard]
+(defn init-keyboard-listeners [keyboard legato]
   ;; First clean up any existing listeners
   ;; Create the bound handler functions with the current keyboard
-  (let [key-down-handler #(handle-key-down % keyboard)
-        key-up-handler #(handle-key-up % keyboard)]
+  (let [key-down-handler #(handle-key-down % keyboard legato)
+        key-up-handler #(handle-key-up % keyboard legato)]
 
     ;; Store references to these handlers
     (reset! keyboard-event-handlers

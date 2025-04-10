@@ -537,16 +537,23 @@
   See also:
     note-trigger, keyboard-configurator, kb/rows"
   []
-  (let [ck (re-frame/subscribe [::subs/keyboard])]
+  (let [ck (re-frame/subscribe [::subs/keyboard])
+        sc (re-frame/subscribe [::subs/selected-chromatic-chord])
+        chord-mode? (not= @sc :single-note)]
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners @ck)
+        (kbd-ctrl/init-keyboard-listeners @ck chord-mode?)
+        (add-watch sc ::chord-watcher
+                   (fn [_ _ old-val new-val]
+                     (when (not= old-val new-val)
+                       (kbd-ctrl/cleanup-keyboard-listeners)
+                       (kbd-ctrl/init-keyboard-listeners @ck new-val))))
         (add-watch ck ::keyboard-listeners
                    (fn [_ _ old-val new-val]
                      (when (not= old-val new-val)
                        (kbd-ctrl/cleanup-keyboard-listeners)
-                       (kbd-ctrl/init-keyboard-listeners new-val)))))
+                       (kbd-ctrl/init-keyboard-listeners new-val chord-mode?)))))
       :component-will-unmount
       (fn [_]
         (remove-watch ck ::keyboard-listeners)

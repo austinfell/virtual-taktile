@@ -76,14 +76,9 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (re-frame/reg-event-fx
- ::trigger-physical-note
- (fn [{:keys [db]} [_ note]]
-   {:db (update db :pressed-physical-notes conj note)}))
-
-(re-frame/reg-event-fx
- ::untrigger-physical-note
- (fn [{:keys [db]} [_ note]]
-   {:db (update db :pressed-physical-notes disj note)}))
+ ::set-physical-notes
+ (fn [{:keys [db]} [_ notes]]
+   {:db (assoc db :pressed-physical-notes notes)}))
 
 (re-frame/reg-event-fx
  ::trigger-visual-note
