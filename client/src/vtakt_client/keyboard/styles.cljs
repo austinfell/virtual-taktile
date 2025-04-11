@@ -92,6 +92,7 @@
 (defclass mode-option [active?]
   {:flex 1
    :text-align "center"
+   :user-select "none"
    :padding (px 8)
    :background-color (if active? (:chromatic-active colors) (:inactive colors))
    :color (if active? (:text-white colors) (:text-black colors))

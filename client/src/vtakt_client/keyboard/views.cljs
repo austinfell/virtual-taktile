@@ -127,7 +127,7 @@
         :width width
         :filter-box? true
         :label-fn #(uc/format-keyword (:id %))
-        :on-change #(re-frame/dispatch [on-change-event %])]))))
+        :on-change #(re-frame/dispatch-sync [on-change-event %])]))))
 
 ;; Scale selector
 (s/def ::scale-options (s/coll-of keyword?))
@@ -151,6 +151,7 @@
 (def chromatic-chord-selector
   (make-dropdown-selector
    ::events/set-selected-chromatic-chord
+   :width "170px"
    :pinned-items #{:single-note}))
 
 (s/fdef diatonic-chord-selector
