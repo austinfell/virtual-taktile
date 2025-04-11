@@ -27,7 +27,6 @@
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when position
-      (.preventDefault event)
       (let [note (position-to-note position keyboard)]
         (when note
           (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
@@ -38,7 +37,6 @@
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when position
-      (.preventDefault event)
       (let [note (position-to-note position keyboard)]
         (when note
           (let [current-notes (swap! active-notes conj note)]
