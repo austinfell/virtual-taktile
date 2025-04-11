@@ -64,8 +64,10 @@
 
 (defclass increment-button-active []
   {:cursor "pointer"
-   :transition "background-color 0.2s ease"
-   "&:hover" {:background-color (color/lighten (:bg-light colors) 5)}})
+   :transition "background-color 0.2s ease"}
+  [:&:hover {:background-color (color/darken (:bg-light colors) 5)}]
+  [:&:focus {:background-color (color/darken (:bg-light colors) 5)
+             :outline "2px solid #3498db"}])
 
 (defclass increment-value-box []
   {:width (px 38)
@@ -93,7 +95,14 @@
    :padding (px 8)
    :background-color (if active? (:chromatic-active colors) (:inactive colors))
    :color (if active? (:text-white colors) (:text-black colors))
-   :transition "all 0.2s ease"})
+   :transition "all 0.2s ease"}
+  [:&:hover {:background-color (if active?
+                                 (color/lighten (:chromatic-active colors) 5)
+                                 (color/darken (:inactive colors) 5))}]
+  [:&:focus {:background-color (if active?
+                                 (color/lighten (:chromatic-active colors) 5)
+                                 (color/darken (:inactive colors) 5))
+             :outline "2px solid #3498db"}])
 
 ;; Piano key styles
 (defclass white-key [pressed?]
@@ -220,4 +229,15 @@
    :color (:text-black colors)})
 
 (defclass dropdown []
-  {:color "black"})
+  {:color "black"
+   :cursor "pointer"}
+  [:&:hover {:background-color (color/darken (:bg-light colors) 5)}]
+  [:&:focus {:background-color (color/darken (:bg-light colors) 5)
+             :outline "2px solid #3498db"}]
+
+  ;; Target the chosen-single child
+  [".chosen-single" {:cursor "pointer"
+                     :transition "background-color 0.2s ease"}]
+  [".chosen-single:hover" {:background-color (color/darken (:bg-light colors) 5)}]
+  [".chosen-single:focus" {:background-color (color/darken (:bg-light colors) 5)
+                           :outline "2px solid #3498db"}])

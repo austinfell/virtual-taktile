@@ -60,8 +60,7 @@
 
     ;; Add event listeners with these specific handlers
     (.addEventListener js/window "keydown" key-down-handler)
-    (.addEventListener js/window "keyup" key-up-handler)
-    (js/console.log "Keyboard listeners initialized")))
+    (.addEventListener js/window "keyup" key-up-handler)))
 
 (defn cleanup-keyboard-listeners []
   (when-let [handlers @keyboard-event-handlers]
@@ -69,5 +68,4 @@
       (.removeEventListener js/window "keydown" key-down-handler))
     (when-let [key-up-handler (:key-up handlers)]
       (.removeEventListener js/window "keyup" key-up-handler))
-    (reset! keyboard-event-handlers nil)
-    (js/console.log "Keyboard listeners cleaned up")))
+    (reset! keyboard-event-handlers nil)))

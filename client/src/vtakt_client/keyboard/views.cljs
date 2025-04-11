@@ -173,8 +173,11 @@
         ;; TODO - we should really have a single source of truth for available keyboard modes...
         ;; who knows, maybe one day we will have a 31TET keyboard or something...
         mode-options [{:id :chromatic :label "Chromatic"}
-                      {:id :folding :label "Folding"}]]
-
+                      {:id :folding :label "Folding"}]
+        handle-key-down (fn [id event]
+                          (when (= (.-key event) "Enter")
+                            (re-frame/dispatch [::events/set-keyboard-mode id])
+                            (.preventDefault event)))]
     [re-com/v-box
      :gap "5px"
      :children
@@ -185,6 +188,8 @@
          [re-com/box
           :class (styles/mode-option (= id current-mode))
           :attr {:on-click #(re-frame/dispatch [::events/set-keyboard-mode id])
+                 :on-key-down #(handle-key-down id %)
+                 :tab-index 0
                  :key (name id)}
           :child label])]]]))
 
