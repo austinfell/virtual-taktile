@@ -21,7 +21,4 @@
    :selected-chromatic-chord :single-note
    :selected-diatonic-chord :single-note
 
-   ;; Notes pressed on the users physical keyboard.
-   :pressed-physical-notes #{}
-   ;; Notes pressed on the users visual button list (via a mouse).
-   :pressed-visual-notes #{}})
+   :pressed-notes #{}})

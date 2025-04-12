@@ -11,8 +11,6 @@
   {"a" 1, "s" 2, "d" 3, "f" 4, "g" 5, "h" 6, "j" 7, "k" 8,
    "z" 9, "x" 10, "c" 11, "v" 12, "b" 13, "n" 14, "m" 15, "," 16})
 
-(defonce active-notes (atom []))
-
 ;; Convert keyboard position to the corresponding note
 (defn- position-to-note [position keyboard]
   (let [keyboard-rows (kb/rows keyboard)
@@ -23,33 +21,36 @@
         notes (get keyboard-rows row)]
     (get notes index)))
 
-(defn handle-key-up [event keyboard legato?]
+(defn handle-key-up [event keyboard legato? active-notes]
   (let [key (.-key event)
         position (get key-to-position-map key)]
-    (when position
+    (when (and position (not (.-repeat event)))
       (let [note (position-to-note position keyboard)]
         (when note
           (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-            (re-frame/dispatch-sync [::events/set-physical-notes
+            (re-frame/dispatch-sync [::events/set-pressed-notes
                                      (if legato? [(last current-notes)] current-notes)])))))))
 
-(defn handle-key-down [event keyboard legato?]
+(defn handle-key-down [event keyboard legato? active-notes]
   (let [key (.-key event)
         position (get key-to-position-map key)]
-    (when position
+    ;; TODO Something to maybe think about: pressing a key on the keyboard
+    ;; and then the same key on the mouse causes the key to get cancelled even
+    ;; though the keyboard is still pressed or vice-versa... Might be more of a feature
+    ;; than a bug...
+    (when (and position (not (.-repeat event)))
       (let [note (position-to-note position keyboard)]
         (when note
           (let [current-notes (swap! active-notes conj note)]
-            (re-frame/dispatch-sync [::events/set-physical-notes (if legato? [(last current-notes)] current-notes)])))))))
-
+            (re-frame/dispatch-sync [::events/set-pressed-notes (if legato? [(last current-notes)] current-notes)])))))))
 
 (defonce keyboard-event-handlers (atom {}))
 
-(defn init-keyboard-listeners [keyboard legato]
+(defn init-keyboard-listeners [keyboard legato active-notes]
   ;; First clean up any existing listeners
   ;; Create the bound handler functions with the current keyboard
-  (let [key-down-handler #(handle-key-down % keyboard legato)
-        key-up-handler #(handle-key-up % keyboard legato)]
+  (let [key-down-handler #(handle-key-down % keyboard legato active-notes)
+        key-up-handler #(handle-key-up % keyboard legato active-notes)]
 
     ;; Store references to these handlers
     (reset! keyboard-event-handlers

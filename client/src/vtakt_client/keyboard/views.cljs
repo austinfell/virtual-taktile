@@ -12,6 +12,8 @@
    [vtakt-client.utils.core :as uc]
    [vtakt-client.utils.specs :as us]))
 
+(defonce active-notes (atom []))
+
 ;; ------------------------------
 ;; Control Components
 ;; ------------------------------
@@ -234,19 +236,29 @@
 ;; ------------------------------
 ;; Keyboard UI Components
 ;; ------------------------------
-
-(defn- note-trigger-impl
-  [position note]
+(s/def ::keyboard-position (s/int-in 1 17))
+(s/def ::note-or-nil (s/nilable ::kb/note))
+(s/fdef note-trigger
+  :args (s/cat :position ::keyboard-position
+               :note ::note-or-nil)
+  :ret ::us/reagent-component)
+(defn note-trigger
+  [position note active-notes legato?]
   (let [is-measure-start? (contains? #{1 5 9 13} position)
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch-sync [::events/trigger-visual-note note])
-             ;; TODO - Problem: Multiple sources of truth mean this can go into a weird state if
-             ;; we are clicking around AND using keyboard to play notes... Certainly a possible
-             ;; when multiple users are concurrently using our application.
-             :on-mouse-up #(re-frame/dispatch-sync [::events/untrigger-visual-note note])
-             :on-mouse-leave #(re-frame/dispatch-sync [::events/untrigger-visual-note note])}
+      :attr {:on-mouse-down #(let [current-notes (swap! active-notes conj note)]
+                               (println legato?)
+                               (re-frame/dispatch-sync [::events/set-pressed-notes (if legato? [(last current-notes)] current-notes)]))
+             :on-mouse-up (fn []
+                            (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
+                              (re-frame/dispatch-sync [::events/set-pressed-notes
+                                                       (if legato? [(last current-notes)] current-notes)])))
+             :on-mouse-leave (fn []
+                               (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
+                                 (re-frame/dispatch-sync [::events/set-pressed-notes
+                                                          (if legato? [(last current-notes)] current-notes)])))}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -256,20 +268,6 @@
                 [:p {:class (styles/seq-number)} (str position)]]
                (str position))]]))
 
-(s/def ::keyboard-position (s/int-in 1 17))
-(s/def ::note-or-nil (s/nilable ::kb/note))
-(s/fdef note-trigger
-  :args (s/cat :position ::keyboard-position
-               :note ::note-or-nil)
-  :ret ::us/reagent-component)
-(def note-trigger
-  "A button component that triggers a note or chord when pressed.
-   Parameters:
-   - position: The position number in the keyboard layout (1-16)
-   - note: The note data to be played or nil if no note at this position
-
-   This component is memoized for performance when re-rendering with the same props."
-  (memoize note-trigger-impl))
 
 (defn- chromatic-white-keys-layer
   [white-notes pressed-notes]
@@ -549,17 +547,17 @@
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners @ck chord-mode?)
+        (kbd-ctrl/init-keyboard-listeners @ck chord-mode? active-notes)
         (add-watch sc ::chord-watcher
                    (fn [_ _ old-val new-val]
                      (when (not= old-val new-val)
                        (kbd-ctrl/cleanup-keyboard-listeners)
-                       (kbd-ctrl/init-keyboard-listeners @ck new-val))))
+                       (kbd-ctrl/init-keyboard-listeners @ck new-val active-notes))))
         (add-watch ck ::keyboard-listeners
                    (fn [_ _ old-val new-val]
                      (when (not= old-val new-val)
                        (kbd-ctrl/cleanup-keyboard-listeners)
-                       (kbd-ctrl/init-keyboard-listeners new-val chord-mode?)))))
+                       (kbd-ctrl/init-keyboard-listeners new-val chord-mode? active-notes)))))
       :component-will-unmount
       (fn [_]
         (remove-watch ck ::keyboard-listeners)
@@ -575,10 +573,10 @@
            :children [[re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (inc idx) note])
+                                    [note-trigger (inc idx) note active-notes chord-mode?])
                                   top-row)]
                       [re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (+ 9 idx) note])
+                                    [note-trigger (+ 9 idx) note active-notes chord-mode?])
                                   bottom-row)]]]))})))

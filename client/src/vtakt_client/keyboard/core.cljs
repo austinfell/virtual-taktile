@@ -1,6 +1,5 @@
 (ns vtakt-client.keyboard.core
-  (:require [clojure.walk :refer [postwalk]]
-            [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]))
 
 ;; Music theory.
 (def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])

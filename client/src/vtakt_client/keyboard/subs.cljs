@@ -90,9 +90,8 @@
                  diatonic-chords chromatic-chords scales
                  keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
-         all-pressed-note (set/union (:pressed-physical-notes db) (:pressed-visual-notes db))
          scale (-> scales selected-scale transposed-root-name)
          chords (if (= selected-scale :chromatic)
                   (chromatic-chords selected-chromatic-chord)
                   (diatonic-chords selected-diatonic-chord))]
-     (into #{} (mapcat #(kb/build-scale-chord scale % chords) all-pressed-note)))))
+     (into #{} (mapcat #(kb/build-scale-chord scale % chords) (:pressed-notes db))))))
