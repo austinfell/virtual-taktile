@@ -3,12 +3,7 @@
             [clojure.spec.alpha :as s]))
 
 ;; Music theory.
-
 (def chromatic-notes [:a :asbf :b :c :csdf :d :dsef :e :f :fsgf :g :gsaf])
-(def sharp-note-layout [nil :csdf :dsef nil :fsgf :gsaf :asbf])
-(def natural-note-layout [:c :d :e :f :g :a :b])
-(def chromatic-breakpoint-natural :c)
-(def chromatic-breakpoint-accidental :csdf)
 
 (defn- pscale-generator
   "Given a vector of sequential notes and associated scale degrees, returns

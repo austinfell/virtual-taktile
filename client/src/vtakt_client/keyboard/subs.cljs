@@ -86,16 +86,13 @@
 (re-frame/reg-sub
  ::pressed-notes
  (fn [db _]
-   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale diatonic-chords chromatic-chords scales keyboard-root keyboard-transpose]} db
+   (let [{:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
+                 diatonic-chords chromatic-chords scales
+                 keyboard-root keyboard-transpose]} db
          transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
-         all-pressed-note (set/union (:pressed-physical-notes db) (:pressed-visual-notes db))]
-     (cond
-       (= selected-scale :chromatic)
-       (into #{} (mapcat
-        #(kb/build-scale-chord (-> scales selected-scale transposed-root-name) % (chromatic-chords selected-chromatic-chord))
-        all-pressed-note))
-
-       :else
-       (into #{} (mapcat
-        #(kb/build-scale-chord (-> scales selected-scale transposed-root-name) % (diatonic-chords selected-diatonic-chord))
-        all-pressed-note))))))
+         all-pressed-note (set/union (:pressed-physical-notes db) (:pressed-visual-notes db))
+         scale (-> scales selected-scale transposed-root-name)
+         chords (if (= selected-scale :chromatic)
+                  (chromatic-chords selected-chromatic-chord)
+                  (diatonic-chords selected-diatonic-chord))]
+     (into #{} (mapcat #(kb/build-scale-chord scale % chords) all-pressed-note)))))
