@@ -249,7 +249,6 @@
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
       :attr {:on-mouse-down #(let [current-notes (swap! active-notes conj note)]
-                               (println legato?)
                                (re-frame/dispatch-sync [::events/set-pressed-notes (if legato? [(last current-notes)] current-notes)]))
              :on-mouse-up (fn []
                             (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
@@ -542,22 +541,12 @@
     note-trigger, keyboard-configurator, kb/rows"
   []
   (let [ck (re-frame/subscribe [::subs/keyboard])
-        sc (re-frame/subscribe [::subs/selected-chromatic-chord])
-        chord-mode? (not= @sc :single-note)]
+        sc (re-frame/subscribe [::subs/selected-chromatic-chord])]
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners @ck chord-mode? active-notes)
-        (add-watch sc ::chord-watcher
-                   (fn [_ _ old-val new-val]
-                     (when (not= old-val new-val)
-                       (kbd-ctrl/cleanup-keyboard-listeners)
-                       (kbd-ctrl/init-keyboard-listeners @ck new-val active-notes))))
-        (add-watch ck ::keyboard-listeners
-                   (fn [_ _ old-val new-val]
-                     (when (not= old-val new-val)
-                       (kbd-ctrl/cleanup-keyboard-listeners)
-                       (kbd-ctrl/init-keyboard-listeners new-val chord-mode? active-notes)))))
+        (kbd-ctrl/init-keyboard-listeners ck sc active-notes))
+
       :component-will-unmount
       (fn [_]
         (remove-watch ck ::keyboard-listeners)
@@ -565,7 +554,9 @@
 
       :reagent-render
       (fn []
-        (let [keyboard-rows (kb/rows @ck)
+        (let [ck (re-frame/subscribe [::subs/keyboard])
+              sc (re-frame/subscribe [::subs/selected-chromatic-chord])
+              keyboard-rows (kb/rows @ck)
               top-row (:top keyboard-rows)
               bottom-row (:bottom keyboard-rows)]
           [re-com/v-box
@@ -573,10 +564,10 @@
            :children [[re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (inc idx) note active-notes chord-mode?])
+                                    [note-trigger (inc idx) note active-notes sc])
                                   top-row)]
                       [re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (+ 9 idx) note active-notes chord-mode?])
+                                    [note-trigger (+ 9 idx) note active-notes sc])
                                   bottom-row)]]]))})))
