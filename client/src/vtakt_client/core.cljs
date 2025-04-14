@@ -4,6 +4,7 @@
    [re-frame.core :as re-frame]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
+   [vtakt-client.midi.core :as midi]
    [vtakt-client.views :as views]
    [vtakt-client.config :as config]))
 
@@ -20,5 +21,6 @@
 (defn init []
   (routes/start!)
   (re-frame/dispatch-sync [::events/initialize-db])
+  (midi/init-midi!)
   (dev-setup)
   (mount-root))

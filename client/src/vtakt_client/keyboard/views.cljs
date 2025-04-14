@@ -249,7 +249,6 @@
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
       :attr {:on-mouse-down #(let [current-notes (swap! active-notes conj note)]
-                               (println legato?)
                                (re-frame/dispatch-sync [::events/set-pressed-notes (if legato? [(last current-notes)] current-notes)]))
              :on-mouse-up (fn []
                             (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]

@@ -1,7 +1,6 @@
 (ns vtakt-client.keyboard.subs
   (:require
    [vtakt-client.keyboard.core :as kb]
-   [clojure.set :as set]
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
