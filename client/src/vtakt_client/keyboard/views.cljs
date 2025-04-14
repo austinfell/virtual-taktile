@@ -12,6 +12,10 @@
    [vtakt-client.utils.core :as uc]
    [vtakt-client.utils.specs :as us]))
 
+;; For me, it's critical that the keyboard module can maintain its active note state
+;; and share between modules independently of the main re-frame store. With all the
+;; updates going on there, I want to drop down to a little bit more manual control
+;; to be able to deal with that..
 (defonce active-notes (atom []))
 
 ;; ------------------------------

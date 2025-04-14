@@ -12,6 +12,7 @@
   (atom
     ["/" {""      :home
           "keyboard" :keyboard
+          "midi" :midi
           "about" :about}]))
 
 (defn parse

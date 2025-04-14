@@ -4,6 +4,7 @@
    [reagent.core :as reagent]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
+   [vtakt-client.midi.views :as midi]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
    [vtakt-client.subs :as subs]))
@@ -72,3 +73,13 @@
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])
+
+(defn midi-panel []
+  [re-com/v-box
+   :src      (at)
+   :gap      "1em"
+   :children [[midi/midi-configurator]]])
+
+
+(defmethod routes/panels :midi-panel []
+  [midi-panel])
