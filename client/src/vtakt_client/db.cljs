@@ -21,4 +21,6 @@
    :selected-chromatic-chord :single-note
    :selected-diatonic-chord :single-note
 
-   :pressed-notes #{}})
+   :pressed-notes #{}
+   :midi-outputs nil
+   })

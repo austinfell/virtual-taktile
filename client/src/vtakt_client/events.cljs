@@ -2,7 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [vtakt-client.db :as db]
-   [vtakt-client.keyboard.core :as kb]))
+   [vtakt-client.midi.core :as midi]))
 
 (re-frame/reg-event-fx
  ::navigate
@@ -13,6 +13,12 @@
  ::initialize-db
  (fn [_ _]
    db/default-db))
+
+(re-frame/reg-event-fx
+ ::initialize-app
+ (fn [db _]
+   (midi/init-midi!)
+   db))
 
 (re-frame/reg-event-fx
  ::set-active-panel
