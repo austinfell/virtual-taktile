@@ -17,6 +17,7 @@
 (re-frame/reg-event-fx
  ::initialize-app
  (fn [db _]
+   ;; See - all of the initialization events contained in the midi module.
    (midi/init-midi!)
    db))
 
