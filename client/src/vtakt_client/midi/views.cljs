@@ -32,4 +32,5 @@
                   [midi-not-configured-alert]
                     ;; Structure here is:
                     ;; {id {:id id :name ... :manufacturer ... :output MidiOutput}}
-                  [:p (str @midi-outputs)])]]))
+                  [:p (str (:output (first (vals @midi-outputs))))])]]))
+
