@@ -76,16 +76,27 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (def input-chan (async/chan 100))
+(def midi-transform-chan (async/chan 100))
+
 (defn handle-note-event [source note-data event-type]
   (async/put! input-chan {:source source :note note-data :event event-type}))
 
-(defn start-aggregator []
+(defn start-input-aggregator []
   (async/go-loop [current-state []]
     (when-let [input-event (async/<! input-chan)]
       (let [new-state (conj current-state input-event)]
         (println new-state)
+        (async/>! midi-transform-chan (first new-state))
         (recur new-state)))))
-(start-aggregator)
+
+(defn start-midi-transform-aggregator []
+  (async/go-loop [current-state []]
+    (when-let [input-event (async/<! midi-transform-chan)]
+        (println input-event)
+        (recur []))))
+
+(start-input-aggregator)
+(start-midi-transform-aggregator)
 
 (re-frame/reg-event-fx
  ::set-pressed-notes
