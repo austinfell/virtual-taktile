@@ -1,7 +1,7 @@
 (ns vtakt-client.keyboard.events
   (:require
    [re-frame.core :as re-frame]
-   [clojure.set :as set]
+   [clojure.core.async :as async]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
@@ -75,7 +75,20 @@
  (fn [{:keys [db]} [_ keyboard-mode]]
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
+(def input-chan (async/chan 100))
+(defn handle-note-event [source note-data event-type]
+  (async/put! input-chan {:source source :note note-data :event event-type}))
+
+(defn start-aggregator []
+  (async/go-loop [current-state []]
+    (when-let [input-event (async/<! input-chan)]
+      (let [new-state (conj current-state input-event)]
+        (println new-state)
+        (recur new-state)))))
+(start-aggregator)
+
 (re-frame/reg-event-fx
  ::set-pressed-notes
  (fn [{:keys [db]} [_ notes]]
+   (handle-note-event :keyboard {:name :c :octave 4} :on)
    {:db (assoc db :pressed-notes notes)}))
