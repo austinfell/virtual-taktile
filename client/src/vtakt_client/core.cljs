@@ -5,6 +5,7 @@
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
    [vtakt-client.views :as views]
+   [vtakt-client.midi.midi-fx]
    [vtakt-client.config :as config]))
 
 (defn dev-setup []

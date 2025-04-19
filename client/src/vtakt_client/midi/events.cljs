@@ -10,6 +10,7 @@
 (re-frame/reg-event-fx
  ::add-midi-output
  (fn [{:keys [db]} [_ [id to-add-midi-output]]]
+   (println to-add-midi-output)
    {:db (update db :midi-outputs assoc id to-add-midi-output)}))
 
 (re-frame/reg-event-fx

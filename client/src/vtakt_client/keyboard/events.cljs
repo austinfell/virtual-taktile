@@ -1,7 +1,6 @@
 (ns vtakt-client.keyboard.events
   (:require
    [re-frame.core :as re-frame]
-   [clojure.core.async :as async]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
@@ -61,7 +60,12 @@
                                     (not= chord :single-note)) :major
                                ;; Otherwise keep current chromatic chord
                                :else current-chromatic-chord)]
-     {:db (-> db
+     (println "trigger")
+     {:midi {:type :note-on
+            :channel 0
+            :device "IAC Driver Bus 1"
+            :data {:note 59 :velocity 55}}
+      :db (-> db
               (assoc :selected-diatonic-chord chord)
               (assoc :selected-chromatic-chord new-chromatic-chord))})))
 
@@ -75,31 +79,7 @@
  (fn [{:keys [db]} [_ keyboard-mode]]
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
-(def input-chan (async/chan 100))
-(def midi-transform-chan (async/chan 100))
-
-(defn handle-note-event [source note-data event-type]
-  (async/put! input-chan {:source source :note note-data :event event-type}))
-
-(defn start-input-aggregator []
-  (async/go-loop [current-state []]
-    (when-let [input-event (async/<! input-chan)]
-      (let [new-state (conj current-state input-event)]
-        (println new-state)
-        (async/>! midi-transform-chan (first new-state))
-        (recur new-state)))))
-
-(defn start-midi-transform-aggregator []
-  (async/go-loop [current-state []]
-    (when-let [input-event (async/<! midi-transform-chan)]
-        (println input-event)
-        (recur []))))
-
-(start-input-aggregator)
-(start-midi-transform-aggregator)
-
 (re-frame/reg-event-fx
  ::set-pressed-notes
  (fn [{:keys [db]} [_ notes]]
-   (handle-note-event :keyboard {:name :c :octave 4} :on)
    {:db (assoc db :pressed-notes notes)}))
