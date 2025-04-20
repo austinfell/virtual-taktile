@@ -7,28 +7,28 @@
 (re-frame/reg-event-fx
  ::inc-keyboard-root
  (fn [{:keys [db]} _]
-   {:fx [[:dispatch [::set-triggered-notes []]]]
+   {:fx [[:dispatch [::clear-pressed-notes]]]
     :db (-> db
             (update :keyboard-root #(kb/transpose-note % 1)))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-root
  (fn [{:keys [db]} _]
-   {:fx [[:dispatch [::set-triggered-notes []]]]
+   {:fx [[:dispatch [::clear-pressed-notes]]]
     :db (-> db
             (update :keyboard-root #(kb/transpose-note % -1)))}))
 
 (re-frame/reg-event-fx
  ::inc-keyboard-transpose
  (fn [{:keys [db]} _]
-   {:fx [[:dispatch [::set-triggered-notes []]]]
+   {:fx [[:dispatch [::clear-pressed-notes]]]
     :db (-> db
             (update :keyboard-transpose inc))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-transpose
  (fn [{:keys [db]}]
-   {:fx [[:dispatch [::set-triggered-notes []]]]
+   {:fx [[:dispatch [::clear-pressed-notes]]]
     :db (-> db
             (update :keyboard-transpose dec))}))
 
@@ -74,6 +74,12 @@
  ::set-keyboard-mode
  (fn [{:keys [db]} [_ keyboard-mode]]
    {:db (assoc db :keyboard-mode keyboard-mode)}))
+
+(re-frame/reg-event-fx
+ ::clear-pressed-notes
+ (fn [{:keys [db]} [_ note]]
+   {:fx [[:dispatch [::update-triggered-notes]]]
+    :db (assoc db :pressed-notes [])}))
 
 (re-frame/reg-event-fx
  ::add-pressed-note
