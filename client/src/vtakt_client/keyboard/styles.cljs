@@ -195,7 +195,7 @@
    :padding-right (px 0)})
 
 ;; Pressed notes display styles
-(defclass pressed-notes-container []
+(defclass sounded-notes-container []
   {:width "auto"
    :min-width (px 130)
    :min-height (px 115)

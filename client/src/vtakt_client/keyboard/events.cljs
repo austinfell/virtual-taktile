@@ -1,35 +1,33 @@
 (ns vtakt-client.keyboard.events
   (:require
    [re-frame.core :as re-frame]
+   [clojure.set :as set]
+   [vtakt-client.midi.core :as midi]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
  ::inc-keyboard-root
  (fn [{:keys [db]} _]
    {:db (-> db
-            (update :keyboard-root #(kb/transpose-note % 1))
-            (assoc :pressed-notes #{}))}))
+            (update :keyboard-root #(kb/transpose-note % 1)))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-root
  (fn [{:keys [db]} _]
    {:db (-> db
-            (update :keyboard-root #(kb/transpose-note % -1))
-            (assoc :pressed-notes #{}))}))
+            (update :keyboard-root #(kb/transpose-note % -1)))}))
 
 (re-frame/reg-event-fx
  ::inc-keyboard-transpose
  (fn [{:keys [db]} _]
    {:db (-> db
-            (update :keyboard-transpose inc)
-            (assoc :pressed-notes #{}))}))
+            (update :keyboard-transpose inc))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-transpose
  (fn [{:keys [db]}]
    {:db (-> db
-            (update :keyboard-transpose dec)
-            (assoc :pressed-notes #{}))}))
+            (update :keyboard-transpose dec))}))
 
 (re-frame/reg-event-fx
  ::set-selected-chromatic-chord
@@ -60,12 +58,7 @@
                                     (not= chord :single-note)) :major
                                ;; Otherwise keep current chromatic chord
                                :else current-chromatic-chord)]
-     (println "trigger")
-     {:midi {:type :note-on
-            :channel 0
-            :device "IAC Driver Bus 1"
-            :data {:note 59 :velocity 55}}
-      :db (-> db
+     {:db (-> db
               (assoc :selected-diatonic-chord chord)
               (assoc :selected-chromatic-chord new-chromatic-chord))})))
 
@@ -82,4 +75,33 @@
 (re-frame/reg-event-fx
  ::set-pressed-notes
  (fn [{:keys [db]} [_ notes]]
-   {:db (assoc db :pressed-notes notes)}))
+   (let [previous-sounded-notes (db :sounded-notes)
+         {:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
+                 diatonic-chords chromatic-chords scales
+                 keyboard-root keyboard-transpose]} db
+         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
+         scale (-> scales selected-scale transposed-root-name)
+         chords (if (= selected-scale :chromatic)
+                  (chromatic-chords selected-chromatic-chord)
+                  (diatonic-chords selected-diatonic-chord))
+         new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) notes))
+         added-notes (set/difference new-sounded-notes previous-sounded-notes)
+         removed-notes (set/difference previous-sounded-notes new-sounded-notes)
+         note-on-messages (map (fn [note]
+                                 {:type :note-on
+                                  :channel 0
+                                  :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
+                                  :data {:note (midi/note->midi-number note) :velocity 80}})
+                               added-notes)
+
+         note-off-messages (map (fn [note]
+                                  {:type :note-off
+                                   :channel 0
+                                   :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
+                                   :data {:note (midi/note->midi-number note) :velocity 0}})
+                                removed-notes)
+         midi-messages (concat note-on-messages note-off-messages)]
+     {:midi midi-messages
+      :db (-> db
+              (assoc :pressed-notes notes)
+              (assoc :sounded-notes new-sounded-notes))})))

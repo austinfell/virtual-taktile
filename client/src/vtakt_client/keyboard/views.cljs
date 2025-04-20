@@ -273,32 +273,32 @@
 
 
 (defn- chromatic-white-keys-layer
-  [white-notes pressed-notes]
-  (mapv (fn [note] [piano-key note (some #(= note %) pressed-notes) :white]) white-notes))
+  [white-notes sounded-notes]
+  (mapv (fn [note] [piano-key note (some #(= note %) sounded-notes) :white]) white-notes))
 
 (defn- nonchromatic-white-keys-layer
-  [white-notes pressed-notes]
+  [white-notes sounded-notes]
   (mapv (fn [idx note]
-          [piano-key note (and (some #(= (:name note) (:name %)) pressed-notes) (not (= idx 7))) :white])
+          [piano-key note (and (some #(= (:name note) (:name %)) sounded-notes) (not (= idx 7))) :white])
         (range)
         white-notes))
 
 (defn- chromatic-black-keys-layer
-  [black-key-positions pressed-notes]
+  [black-key-positions sounded-notes]
   (mapv (fn [[note position-index _]]
-          (let [pressed? (when (and note pressed-notes) ;; the position is non-nil...
-                           (some #(= note %) pressed-notes))] ;; The note at the position is actually pressed.
+          (let [pressed? (when (and note sounded-notes) ;; the position is non-nil...
+                           (some #(= note %) sounded-notes))] ;; The note at the position is actually pressed.
             [re-com/box
              :class (styles/black-key-position position-index)
              :child [piano-key note pressed? :black]]))
         black-key-positions))
 
 (defn- nonchromatic-black-keys-layer
-  [black-key-positions pressed-notes]
+  [black-key-positions sounded-notes]
   (mapv (fn [[note position-index _]]
-          (let [pressed? (when (and note pressed-notes)
+          (let [pressed? (when (and note sounded-notes)
                            ;; For black keys, always just check the note name
-                           (some #(= (:name note) (:name %)) pressed-notes))]
+                           (some #(= (:name note) (:name %)) sounded-notes))]
             [re-com/box
              :class (styles/black-key-position position-index)
              :child [piano-key note pressed? :black]]))
@@ -328,7 +328,7 @@
   []
   (let [keyboard (re-frame/subscribe [::subs/chromatic-keyboard])
         keyboard-root (re-frame/subscribe [::subs/keyboard-root])
-        pressed-notes (re-frame/subscribe [::subs/pressed-notes])
+        sounded-notes (re-frame/subscribe [::subs/sounded-notes])
         selected-chromatic-chord (re-frame/subscribe [::subs/selected-chromatic-chord])
         keyboard-mode (re-frame/subscribe [::subs/keyboard-mode])]
     (fn []
@@ -351,11 +351,11 @@
              :children
              (if (or folding-mode? chord-mode?)
                (concat
-                (nonchromatic-white-keys-layer white-notes @pressed-notes)
-                (nonchromatic-black-keys-layer black-key-positions @pressed-notes))
+                (nonchromatic-white-keys-layer white-notes @sounded-notes)
+                (nonchromatic-black-keys-layer black-key-positions @sounded-notes))
                (concat
-                (chromatic-white-keys-layer white-notes @pressed-notes)
-                (chromatic-black-keys-layer black-key-positions @pressed-notes)))]]]]]))))
+                (chromatic-white-keys-layer white-notes @sounded-notes)
+                (chromatic-black-keys-layer black-key-positions @sounded-notes)))]]]]]))))
 
 (defn- note-column
   "Renders a column of note labels.
@@ -386,25 +386,25 @@
      :class (styles/empty-notes-label)
      :label "No notes"]]])
 
-(s/fdef pressed-notes-display
+(s/fdef sounded-notes-display
   :args (s/cat)
   :ret ::us/reagent-component)
-(defn pressed-notes-display
+(defn sounded-notes-display
   "Displays currently pressed notes in columns of up to 4 notes each.
    Shows an empty state message when no notes are pressed."
   []
-  (let [pressed-notes (re-frame/subscribe [::subs/pressed-notes])]
+  (let [sounded-notes (re-frame/subscribe [::subs/sounded-notes])]
     (fn []
       [re-com/box
-       :class (styles/pressed-notes-container)
+       :class (styles/sounded-notes-container)
        :child
-       (if (seq @pressed-notes)
+       (if (seq @sounded-notes)
          [re-com/h-box
           :align :center
           :justify :center
           :gap "10px"
           :children
-          (for [column (partition-all 4 @pressed-notes)]
+          (for [column (partition-all 4 @sounded-notes)]
             ^{:key (str "col-" (hash (first column)))}
             [note-column column])]
          [empty-state])])))
@@ -461,7 +461,7 @@
     [keyboard-configurator]
 
   See also:
-    control-section, pressed-notes-display, octave-view, keyboard-mode-selector,
+    control-section, sounded-notes-display, octave-view, keyboard-mode-selector,
     scale-selector, root-note-control, chromatic-chord-selector, transpose-control"
   []
   (let [ck (re-frame/subscribe [::subs/keyboard])
@@ -486,7 +486,7 @@
          :gap "20px"
          :align :center
          :children
-         [[control-section "Notes" [pressed-notes-display]]
+         [[control-section "Notes" [sounded-notes-display]]
           [control-section "Octave Display" [octave-view]]
           [control-section "Keyboard Mode" [keyboard-mode-selector @keyboard-mode]]]]
         [re-com/h-box

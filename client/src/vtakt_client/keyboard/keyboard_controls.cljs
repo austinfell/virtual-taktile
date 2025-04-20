@@ -29,8 +29,7 @@
       (let [note (position-to-note position @keyboard)]
         (when note
           (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-            (re-frame/dispatch [::midi/note-off note])
-            (re-frame/dispatch-sync [::events/set-pressed-notes
+            (re-frame/dispatch [::events/set-pressed-notes
                                      (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
 
 (defn handle-key-down [event keyboard chord-mode active-notes]
@@ -40,8 +39,7 @@
       (let [note (position-to-note position @keyboard)]
         (when note
           (let [current-notes (swap! active-notes conj note)]
-            (re-frame/dispatch [::midi/note-on note])
-            (re-frame/dispatch-sync [::events/set-pressed-notes (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
+            (re-frame/dispatch [::events/set-pressed-notes (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
 
 (defonce keyboard-event-handlers (atom {}))
 

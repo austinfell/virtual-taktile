@@ -22,5 +22,6 @@
    :selected-diatonic-chord :single-note
 
    :pressed-notes #{}
+   :sounded-notes #{}
    :midi-outputs nil
    })
