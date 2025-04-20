@@ -21,7 +21,8 @@
    :selected-chromatic-chord :single-note
    :selected-diatonic-chord :single-note
 
-   :pressed-notes #{}
-   :sounded-notes #{}
-   :midi-outputs nil
-   })
+   :pressed-notes #{} ;; User presses some arbitrary set of notes...
+   :triggered-notes #{} ;; Depending on polyphony, those notes get filtered down
+   :sounded-notes #{} ;; Depending on chord mode, those notes get converted into chords.
+
+   :midi-outputs nil})

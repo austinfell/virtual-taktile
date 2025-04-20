@@ -7,25 +7,29 @@
 (re-frame/reg-event-fx
  ::inc-keyboard-root
  (fn [{:keys [db]} _]
-   {:db (-> db
+   {:fx [[:dispatch [::set-triggered-notes []]]]
+    :db (-> db
             (update :keyboard-root #(kb/transpose-note % 1)))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-root
  (fn [{:keys [db]} _]
-   {:db (-> db
+   {:fx [[:dispatch [::set-triggered-notes []]]]
+    :db (-> db
             (update :keyboard-root #(kb/transpose-note % -1)))}))
 
 (re-frame/reg-event-fx
  ::inc-keyboard-transpose
  (fn [{:keys [db]} _]
-   {:db (-> db
+   {:fx [[:dispatch [::set-triggered-notes []]]]
+    :db (-> db
             (update :keyboard-transpose inc))}))
 
 (re-frame/reg-event-fx
  ::dec-keyboard-transpose
  (fn [{:keys [db]}]
-   {:db (-> db
+   {:fx [[:dispatch [::set-triggered-notes []]]]
+    :db (-> db
             (update :keyboard-transpose dec))}))
 
 (re-frame/reg-event-fx
@@ -72,7 +76,7 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (re-frame/reg-event-fx
- ::set-pressed-notes
+ ::set-triggered-notes
  (fn [{:keys [db]} [_ notes]]
    (let [previous-sounded-notes (db :sounded-notes)
          {:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
@@ -102,5 +106,5 @@
          midi-messages (concat note-on-messages note-off-messages)]
      {:midi midi-messages
       :db (-> db
-              (assoc :pressed-notes notes)
+              (assoc :triggered-notes notes)
               (assoc :sounded-notes new-sounded-notes))})))

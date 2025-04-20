@@ -2,7 +2,6 @@
   (:require
    [re-frame.core :as re-frame]
    [vtakt-client.keyboard.events :as events]
-   [vtakt-client.midi.events :as midi]
    [vtakt-client.keyboard.core :as kb]))
 
 ;; Map keyboard keys to positions in the keyboard layout
@@ -29,7 +28,7 @@
       (let [note (position-to-note position @keyboard)]
         (when note
           (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-            (re-frame/dispatch [::events/set-pressed-notes
+            (re-frame/dispatch [::events/set-triggered-notes
                                      (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
 
 (defn handle-key-down [event keyboard chord-mode active-notes]
@@ -39,7 +38,7 @@
       (let [note (position-to-note position @keyboard)]
         (when note
           (let [current-notes (swap! active-notes conj note)]
-            (re-frame/dispatch [::events/set-pressed-notes (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
+            (re-frame/dispatch [::events/set-triggered-notes (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
 
 (defonce keyboard-event-handlers (atom {}))
 

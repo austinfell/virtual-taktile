@@ -12,11 +12,7 @@
    [vtakt-client.utils.core :as uc]
    [vtakt-client.utils.specs :as us]))
 
-;; For me, it's critical that the keyboard module can maintain its active note state
-;; and share between modules independently of the main re-frame store. With all the
-;; updates going on there, I want to drop down to a little bit more manual control
-;; to be able to deal with that..
-(defonce active-notes (atom []))
+(def active-notes (atom []))
 
 ;; ------------------------------
 ;; Control Components
@@ -253,14 +249,14 @@
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
       :attr {:on-mouse-down #(let [current-notes (swap! active-notes conj note)]
-                               (re-frame/dispatch-sync [::events/set-pressed-notes (if legato? [(last current-notes)] current-notes)]))
+                               (re-frame/dispatch-sync [::events/set-triggered-notes (if legato? [(last current-notes)] current-notes)]))
              :on-mouse-up (fn []
                             (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-                              (re-frame/dispatch-sync [::events/set-pressed-notes
+                              (re-frame/dispatch-sync [::events/set-triggered-notes
                                                        (if legato? [(last current-notes)] current-notes)])))
              :on-mouse-leave (fn []
                                (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-                                 (re-frame/dispatch-sync [::events/set-pressed-notes
+                                 (re-frame/dispatch-sync [::events/set-triggered-notes
                                                           (if legato? [(last current-notes)] current-notes)])))}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?

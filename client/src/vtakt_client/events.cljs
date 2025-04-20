@@ -1,8 +1,7 @@
 (ns vtakt-client.events
   (:require
    [re-frame.core :as re-frame]
-   [vtakt-client.db :as db]
-   [vtakt-client.midi.core :as midi]))
+   [vtakt-client.db :as db]))
 
 (re-frame/reg-event-fx
  ::navigate
