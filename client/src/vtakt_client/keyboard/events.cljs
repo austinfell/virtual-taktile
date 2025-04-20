@@ -76,9 +76,22 @@
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
 (re-frame/reg-event-fx
- ::set-triggered-notes
- (fn [{:keys [db]} [_ notes]]
+ ::add-pressed-note
+ (fn [{:keys [db]} [_ note]]
+   {:fx [[:dispatch [::update-triggered-notes]]]
+    :db (update db :pressed-notes conj note)}))
+
+(re-frame/reg-event-fx
+ ::remove-pressed-note
+ (fn [{:keys [db]} [_ note]]
+   {:fx [[:dispatch [::update-triggered-notes]]]
+    :db (update db :pressed-notes #(filterv (fn [n] (not= n note)) %))}))
+
+(re-frame/reg-event-fx
+ ::update-triggered-notes
+ (fn [{:keys [db]} _]
    (let [previous-sounded-notes (db :sounded-notes)
+         current-pressed-notes (db :pressed-notes)
          {:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
                  diatonic-chords chromatic-chords scales
                  keyboard-root keyboard-transpose]} db
@@ -87,7 +100,8 @@
          chords (if (= selected-scale :chromatic)
                   (chromatic-chords selected-chromatic-chord)
                   (diatonic-chords selected-diatonic-chord))
-         new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) notes))
+         new-triggered-notes (if (not= selected-chromatic-chord :single-note) [(last current-pressed-notes)] current-pressed-notes)
+         new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) new-triggered-notes))
          added-notes (set/difference new-sounded-notes previous-sounded-notes)
          removed-notes (set/difference previous-sounded-notes new-sounded-notes)
          note-on-messages (map (fn [note]
@@ -106,5 +120,5 @@
          midi-messages (concat note-on-messages note-off-messages)]
      {:midi midi-messages
       :db (-> db
-              (assoc :triggered-notes notes)
+              (assoc :triggered-notes new-triggered-notes)
               (assoc :sounded-notes new-sounded-notes))})))

@@ -243,21 +243,14 @@
                :note ::note-or-nil)
   :ret ::us/reagent-component)
 (defn note-trigger
-  [position note active-notes legato?]
+  [position note legato?]
   (let [is-measure-start? (contains? #{1 5 9 13} position)
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
      [re-com/button
-      :attr {:on-mouse-down #(let [current-notes (swap! active-notes conj note)]
-                               (re-frame/dispatch-sync [::events/set-triggered-notes (if legato? [(last current-notes)] current-notes)]))
-             :on-mouse-up (fn []
-                            (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-                              (re-frame/dispatch-sync [::events/set-triggered-notes
-                                                       (if legato? [(last current-notes)] current-notes)])))
-             :on-mouse-leave (fn []
-                               (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-                                 (re-frame/dispatch-sync [::events/set-triggered-notes
-                                                          (if legato? [(last current-notes)] current-notes)])))}
+      :attr {:on-mouse-down #(re-frame/dispatch-sync [::events/add-pressed-note note])
+             :on-mouse-up #(re-frame/dispatch-sync [::events/remove-pressed-note note])
+             :on-mouse-leave #(re-frame/dispatch-sync [::events/remove-pressed-note note])}
       :class (str (styles/note-trigger-button) " "
                   (if has-note?
                     (styles/note-trigger-active)
@@ -545,7 +538,7 @@
     (reagent/create-class
      {:component-did-mount
       (fn [_]
-        (kbd-ctrl/init-keyboard-listeners ck sc active-notes))
+        (kbd-ctrl/init-keyboard-listeners ck))
 
       :component-will-unmount
       (fn [_]

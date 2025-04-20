@@ -21,32 +21,29 @@
         notes (get keyboard-rows row)]
     (get notes index)))
 
-(defn handle-key-up [event keyboard chord-mode active-notes]
+(defn handle-key-up [event keyboard]
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when (and position (not (.-repeat event)))
       (let [note (position-to-note position @keyboard)]
         (when note
-          (let [current-notes (swap! active-notes #(filterv (fn [n] (not= n note)) %))]
-            (re-frame/dispatch [::events/set-triggered-notes
-                                     (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
+          (re-frame/dispatch-sync [::events/remove-pressed-note note]))))))
 
-(defn handle-key-down [event keyboard chord-mode active-notes]
+(defn handle-key-down [event keyboard]
   (let [key (.-key event)
         position (get key-to-position-map key)]
     (when (and position (not (.-repeat event)))
       (let [note (position-to-note position @keyboard)]
         (when note
-          (let [current-notes (swap! active-notes conj note)]
-            (re-frame/dispatch [::events/set-triggered-notes (if (not= @chord-mode :single-note) [(last current-notes)] current-notes)])))))))
+          (re-frame/dispatch-sync [::events/add-pressed-note note]))))))
 
 (defonce keyboard-event-handlers (atom {}))
 
-(defn init-keyboard-listeners [keyboard chord-mode active-notes]
+(defn init-keyboard-listeners [keyboard]
   ;; First clean up any existing listeners
   ;; Create the bound handler functions with the current keyboard
-  (let [key-down-handler #(handle-key-down % keyboard chord-mode active-notes)
-        key-up-handler #(handle-key-up % keyboard chord-mode active-notes)]
+  (let [key-down-handler #(handle-key-down % keyboard)
+        key-up-handler #(handle-key-up % keyboard)]
 
     ;; Store references to these handlers
     (reset! keyboard-event-handlers
