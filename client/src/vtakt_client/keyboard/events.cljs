@@ -2,7 +2,6 @@
   (:require
    [re-frame.core :as re-frame]
    [clojure.set :as set]
-   [vtakt-client.midi.core :as midi]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
@@ -91,14 +90,14 @@
                                  {:type :note-on
                                   :channel 0
                                   :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
-                                  :data {:note (midi/note->midi-number note) :velocity 80}})
+                                  :data {:note (kb/note->midi-number note) :velocity 80}})
                                added-notes)
 
          note-off-messages (map (fn [note]
                                   {:type :note-off
                                    :channel 0
                                    :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
-                                   :data {:note (midi/note->midi-number note) :velocity 0}})
+                                   :data {:note (kb/note->midi-number note) :velocity 0}})
                                 removed-notes)
          midi-messages (concat note-on-messages note-off-messages)]
      {:midi midi-messages
