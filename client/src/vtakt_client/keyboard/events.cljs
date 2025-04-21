@@ -75,56 +75,80 @@
  (fn [{:keys [db]} [_ keyboard-mode]]
    {:db (assoc db :keyboard-mode keyboard-mode)}))
 
-(re-frame/reg-event-fx
- ::clear-pressed-notes
- (fn [{:keys [db]} [_ note]]
-   {:fx [[:dispatch [::update-triggered-notes]]]
-    :db (assoc db :pressed-notes [])}))
+(defn calculate-midi-messages [db new-pressed-notes]
+  (let [previous-sounded-notes (:sounded-notes db)
+        {:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
+                diatonic-chords chromatic-chords scales
+                keyboard-root keyboard-transpose]} db
+        transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
+        scale (-> scales selected-scale transposed-root-name)
+        chords (if (= selected-scale :chromatic)
+                 (chromatic-chords selected-chromatic-chord)
+                 (diatonic-chords selected-diatonic-chord))
+        chord-mode? (not= selected-chromatic-chord :single-note)
+        new-triggered-notes (cond
+                              (empty? new-pressed-notes) []
+                              chord-mode? [(last new-pressed-notes)]
+                              :else new-pressed-notes)
+        new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) new-triggered-notes))
+        added-notes (if chord-mode? new-sounded-notes (set/difference new-sounded-notes previous-sounded-notes))
+        removed-notes (if chord-mode? previous-sounded-notes (set/difference previous-sounded-notes new-sounded-notes))
+        note-on-messages (map (fn [note]
+                                {:type :note-on
+                                 :channel 0
+                                 :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
+                                 :data {:note (kb/note->midi-number note) :velocity 80}})
+                              added-notes)
+        note-off-messages (map (fn [note]
+                                 {:type :note-off
+                                  :channel 0
+                                  :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
+                                  :data {:note (kb/note->midi-number note) :velocity 0}})
+                               removed-notes)
+        midi-messages (concat note-off-messages note-on-messages)]
+    {:midi-messages midi-messages
+     :triggered-notes new-triggered-notes
+     :sounded-notes new-sounded-notes}))
 
+;; Updated event handlers
 (re-frame/reg-event-fx
  ::add-pressed-note
  (fn [{:keys [db]} [_ note]]
-   {:fx [[:dispatch [::update-triggered-notes]]]
-    :db (update db :pressed-notes conj note)}))
+   (let [new-pressed-notes (conj (:pressed-notes db) note)
+         {:keys [midi-messages triggered-notes sounded-notes]} (calculate-midi-messages db new-pressed-notes)]
+     {:midi midi-messages
+      :db (-> db
+              (assoc :pressed-notes new-pressed-notes)
+              (assoc :triggered-notes triggered-notes)
+              (assoc :sounded-notes sounded-notes))})))
 
 (re-frame/reg-event-fx
  ::remove-pressed-note
  (fn [{:keys [db]} [_ note]]
-   {:fx [[:dispatch [::update-triggered-notes]]]
-    :db (update db :pressed-notes #(filterv (fn [n] (not= n note)) %))}))
+   (let [new-pressed-notes (filterv (fn [n] (not= n note)) (:pressed-notes db))
+         old-triggered-notes (:triggered-notes db)
+         {:keys [midi-messages triggered-notes sounded-notes]} (calculate-midi-messages db new-pressed-notes)
+         ;; Only include MIDI effects if triggered notes have changed
+         fx (if (not= old-triggered-notes triggered-notes)
+              {:midi midi-messages
+               :db (-> db
+                       (assoc :pressed-notes new-pressed-notes)
+                       (assoc :triggered-notes triggered-notes)
+                       (assoc :sounded-notes sounded-notes))}
+              {:db (-> db
+                       (assoc :pressed-notes new-pressed-notes)
+                       (assoc :triggered-notes triggered-notes)
+                       (assoc :sounded-notes sounded-notes))})]
+     fx)))
+
 
 (re-frame/reg-event-fx
- ::update-triggered-notes
+ ::clear-pressed-notes
  (fn [{:keys [db]} _]
-   (let [previous-sounded-notes (db :sounded-notes)
-         current-pressed-notes (db :pressed-notes)
-         {:keys [selected-chromatic-chord selected-diatonic-chord selected-scale
-                 diatonic-chords chromatic-chords scales
-                 keyboard-root keyboard-transpose]} db
-         transposed-root-name (:name (kb/transpose-note keyboard-root keyboard-transpose))
-         scale (-> scales selected-scale transposed-root-name)
-         chords (if (= selected-scale :chromatic)
-                  (chromatic-chords selected-chromatic-chord)
-                  (diatonic-chords selected-diatonic-chord))
-         new-triggered-notes (if (not= selected-chromatic-chord :single-note) [(last current-pressed-notes)] current-pressed-notes)
-         new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) new-triggered-notes))
-         added-notes (set/difference new-sounded-notes previous-sounded-notes)
-         removed-notes (set/difference previous-sounded-notes new-sounded-notes)
-         note-on-messages (map (fn [note]
-                                 {:type :note-on
-                                  :channel 0
-                                  :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
-                                  :data {:note (kb/note->midi-number note) :velocity 80}})
-                               added-notes)
-
-         note-off-messages (map (fn [note]
-                                  {:type :note-off
-                                   :channel 0
-                                   :device "9RBYXR1hOVRyNrnlJra/Wvl53WPge8813quvp4JbZNo="
-                                   :data {:note (kb/note->midi-number note) :velocity 0}})
-                                removed-notes)
-         midi-messages (concat note-on-messages note-off-messages)]
+   (let [new-pressed-notes []
+         {:keys [midi-messages triggered-notes sounded-notes]} (calculate-midi-messages db new-pressed-notes)]
      {:midi midi-messages
       :db (-> db
-              (assoc :triggered-notes new-triggered-notes)
-              (assoc :sounded-notes new-sounded-notes))})))
+              (assoc :pressed-notes new-pressed-notes)
+              (assoc :triggered-notes triggered-notes)
+              (assoc :sounded-notes sounded-notes))})))
