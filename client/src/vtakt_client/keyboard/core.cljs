@@ -255,8 +255,11 @@
 (def c0-note {:name :c, :octave 0})
 (def g9-note {:name :g, :octave 9})
 
+(s/fdef note->midi-number
+  :args (s/cat :note ::note)
+  :ret pos-int?)
 (defn note->midi-number
-  "Convert a note map with :name and :octave to a MIDI note number.
+  "Convert a note to a MIDI note number.
    Example: {:name :c :octave 4} -> 60 (middle C)"
   [{:keys [name octave]}]
   (let [base-octave 4      ; MIDI standard: C4 (middle C) = 60
@@ -265,12 +268,12 @@
     (if (= note-index -1)
       (throw (js/Error. (str "Invalid note name: " name)))
       (let [octave-offset  (* 12 (- octave base-octave))
-            ; Handle note indices properly - :c is at position 3 in your scale
-            ; We need to adjust based on this since we want :c4 = 60
             c-based-offset (mod (- note-index c-index) 12)
-            middle-c       60]
-        (+ middle-c octave-offset c-based-offset)))))
-
+            middle-c       60
+            calculated-value (+ middle-c octave-offset c-based-offset)]
+        (if (or (< calculated-value 0) (> calculated-value 127))
+          (throw (js/Error. (str "Could not generate MIDI note for note with calculated value " calculated-value " as this is out of range of standard midi specification!")))
+          calculated-value)))))
 
 ;; Keyboard protocol and implementations.
 (defprotocol Keyboard
