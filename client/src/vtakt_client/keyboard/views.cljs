@@ -35,7 +35,7 @@
    A memoized function component that takes a value and renders an increment control
 
    Sufficiently generic that I do not think this is worth spec-ing out."
-  [& {:keys [label dec-event inc-event render-fn min-value max-value
+  [& {:keys [dec-event inc-event render-fn min-value max-value
              at-or-below-fn]
       :or {render-fn str
            at-or-below-fn (fn [a b] (< (compare a b) 0))
@@ -113,7 +113,7 @@
    - on-change-event: Event to dispatch when selection changes
    - width: Width of the dropdown (default: '125px')
    - pinned-items: Set of item keys that should appear at the top of the list"
-  [on-change-event & {:keys [width pinned-items sort-fn]
+  [on-change-event & {:keys [width pinned-items]
                       :or {width "125px"
                            pinned-items #{}}}]
   (memoize
@@ -172,8 +172,7 @@
 (defn keyboard-mode-selector
   "A toggle component for switching between chromatic and folding keyboard modes."
   [current-mode]
-  (let [chromatic? (= current-mode :chromatic)
-        ;; TODO - we should really have a single source of truth for available keyboard modes...
+  (let [;; TODO - we should really have a single source of truth for available keyboard modes...
         ;; who knows, maybe one day we will have a 31TET keyboard or something...
         mode-options [{:id :chromatic :label "Chromatic"}
                       {:id :folding :label "Folding"}]
