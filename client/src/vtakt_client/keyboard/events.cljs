@@ -44,7 +44,8 @@
                                    (not= chord :single-note)) :triad
                               ;; Otherwise keep current diatonic chord
                               :else current-diatonic-chord)]
-     {:db (-> db
+     {:fx [[:dispatch [::clear-pressed-notes]]]
+      :db (-> db
               (assoc :selected-chromatic-chord chord)
               (assoc :selected-diatonic-chord new-diatonic-chord))})))
 
@@ -61,19 +62,22 @@
                                     (not= chord :single-note)) :major
                                ;; Otherwise keep current chromatic chord
                                :else current-chromatic-chord)]
-     {:db (-> db
+     {:fx [[:dispatch [::clear-pressed-notes]]]
+      :db (-> db
               (assoc :selected-diatonic-chord chord)
               (assoc :selected-chromatic-chord new-chromatic-chord))})))
 
 (re-frame/reg-event-fx
  ::set-scale
  (fn [{:keys [db]} [_ selected-scale]]
-   {:db (assoc db :selected-scale selected-scale)}))
+   {:fx [[:dispatch [::clear-pressed-notes]]]
+    :db (assoc db :selected-scale selected-scale)}))
 
 (re-frame/reg-event-fx
  ::set-keyboard-mode
  (fn [{:keys [db]} [_ keyboard-mode]]
-   {:db (assoc db :keyboard-mode keyboard-mode)}))
+   {:fx [[:dispatch [::clear-pressed-notes]]]
+    :db (assoc db :keyboard-mode keyboard-mode)}))
 
 (defn calculate-midi-messages [db new-pressed-notes]
   (let [previous-sounded-notes (:sounded-notes db)
