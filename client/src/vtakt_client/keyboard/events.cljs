@@ -114,7 +114,6 @@
      :triggered-notes new-triggered-notes
      :sounded-notes new-sounded-notes}))
 
-;; Updated event handlers
 (re-frame/reg-event-fx
  ::add-pressed-note
  (fn [{:keys [db]} [_ note]]

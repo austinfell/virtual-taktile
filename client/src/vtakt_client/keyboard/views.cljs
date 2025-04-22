@@ -243,7 +243,7 @@
                :note ::note-or-nil)
   :ret ::us/reagent-component)
 (defn note-trigger
-  [position note legato?]
+  [position note]
   (let [is-measure-start? (contains? #{1 5 9 13} position)
         has-note? (some? note)]
     [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
@@ -533,8 +533,7 @@
   See also:
     note-trigger, keyboard-configurator, kb/rows"
   []
-  (let [ck (re-frame/subscribe [::subs/keyboard])
-        sc (re-frame/subscribe [::subs/selected-chromatic-chord])]
+  (let [ck (re-frame/subscribe [::subs/keyboard])]
     (reagent/create-class
      {:component-did-mount
       (fn [_]
@@ -548,7 +547,6 @@
       :reagent-render
       (fn []
         (let [ck (re-frame/subscribe [::subs/keyboard])
-              sc (re-frame/subscribe [::subs/selected-chromatic-chord])
               keyboard-rows (kb/rows @ck)
               top-row (:top keyboard-rows)
               bottom-row (:bottom keyboard-rows)]
@@ -557,10 +555,10 @@
            :children [[re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (inc idx) note active-notes sc])
+                                    [note-trigger (inc idx) note active-notes])
                                   top-row)]
                       [re-com/h-box
                        :children (map-indexed
                                   (fn [idx note]
-                                    [note-trigger (+ 9 idx) note active-notes sc])
+                                    [note-trigger (+ 9 idx) note active-notes])
                                   bottom-row)]]]))})))
