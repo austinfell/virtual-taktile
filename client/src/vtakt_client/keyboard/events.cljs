@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [clojure.set :as set]
+   [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.keyboard.core :as kb]))
 
 (re-frame/reg-event-fx
@@ -94,7 +95,7 @@
                               (empty? new-pressed-notes) []
                               chord-mode? [(last new-pressed-notes)]
                               :else new-pressed-notes)
-        new-sounded-notes (into #{} (mapcat #(kb/build-scale-chord scale % chords) new-triggered-notes))
+        new-sounded-notes (into #{} (mapcat #(chord/build-scale-chord scale % chords) new-triggered-notes))
         added-notes (if chord-mode? new-sounded-notes (set/difference new-sounded-notes previous-sounded-notes))
         removed-notes (if chord-mode? previous-sounded-notes (set/difference previous-sounded-notes new-sounded-notes))
         note-on-messages (map (fn [note]

@@ -2,41 +2,38 @@
   (:require
    [re-frame.core :refer [reg-fx dispatch]]))
 
-(def midi-outputs (atom {}))
+;; When the module is loaded, we *need* access to midi outputs.
+(def midi-outputs (atom nil))
+(when (nil? @midi-outputs)
+    (-> (.requestMIDIAccess js/navigator)
+        (.then
+         (fn [access]
+           (let [outputs (.-outputs access)]
+             (swap! midi-outputs {})
+             (.forEach outputs
+                       (fn [output key]
+                         (swap! midi-outputs assoc key
+                                {:name (.-name output)
+                                 :manufacturer (.-manufacturer output)
+                                 :output output})))
 
-(defn init-midi!
-  "Initialize the Web MIDI API and store available outputs."
-  []
-  (-> (.requestMIDIAccess js/navigator)
-      (.then
-       (fn [access]
-         (let [outputs (.-outputs access)]
-           (.forEach outputs
-                     (fn [output key]
-                       (swap! midi-outputs assoc key
-                         {:name (.-name output)
-                          :manufacturer (.-manufacturer output)
-                          :output output})))
-
-           (set! (.-onstatechange access)
-                 (fn [e]
-                   (let [port (.-port e)
-                         state (.-state port)
-                         type (.-type port)]
+             (set! (.-onstatechange access)
+                   (fn [e]
+                     (let [port (.-port e)
+                           state (.-state port)
+                           type (.-type port)]
                      ;; Only handle output devices
-                     (when (= type "output")
-                       (if (= state "connected")
+                       (when (= type "output")
+                         (if (= state "connected")
                          ;; Add new device or update existing
-                         (swap! midi-outputs assoc (.-id port)
-                           {:name (.-name port)
-                            :manufacturer (.-manufacturer port)
-                            :output port})
-                         (swap! midi-outputs dissoc (.-id port)))))))))
+                           (swap! midi-outputs assoc (.-id port)
+                                  {:name (.-name port)
+                                   :manufacturer (.-manufacturer port)
+                                   :output port})
+                           (swap! midi-outputs dissoc (.-id port)))))))))
        ;; Handle errors
-       (fn [err]
-         (js/console.error "Failed to initialize MIDI:" err)))))
-
-(init-midi!)
+         (fn [err]
+           (js/console.error "Failed to initialize MIDI:" err)))))
 
 (defn midi-effect [{:keys [type channel device data on-success on-failure]}]
   (try

@@ -1,5 +1,6 @@
 (ns vtakt-client.db
   (:require
+   [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.keyboard.core :as kb]))
 
 (def default-db
@@ -15,8 +16,8 @@
    ;;
    ;; Chord mode
    ;;
-   :chromatic-chords kb/chromatic-chords
-   :diatonic-chords kb/diatonic-chords
+   :chromatic-chords chord/chromatic-chords
+   :diatonic-chords chord/diatonic-chords
 
    :selected-chromatic-chord :single-note
    :selected-diatonic-chord :single-note
