@@ -82,3 +82,7 @@
    :quartal-within-scale [0 3 6]
    :shell-seventh [0 2 6]})
 
+;; TODO UNDER CONSTRUCTION
+;; Chord Identification - function currently stubbed
+(defn identify-chords [notes]
+  [(name (or (:name (first notes) "none")))])

@@ -5,6 +5,7 @@
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]
    [vtakt-client.keyboard.core :as kb]
+   [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.keyboard.events :as events]
    [vtakt-client.keyboard.keyboard-controls :as kbd-ctrl]
    [vtakt-client.keyboard.styles :as styles]
@@ -364,7 +365,7 @@
 
 (defn- empty-state
   "Renders the empty state when no notes are pressed."
-  []
+  [label]
   [re-com/v-box
    :align :center
    :justify :center
@@ -372,7 +373,7 @@
    :children
    [[re-com/label
      :class (styles/empty-notes-label)
-     :label "No notes"]]])
+     :label label]]])
 
 (s/fdef sounded-notes-display
   :args (s/cat)
@@ -395,7 +396,34 @@
           (for [column (partition-all 4 @sounded-notes)]
             ^{:key (str "col-" (hash (first column)))}
             [note-column column])]
-         [empty-state])])))
+         [empty-state "No notes"])])))
+
+(s/fdef sounded-chords-display
+  :args (s/cat)
+  :ret ::us/reagent-component)
+(defn sounded-chords-display
+  "Displays all the computed chords for current sounded notes in
+  columns of up to 4 chords each. Shows an empty state message when
+  no notes are pressed."
+  []
+  (let [sounded-notes (re-frame/subscribe [::subs/sounded-notes])
+        sounded-chords (chord/identify-chords @sounded-notes)]
+    (fn []
+      [re-com/box
+       :class (styles/sounded-notes-container)
+       :child
+       (if (seq @sounded-notes)
+         [re-com/h-box
+          :align :center
+          :justify :center
+          :gap "10px"
+          :children
+          ;; TODO Duplicating right now, eventually this will be a computed value
+          ;; from sounded notes instead.
+          (for [column (partition-all 4 sounded-chords)]
+            ^{}
+            [note-column column])]
+         [empty-state "No chords"])])))
 
 ;; ------------------------------
 ;; Main Components
@@ -474,7 +502,8 @@
          :gap "20px"
          :align :center
          :children
-         [[control-section "Notes" [sounded-notes-display]]
+         [[control-section "Chords" [sounded-chords-display]]
+          [control-section "Notes" [sounded-notes-display]]
           [control-section "Octave Display" [octave-view]]
           [control-section "Keyboard Mode" [keyboard-mode-selector @keyboard-mode]]]]
         [re-com/h-box
