@@ -398,6 +398,23 @@
             [note-column column])]
          [empty-state "No notes"])])))
 
+(defn- chord-column
+  "Renders a column of note labels.
+
+   Parameters:
+   - notes: A sequence of note maps to display in this column"
+  [chords]
+  [re-com/v-box
+   :align :center
+   :justify :center
+   :gap "5px"
+   :children
+   (for [chord chords]
+     ^{:key (str (hash chord))}
+     [re-com/label
+      :class (styles/note-label)
+      :label chord])])
+
 (s/fdef sounded-chords-display
   :args (s/cat)
   :ret ::us/reagent-component)
@@ -422,7 +439,7 @@
           ;; from sounded notes instead.
           (for [column (partition-all 4 sounded-chords)]
             ^{}
-            [note-column column])]
+            [chord-column column])]
          [empty-state "No chords"])])))
 
 ;; ------------------------------

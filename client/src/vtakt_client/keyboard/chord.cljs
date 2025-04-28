@@ -16,7 +16,7 @@
 (s/def ::chord-notes (s/coll-of ::kb/chromatic-note :min-count 0 :kind sequential?))
 (s/def ::octave int?)
 (s/def ::inversion int?)
-(s/def ::chord (s/coll-of ::kb/note :kind vector?))
+(s/def ::chord (s/coll-of ::kb/note :kind set?))
 (s/fdef build-chord
   :args (s/alt :two-args (s/cat :note-names ::chord-notes
                                 :octave ::octave)
@@ -39,7 +39,7 @@
    (let [num-notes (count note-names)
          shift (mod inversion num-notes)
          rotated-notes (vec (take num-notes (drop shift (cycle note-names))))]
-     (loop [result []
+     (loop [result #{}
             remaining-notes rotated-notes
             current-note (kb/create-note (first rotated-notes) octave)]
        (if (empty? remaining-notes)
@@ -68,6 +68,7 @@
                                            (mod (+ root-index pos) scale-size)))
                                     positions)]
           (build-chord chord-note-names (:octave root-note))))))) 
+
 (def diatonic-chords
   {:single-note [0]
    :diad [0 2]
@@ -84,5 +85,13 @@
 
 ;; TODO UNDER CONSTRUCTION
 ;; Chord Identification - function currently stubbed
+
+(map
+ #(set (map :name (build-scale-chord
+                   [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b]
+                   {:name % :octave 4}
+                   (:major chromatic-chords))))
+ [:c :csdf :d :dsef :e :f :fsgf :g :gsaf :a :asbf :b])
+
 (defn identify-chords [notes]
   [(name (or (:name (first notes) "none")))])
