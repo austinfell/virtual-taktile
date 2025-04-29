@@ -124,8 +124,19 @@
    :quartal-within-scale [0 3 6]
    :shell-seventh [0 2 6]})
 
-;; TODO UNDER CONSTRUCTION
-;; Chord Identification - function currently stubbed
+;; Chord identification
+;; This works... But its not quite as impressive as a more robust chord identification system...
+;; I think instead of trying to identify every chord under the sun, it makes more sense handle this
+;; this as a back-tracking constructive algorithm:
+;; -> Have a simple set of three note chords, truncate all but the first three notes of the chord
+;; -> Try to identify a chord - can you? If so, take a look at the subsequent notes...
+;; -> At this point, each chord type has its own kind of "choose your own adventure" story...
+;; Some chords may not fit this paradigm - this is where the backtracking would come in, we would
+;; still follow the approach of having a hashmap of notes to chord name, and some more exotic chords
+;; may contain more than 3 notes... But many traditional chords would be built up by doing a "choose
+;; your own adventure" story...
+;;
+;; TODO - Will need to think about this some more - for now, this is good enough.
 (defn create-chord-name-mapping [chord-type]
   (reduce
    (fn [acc kw]
@@ -145,18 +156,5 @@
               chord-types)))
 
 (def chord-mappings (create-merged-chord-mappings (keys chromatic-chords)))
-
-(chord-mappings #{:c :e :g})
-
-;; General idea here - let's statically generate a key value mapping of
-;; *sets of notes* to chord names. That way we get quick and easy (not
-;; to mention fast) interface for getting names of chords.
-;;
-;; First, we will iterate through a dictionary of chromatic chords
-;; - we're gonna need significantly more than we have displayed
-;; in the UI.
-;;
-;; We have to progressively join all of these maps into
-;; a full database.
 (defn identify-chords [notes]
   (or (chord-mappings (into #{} (map :name notes))) #{"Unknown"}))
