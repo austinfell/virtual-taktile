@@ -423,8 +423,7 @@
   columns of up to 4 chords each. Shows an empty state message when
   no notes are pressed."
   []
-  (let [sounded-notes (re-frame/subscribe [::subs/sounded-notes])
-        sounded-chords (chord/identify-chords @sounded-notes)]
+  (let [sounded-notes (re-frame/subscribe [::subs/sounded-notes])]
     (fn []
       [re-com/box
        :class (styles/sounded-notes-container)
@@ -435,9 +434,7 @@
           :justify :center
           :gap "10px"
           :children
-          ;; TODO Duplicating right now, eventually this will be a computed value
-          ;; from sounded notes instead.
-          (for [column (partition-all 4 sounded-chords)]
+          (for [column (partition-all 4 (chord/identify-chords @sounded-notes))]
             ^{}
             [chord-column column])]
          [empty-state "No chords"])])))
