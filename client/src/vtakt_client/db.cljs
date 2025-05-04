@@ -26,4 +26,6 @@
    :triggered-notes #{} ;; Depending on polyphony, those notes get filtered down
    :sounded-notes #{} ;; Depending on chord mode, those notes get converted into chords.
 
-   :midi-outputs nil})
+   :midi-outputs nil
+   :selected-midi-output nil
+   })

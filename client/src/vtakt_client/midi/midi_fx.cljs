@@ -1,43 +1,47 @@
 (ns vtakt-client.midi.midi-fx
   (:require
-   [re-frame.core :refer [reg-fx dispatch]]))
+   [re-frame.core :refer [reg-fx reg-event-fx dispatch]]))
 
 ;; When the module is loaded, we *need* access to midi outputs.
 (def midi-outputs (atom nil))
 (when (nil? @midi-outputs)
-    (-> (.requestMIDIAccess js/navigator)
-        (.then
-         (fn [access]
-           (let [outputs (.-outputs access)]
-             (swap! midi-outputs {})
-             (.forEach outputs
-                       (fn [output key]
-                         (swap! midi-outputs assoc key
-                                {:name (.-name output)
-                                 :manufacturer (.-manufacturer output)
-                                 :output output})))
-
-             (set! (.-onstatechange access)
-                   (fn [e]
-                     (let [port (.-port e)
-                           state (.-state port)
-                           type (.-type port)]
+  (-> (.requestMIDIAccess js/navigator)
+      (.then
+       (fn [access]
+         (let [outputs (.-outputs access)]
+           (swap! midi-outputs {})
+           (.forEach outputs
+                     (fn [output key]
+                       (swap! midi-outputs assoc key
+                              {:name (.-name output)
+                               :manufacturer (.-manufacturer output)
+                               :output output})))
+           (dispatch [::set-midi-outputs @midi-outputs])
+           (dispatch [::set-selected-midi-output (first (keys @midi-outputs))])
+           (set! (.-onstatechange access)
+                 (fn [e]
+                   (let [port (.-port e)
+                         state (.-state port)
+                         type (.-type port)]
                      ;; Only handle output devices
-                       (when (= type "output")
-                         (if (= state "connected")
+                     ;; TODO - Add logic to migrate to new midi device
+                     ;; if active one changed.
+                     (when (= type "output")
+                       (if (= state "connected")
                          ;; Add new device or update existing
-                           (swap! midi-outputs assoc (.-id port)
-                                  {:name (.-name port)
-                                   :manufacturer (.-manufacturer port)
-                                   :output port})
-                           (swap! midi-outputs dissoc (.-id port)))))))))
+                         (swap! midi-outputs assoc (.-id port)
+                                {:name (.-name port)
+                                 :manufacturer (.-manufacturer port)
+                                 :output port})
+                         (swap! midi-outputs dissoc (.-id port)))
+                       (dispatch [::set-midi-outputs @midi-outputs])))))))
        ;; Handle errors
-         (fn [err]
-           (js/console.error "Failed to initialize MIDI:" err)))))
+       (fn [err]
+         (js/console.error "Failed to initialize MIDI:" err)))))
 
 (defn midi-effect [{:keys [type channel device data on-success on-failure]}]
   (try
-    (let [device (get @midi-outputs device)
+    (let [device (second (first @midi-outputs))
           output (:output device)]
       (when output
         (let [status-byte (case type
@@ -50,7 +54,6 @@
           (when on-success
             (dispatch on-success)))))
     (catch js/Error e
-      (println e)
       (when on-failure
         (dispatch on-failure)))))
 
@@ -61,3 +64,15 @@
      (midi-effect midi-map)
      (doseq [msg midi-map]
        (midi-effect msg)))))
+
+(reg-event-fx
+ ::set-midi-outputs
+ (fn [{:keys [db]} [_ midi-outputs]]
+   {:db (assoc db :midi-outputs midi-outputs)}))
+
+(reg-event-fx
+ ::set-selected-midi-output
+ (fn [{:keys [db]} [_ selected-midi-output]]
+   (println "hi")
+   (println selected-midi-output)
+   {:db (assoc db :selected-midi-output selected-midi-output)}))

@@ -6,3 +6,8 @@
  ::midi-outputs
  (fn [db _]
    (:midi-outputs db)))
+
+(re-frame/reg-sub
+ ::selected-midi-output
+ (fn [db _]
+   (:selected-midi-output db)))

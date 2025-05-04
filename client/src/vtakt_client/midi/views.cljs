@@ -2,9 +2,9 @@
   (:require
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
+   [vtakt-client.midi.midi-fx :as fx]
    [vtakt-client.midi.styles :as styles]
-   [vtakt-client.midi.subs :as subs]
-   [reagent.core :as r]))
+   [vtakt-client.midi.subs :as subs]))
 
 (defn midi-not-configured-alert
   "Component showing MIDI connection status."
@@ -20,7 +20,9 @@
 (defn midi-configurator
   "Root level component that allows configuration of midi"
   []
-  (let [midi-outputs (re-frame.core/subscribe [::subs/midi-outputs])]
+  (let [midi-outputs (re-frame.core/subscribe [::subs/midi-outputs])
+        selected-midi-output (re-frame.core/subscribe [::subs/selected-midi-output])]
+    (println @selected-midi-output)
     [re-com/v-box
      :class (styles/configurator-container)
      :gap "15px"
@@ -32,5 +34,13 @@
                   [midi-not-configured-alert]
                     ;; Structure here is:
                     ;; {id {:id id :name ... :manufacturer ... :output MidiOutput}}
-                  [:p (str (:output (first (vals @midi-outputs))))])]]))
+                  [:div
+                   [:p "Active MIDI Output"]
+                   [re-com/single-dropdown
+                    :src (re-com/at)
+                    :choices (mapv (fn [v] {:id (first v) :label (:name (second v))}) (into [] @midi-outputs))
+                    :width "200px"
+                    :model @selected-midi-output
+                    :filter-box? true
+                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-output %])]])]]))
 
