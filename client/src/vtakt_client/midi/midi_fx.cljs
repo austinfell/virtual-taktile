@@ -34,14 +34,15 @@
                                  :manufacturer (.-manufacturer port)
                                  :output port})
                          (swap! midi-outputs dissoc (.-id port)))
-                       (dispatch [::set-midi-outputs @midi-outputs])))))))
+                       (dispatch [::set-midi-outputs @midi-outputs])
+                       ))))))
        ;; Handle errors
        (fn [err]
          (js/console.error "Failed to initialize MIDI:" err)))))
 
 (defn midi-effect [{:keys [type channel device data on-success on-failure]}]
   (try
-    (let [device (second (first @midi-outputs))
+    (let [device (get @midi-outputs device)
           output (:output device)]
       (when output
         (let [status-byte (case type

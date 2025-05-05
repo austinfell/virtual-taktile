@@ -101,13 +101,13 @@
         note-on-messages (map (fn [note]
                                 {:type :note-on
                                  :channel 0
-                                 :device -1300518393
+                                 :device (:selected-midi-output db)
                                  :data {:note (kb/note->midi-number note) :velocity 80}})
                               added-notes)
         note-off-messages (map (fn [note]
                                  {:type :note-off
                                   :channel 0
-                                  :device -1300518393
+                                  :device (:selected-midi-output db)
                                   :data {:note (kb/note->midi-number note) :velocity 0}})
                                removed-notes)
         midi-messages (concat note-off-messages note-on-messages)]

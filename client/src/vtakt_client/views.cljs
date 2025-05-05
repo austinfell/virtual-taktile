@@ -1,7 +1,6 @@
 (ns vtakt-client.views
   (:require
    [re-frame.core :as re-frame]
-   [reagent.core :as reagent]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
    [vtakt-client.midi.views :as midi]

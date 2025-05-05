@@ -2,6 +2,7 @@
   (:require
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
+   [vtakt-client.events :as events]
    [vtakt-client.midi.midi-fx :as fx]
    [vtakt-client.midi.styles :as styles]
    [vtakt-client.midi.subs :as subs]))
@@ -42,5 +43,9 @@
                     :width "200px"
                     :model @selected-midi-output
                     :filter-box? true
-                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-output %])]])]]))
+                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-output %])]
+                   [re-com/hyperlink
+                    :src      (re-com/at)
+                    :label    "go to Keyboard"
+                    :on-click #(re-frame/dispatch [::events/navigate :keyboard])]])]]))
 
