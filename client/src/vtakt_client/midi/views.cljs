@@ -23,7 +23,6 @@
   []
   (let [midi-outputs (re-frame.core/subscribe [::subs/midi-outputs])
         selected-midi-output (re-frame.core/subscribe [::subs/selected-midi-output])]
-    (println @selected-midi-output)
     [re-com/v-box
      :class (styles/configurator-container)
      :gap "15px"

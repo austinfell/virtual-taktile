@@ -30,7 +30,6 @@
 
 ;; Play a note - creates oscillator and adds to active oscillators map
 (defn play-note [note]
-  (println "playing note")
   (ensure-audio-context)
   (let [id (str (hash note))
         ctx @audio-context
