@@ -3,12 +3,17 @@
    [re-frame.core :refer [reg-fx reg-event-fx dispatch]]))
 
 ;; When the module is loaded, we *need* access to midi outputs.
+;; I'm going to be eager about this for practical reasons related
+;; to the UX - I don't want the user to click a note and then see
+;; a request to be able to use MIDI browser side.
 (def midi-outputs (atom nil))
+
 (when (nil? @midi-outputs)
   (-> (.requestMIDIAccess js/navigator)
       (.then
        (fn [access]
          (let [outputs (.-outputs access)]
+           ;; Initialize our MIDI map.
            (swap! midi-outputs {})
            (.forEach outputs
                      (fn [output key]
@@ -16,8 +21,11 @@
                               {:name (.-name output)
                                :manufacturer (.-manufacturer output)
                                :output output})))
+
+           ;; Sync Re-frame state... We also need to default to an initial selection.
            (dispatch [::set-midi-outputs @midi-outputs])
-           (dispatch [::set-selected-midi-output (first (keys @midi-outputs))])
+
+           ;; Sync subsequent changes.
            (set! (.-onstatechange access)
                  (fn [e]
                    (let [port (.-port e)
@@ -69,7 +77,11 @@
 (reg-event-fx
  ::set-midi-outputs
  (fn [{:keys [db]} [_ midi-outputs]]
-   {:db (assoc db :midi-outputs midi-outputs)}))
+   (let [selected-midi-output (:selected-midi-output db)
+         calculated-midi-output (if (and (not (nil? selected-midi-output)) (get selected-midi-output midi-outputs))
+                                  selected-midi-output
+                                  (first (keys midi-outputs)))]
+     {:db (assoc (assoc db :midi-outputs midi-outputs) :selected-midi-output calculated-midi-output)})))
 
 (reg-event-fx
  ::set-selected-midi-output
