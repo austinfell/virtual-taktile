@@ -32,8 +32,6 @@
                          state (.-state port)
                          type (.-type port)]
                      ;; Only handle output devices
-                     ;; TODO - Add logic to migrate to new midi device
-                     ;; if active one changed.
                      (when (= type "output")
                        (if (= state "connected")
                          ;; Add new device or update existing
@@ -77,12 +75,21 @@
 (reg-event-fx
  ::set-midi-outputs
  (fn [{:keys [db]} [_ midi-outputs]]
-   (let [selected-midi-output (:selected-midi-output db)
-         calculated-midi-output (if (and (not (nil? selected-midi-output)) (get selected-midi-output midi-outputs))
-                                  selected-midi-output
-                                  (first (keys midi-outputs)))]
-     {:db (assoc (assoc db :midi-outputs midi-outputs) :selected-midi-output calculated-midi-output)})))
+   {:db (-> db
+            (assoc :midi-outputs midi-outputs)
+            (update :selected-midi-output
+                    #(if (get midi-outputs %)
+                       %
+                       (first (keys midi-outputs)))))}))
 
+;; TODO - Long term, this is going to actually be a per track allocation.
+;; That means selected midi output is going to be a lot more sophisticated than this.
+;; We'll need to dynamically store track->midi mappings and then as set midi outputs is called,
+;; we'll need to fix any selections that were rendered invalid... But we also probably want to
+;; be smart about "resetting" once the midi device is back... Or maybe we let it stay in an
+;; invalid state until the user explictly redefines it...
+;;
+;; AKA - TBD.
 (reg-event-fx
  ::set-selected-midi-output
  (fn [{:keys [db]} [_ selected-midi-output]]

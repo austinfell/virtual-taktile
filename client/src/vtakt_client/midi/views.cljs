@@ -32,13 +32,15 @@
                  :class (styles/configurator-title)]
                 (if (empty? @midi-outputs)
                   [midi-not-configured-alert]
-                    ;; Structure here is:
-                    ;; {id {:id id :name ... :manufacturer ... :output MidiOutput}}
                   [:div
                    [:p "Active MIDI Output"]
+                   ;; Trying to get this to work with a single dropdown is a little funky...
+                   ;; Re-com has a few nice components for handling multiple entries which can be useful
+                   ;; for layering in a midi context... Probably my favorite is multi-select list... But
+                   ;; I want to make sure it is accessible for keyboard users.
                    [re-com/single-dropdown
                     :src (re-com/at)
-                    :choices (mapv (fn [v] {:id (first v) :label (:name (second v))}) (into [] @midi-outputs))
+                    :choices (conj (mapv (fn [v] {:id (first v) :label (:name (second v))}) (into [] @midi-outputs)) {:id nil :label "Disable"})
                     :width "200px"
                     :model @selected-midi-output
                     :filter-box? true
