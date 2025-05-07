@@ -27,5 +27,6 @@
    :sounded-notes #{} ;; Depending on chord mode, those notes get converted into chords.
 
    :midi-outputs nil
+   :selected-midi-channel 0
    :selected-midi-output nil
    })

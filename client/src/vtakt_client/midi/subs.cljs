@@ -11,3 +11,8 @@
  ::selected-midi-output
  (fn [db _]
    (:selected-midi-output db)))
+
+(re-frame/reg-sub
+ ::selected-midi-channel
+ (fn [db _]
+   (:selected-midi-channel db)))

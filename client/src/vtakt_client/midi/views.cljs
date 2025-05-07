@@ -22,7 +22,8 @@
   "Root level component that allows configuration of midi"
   []
   (let [midi-outputs (re-frame.core/subscribe [::subs/midi-outputs])
-        selected-midi-output (re-frame.core/subscribe [::subs/selected-midi-output])]
+        selected-midi-output (re-frame.core/subscribe [::subs/selected-midi-output])
+        selected-midi-channel (re-frame.core/subscribe [::subs/selected-midi-channel])]
     [re-com/v-box
      :class (styles/configurator-container)
      :gap "15px"
@@ -45,8 +46,16 @@
                     :model @selected-midi-output
                     :filter-box? true
                     :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-output %])]
-                   [re-com/hyperlink
-                    :src      (re-com/at)
-                    :label    "go to Keyboard"
-                    :on-click #(re-frame/dispatch [::events/navigate :keyboard])]])]]))
+                   [re-com/single-dropdown
+                    :src (re-com/at)
+                    :choices (mapv (fn [v] {:id v :label (inc v)}) [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15])
+                    :width "200px"
+                    :model @selected-midi-channel
+                    :filter-box? true
+                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-channel %])]
+                   [:div
+                    [re-com/hyperlink
+                     :src      (re-com/at)
+                     :label    "go to Keyboard"
+                     :on-click #(re-frame/dispatch [::events/navigate :keyboard])]]])]]))
 

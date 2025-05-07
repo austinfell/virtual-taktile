@@ -94,3 +94,9 @@
  ::set-selected-midi-output
  (fn [{:keys [db]} [_ selected-midi-output]]
    {:db (assoc db :selected-midi-output selected-midi-output)}))
+
+(reg-event-fx
+ ::set-selected-midi-channel
+ (fn [{:keys [db]} [_ selected-midi-channel]]
+   {:db (assoc db :selected-midi-channel selected-midi-channel)}))
+
