@@ -3,7 +3,7 @@
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
    [vtakt-client.events :as events]
-   [vtakt-client.midi.midi-fx :as fx]
+   [vtakt-client.midi.events :as midi-events]
    [vtakt-client.midi.styles :as styles]
    [vtakt-client.midi.subs :as subs]))
 
@@ -45,14 +45,14 @@
                     :width "200px"
                     :model @selected-midi-output
                     :filter-box? true
-                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-output %])]
+                    :on-change #(re-frame.core/dispatch [::midi-events/set-selected-midi-output %])]
                    [re-com/single-dropdown
                     :src (re-com/at)
                     :choices (mapv (fn [v] {:id v :label (inc v)}) [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15])
                     :width "200px"
                     :model @selected-midi-channel
                     :filter-box? true
-                    :on-change #(re-frame.core/dispatch [::fx/set-selected-midi-channel %])]
+                    :on-change #(re-frame.core/dispatch [::midi-events/set-selected-midi-channel %])]
                    [:div
                     [re-com/hyperlink
                      :src      (re-com/at)

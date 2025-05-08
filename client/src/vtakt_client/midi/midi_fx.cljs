@@ -1,6 +1,7 @@
 (ns vtakt-client.midi.midi-fx
   (:require
-   [re-frame.core :refer [reg-fx reg-event-fx dispatch]]))
+   [vtakt-client.midi.events :as events]
+   [re-frame.core :refer [reg-fx dispatch]]))
 
 ;; When the module is loaded, we *need* access to midi outputs.
 ;; I'm going to be eager about this for practical reasons related
@@ -23,7 +24,7 @@
                                :output output})))
 
            ;; Sync Re-frame state... We also need to default to an initial selection.
-           (dispatch [::set-midi-outputs @midi-outputs])
+           (dispatch [::events/set-midi-outputs @midi-outputs])
 
            ;; Sync subsequent changes.
            (set! (.-onstatechange access)
@@ -40,7 +41,7 @@
                                  :manufacturer (.-manufacturer port)
                                  :output port})
                          (swap! midi-outputs dissoc (.-id port)))
-                       (dispatch [::set-midi-outputs @midi-outputs])
+                       (dispatch [::events/set-midi-outputs @midi-outputs])
                        ))))))
        ;; Handle errors
        (fn [err]
@@ -71,32 +72,3 @@
      (midi-effect midi-map)
      (doseq [msg midi-map]
        (midi-effect msg)))))
-
-(reg-event-fx
- ::set-midi-outputs
- (fn [{:keys [db]} [_ midi-outputs]]
-   {:db (-> db
-            (assoc :midi-outputs midi-outputs)
-            (update :selected-midi-output
-                    #(if (get midi-outputs %)
-                       %
-                       (first (keys midi-outputs)))))}))
-
-;; TODO - Long term, this is going to actually be a per track allocation.
-;; That means selected midi output is going to be a lot more sophisticated than this.
-;; We'll need to dynamically store track->midi mappings and then as set midi outputs is called,
-;; we'll need to fix any selections that were rendered invalid... But we also probably want to
-;; be smart about "resetting" once the midi device is back... Or maybe we let it stay in an
-;; invalid state until the user explictly redefines it...
-;;
-;; AKA - TBD.
-(reg-event-fx
- ::set-selected-midi-output
- (fn [{:keys [db]} [_ selected-midi-output]]
-   {:db (assoc db :selected-midi-output selected-midi-output)}))
-
-(reg-event-fx
- ::set-selected-midi-channel
- (fn [{:keys [db]} [_ selected-midi-channel]]
-   {:db (assoc db :selected-midi-channel selected-midi-channel)}))
-
