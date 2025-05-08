@@ -7,54 +7,65 @@
    [vtakt-client.midi.styles :as styles]
    [vtakt-client.midi.subs :as subs]))
 
-(defn midi-configurator
-  "Root level component that allows configuration of midi"
-  []
-  (let [midi-outputs (re-frame.core/subscribe [::subs/midi-outputs])
-        selected-midi-output (re-frame.core/subscribe [::subs/selected-midi-output])
-        selected-midi-channel (re-frame.core/subscribe [::subs/selected-midi-channel])]
+;; TODO Still want to work with a more cohesive MIDI tuple data structure here.
+(defn midi-status
+  "Show the current status of MIDI based on if the browser has access to any devices."
+  [outputs]
+  (if (empty? outputs)
+    [re-com/alert-box
+     :alert-type :danger
+     :body "Host connection is not functioning: there may be an issue with your browser permissions or you may have no MIDI devices available."
+     :heading "MIDI Not Connected"]
+    [re-com/alert-box
+     :alert-type :info
+     :body "Able to transmit MIDI data to host operating system!"
+     :heading "MIDI Connected"]))
+
+(defn midi-selector 
+  [{:keys [outputs selected-output selected-channel on-output-change on-channel-change]}]
+  [:div
+   [re-com/single-dropdown
+    :choices (->> outputs
+                 (into [])
+                 (mapv (fn [[id device]] {:id id :label (:name device)})))
+    :width "200px"
+    :model selected-output
+    :filter-box? true
+    :on-change on-output-change]
+   [re-com/single-dropdown
+    :choices (->> (range 16)
+                 (mapv (fn [v] {:id v :label (inc v)})))
+    :width "200px"
+    :model selected-channel
+    :filter-box? true
+    :on-change on-channel-change]])
+
+;; TODO - Still need labeling above the midi-selector to clearly indicate we are dealing with
+;; devices and channels
+;; TODO - Stylization of drop-downs needs to be improved.
+;; TODO - I would like the pair to be able to be labelled so I can say where the messages that will
+;; be getting transmitted are originating from.
+(defn midi-configurator []
+  (let [midi-outputs @(re-frame/subscribe [::subs/midi-outputs])
+        selected-output @(re-frame/subscribe [::subs/selected-midi-output])
+        selected-channel @(re-frame/subscribe [::subs/selected-midi-channel])]
     [re-com/v-box
      :class (styles/configurator-container)
      :gap "15px"
-     :children [[re-com/title
-                 :label "MIDI Configuration"
-                 :level :level2
-                 :class (styles/configurator-title)]
-                (if (empty? @midi-outputs)
-                  [re-com/box
-                   :child
-                   [re-com/alert-box
-                    :alert-type :danger
-                    :body "Host connection is not functioning: there may be an issue with your browser permissions."
-                    :heading "MIDI Not Connected"]]
-                  [:div
-                   [re-com/box
-                    :child
-                    [re-com/alert-box
-                     :alert-type :info
-                     :body "Able to transmit MIDI data to host operating system!"
-                     :heading "MIDI Connected"]]
-                   ;; Trying to get this to work with a single dropdown is a little funky...
-                   ;; Re-com has a few nice components for handling multiple entries which can be useful
-                   ;; for layering in a midi context... Probably my favorite is multi-select list... But
-                   ;; I want to make sure it is accessible for keyboard users.
-                   [re-com/single-dropdown
-                    :src (re-com/at)
-                    :choices (conj (mapv (fn [v] {:id (first v) :label (:name (second v))}) (into [] @midi-outputs)) {:id nil :label "Disable"})
-                    :width "200px"
-                    :model @selected-midi-output
-                    :filter-box? true
-                    :on-change #(re-frame.core/dispatch [::midi-events/set-selected-midi-output %])]
-                   [re-com/single-dropdown
-                    :src (re-com/at)
-                    :choices (mapv (fn [v] {:id v :label (inc v)}) [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15])
-                    :width "200px"
-                    :model @selected-midi-channel
-                    :filter-box? true
-                    :on-change #(re-frame.core/dispatch [::midi-events/set-selected-midi-channel %])]
-                   [:div
-                    [re-com/hyperlink
-                     :src      (re-com/at)
-                     :label    "go to Keyboard"
-                     :on-click #(re-frame/dispatch [::events/navigate :keyboard])]]])]]))
-
+     :children
+     [[re-com/title
+       :label "MIDI Configuration"
+       :level :level2
+       :class (styles/configurator-title)]
+      [midi-status midi-outputs]
+      (when (seq midi-outputs)
+        [:<>
+         [midi-selector
+          {:outputs midi-outputs
+           :selected-output selected-output
+           :selected-channel selected-channel
+           :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output %])
+           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]
+         [re-com/hyperlink
+          :label "go to Keyboard"
+          :on-click #(re-frame/dispatch [::events/navigate :keyboard])]])]]))
