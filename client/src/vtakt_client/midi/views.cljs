@@ -8,7 +8,7 @@
    [vtakt-client.midi.subs :as subs]))
 
 (defn midi-not-configured-alert
-  "Component showing MIDI connection status."
+  "Component displaying a message that MIDI is currently not configured."
   []
   (fn []
     [re-com/box
@@ -17,6 +17,18 @@
       :alert-type :danger
       :body "Host connection is not functioning: there may be an issue with your browser permissions."
       :heading "MIDI Not Connected"]]))
+
+(defn midi-configured-alert
+  "Component displaying a message that MIDI is currently configured."
+  []
+  (fn []
+    [re-com/box
+     :child
+     [re-com/alert-box
+      :alert-type :info
+      :body "Able to transmit MIDI data to host operating system!"
+      :heading "MIDI Connected"]]))
+
 
 (defn midi-configurator
   "Root level component that allows configuration of midi"
@@ -34,7 +46,7 @@
                 (if (empty? @midi-outputs)
                   [midi-not-configured-alert]
                   [:div
-                   [:p "Active MIDI Output"]
+                   [midi-configured-alert]
                    ;; Trying to get this to work with a single dropdown is a little funky...
                    ;; Re-com has a few nice components for handling multiple entries which can be useful
                    ;; for layering in a midi context... Probably my favorite is multi-select list... But
