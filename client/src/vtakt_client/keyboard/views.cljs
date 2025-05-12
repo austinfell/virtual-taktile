@@ -9,6 +9,7 @@
    [vtakt-client.keyboard.events :as events]
    [vtakt-client.keyboard.keyboard-controls :as kbd-ctrl]
    [vtakt-client.keyboard.styles :as styles]
+   [vtakt-client.styles :as generic-styles]
    [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.utils.core :as uc]
    [vtakt-client.utils.specs :as us]))
@@ -124,7 +125,7 @@
            combined-options (concat (sort-by name pinned-at-top) (sort-by name regular))]
        [re-com/single-dropdown
         :src (at)
-        :class (styles/dropdown)
+        :class (generic-styles/dropdown)
         :choices (mapv (fn [v] {:id v}) combined-options)
         :model selected
         :width width
@@ -448,7 +449,7 @@
    :gap "10px"
    :children
    [[re-com/label
-     :class (styles/section-label)
+     :class (generic-styles/section-label)
      :label label]
     content]])
 
@@ -506,12 +507,12 @@
     (fn []
       [re-com/v-box
        :gap "15px"
-       :class (styles/configurator-container)
+       :class (generic-styles/configurator-container)
        :children
        [[re-com/title
          :label "Keyboard Configuration"
          :level :level2
-         :class (styles/configurator-title)]
+         :class (generic-styles/configurator-title)]
         [re-com/h-box
          :gap "20px"
          :align :center

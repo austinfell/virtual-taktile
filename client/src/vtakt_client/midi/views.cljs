@@ -3,8 +3,8 @@
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
    [vtakt-client.events :as events]
+   [vtakt-client.styles :as styles]
    [vtakt-client.midi.events :as midi-events]
-   [vtakt-client.midi.styles :as styles]
    [vtakt-client.midi.subs :as subs]))
 
 ;; TODO Still want to work with a more cohesive MIDI tuple data structure here.
