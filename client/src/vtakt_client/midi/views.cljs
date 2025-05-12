@@ -14,37 +14,42 @@
   (if (empty? outputs)
     [re-com/alert-box
      :alert-type :danger
+     :style {:margin-bottom 0}
      :body "Host connection is not functioning: there may be an issue with your browser permissions or you may have no MIDI devices available."
      :heading "MIDI Not Connected"]
     [re-com/alert-box
      :alert-type :info
+     :style {:margin-bottom 0}
      :body "Able to transmit MIDI data to host operating system!"
      :heading "MIDI Connected"]))
 
-(defn midi-selector 
+(defn midi-selector
   [{:keys [outputs selected-output selected-channel on-output-change on-channel-change]}]
   [:div
-   [re-com/single-dropdown
-    :choices (->> outputs
-                 (into [])
-                 (mapv (fn [[id device]] {:id id :label (:name device)})))
-    :width "200px"
-    :model selected-output
-    :filter-box? true
-    :on-change on-output-change]
-   [re-com/single-dropdown
-    :choices (->> (range 16)
-                 (mapv (fn [v] {:id v :label (inc v)})))
-    :width "200px"
-    :model selected-channel
-    :filter-box? true
-    :on-change on-channel-change]])
+   [:div
+    {:style {:display "flex" :align-items "center"}}
+    [:p {:style {:color "black" :margin 0  :margin-right "5px"}} "Device:"]
+    [re-com/single-dropdown
+     :choices (->> outputs
+                   (into [])
+                   (mapv (fn [[id device]] {:id id :label (:name device)})))
+     :width "200px"
+     :model selected-output
+     :filter-box? true
+     :on-change on-output-change]]
+   [:div
+    {:style {:margin-top "10px"}}
+    [:div
+     {:style {:display "flex" :align-items "center"}}
+     [:p {:style {:color "black" :margin 0 :margin-right "5px"}} "Channel:"]
+     [re-com/single-dropdown
+      :choices (->> (range 16)
+                    (mapv (fn [v] {:id v :label (inc v)})))
+      :width "60px"
+      :model selected-channel
+      :filter-box? true
+      :on-change on-channel-change]]]])
 
-;; TODO - Still need labeling above the midi-selector to clearly indicate we are dealing with
-;; devices and channels
-;; TODO - Stylization of drop-downs needs to be improved.
-;; TODO - I would like the pair to be able to be labelled so I can say where the messages that will
-;; be getting transmitted are originating from.
 (defn midi-configurator []
   (let [midi-outputs @(re-frame/subscribe [::subs/midi-outputs])
         selected-output @(re-frame/subscribe [::subs/selected-midi-output])
@@ -55,8 +60,7 @@
      :children
      [[re-com/title
        :label "MIDI Configuration"
-       :level :level2
-       :class (styles/configurator-title)]
+       :level :level2]
       [midi-status midi-outputs]
       (when (seq midi-outputs)
         [:<>
@@ -68,4 +72,5 @@
            :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]
          [re-com/hyperlink
           :label "go to Keyboard"
+          :style {:margin-top "10px"}
           :on-click #(re-frame/dispatch [::events/navigate :keyboard])]])]]))
