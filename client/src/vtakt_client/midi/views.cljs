@@ -3,9 +3,10 @@
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
    [vtakt-client.events :as events]
-   [vtakt-client.styles :as styles]
+   [vtakt-client.styles :as general-styles]
    [vtakt-client.midi.events :as midi-events]
-   [vtakt-client.midi.subs :as subs]))
+   [vtakt-client.midi.subs :as subs]
+   [vtakt-client.midi.styles :as styles]))
 
 ;; TODO Still want to work with a more cohesive MIDI tuple data structure here.
 (defn midi-status
@@ -14,12 +15,13 @@
   (if (empty? outputs)
     [re-com/alert-box
      :alert-type :danger
+     :class (styles/status-notification)
      :style {:margin-bottom 0}
      :body "Host connection is not functioning: there may be an issue with your browser permissions or you may have no MIDI devices available."
      :heading "MIDI Not Connected"]
     [re-com/alert-box
      :alert-type :info
-     :style {:margin-bottom 0}
+     :class (styles/status-notification)
      :body "Able to transmit MIDI data to host operating system!"
      :heading "MIDI Connected"]))
 
@@ -27,8 +29,8 @@
   [{:keys [outputs selected-output selected-channel on-output-change on-channel-change]}]
   [:div
    [:div
-    {:style {:display "flex" :align-items "center"}}
-    [:p {:style {:color "black" :margin 0  :margin-right "5px"}} "Device:"]
+    {:class (styles/midi-row)}
+    [:p {:class (styles/midi-key-name)} "Device:"]
     [re-com/single-dropdown
      :choices (->> outputs
                    (into [])
@@ -38,10 +40,10 @@
      :filter-box? true
      :on-change on-output-change]]
    [:div
-    {:style {:margin-top "10px"}}
+    {:class (styles/midi-channel-row)}
     [:div
-     {:style {:display "flex" :align-items "center"}}
-     [:p {:style {:color "black" :margin 0 :margin-right "5px"}} "Channel:"]
+     {:class (styles/midi-row)}
+     [:p {:class (styles/midi-key-name)} "Channel:"]
      [re-com/single-dropdown
       :choices (->> (range 16)
                     (mapv (fn [v] {:id v :label (inc v)})))
@@ -55,7 +57,7 @@
         selected-output @(re-frame/subscribe [::subs/selected-midi-output])
         selected-channel @(re-frame/subscribe [::subs/selected-midi-channel])]
     [re-com/v-box
-     :class (styles/configurator-container)
+     :class (general-styles/configurator-container)
      :gap "15px"
      :children
      [[re-com/title
@@ -70,6 +72,7 @@
            :selected-channel selected-channel
            :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output %])
            :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]
+         ;; TODO - Eventually this will be removed
          [re-com/hyperlink
           :label "go to Keyboard"
           :style {:margin-top "10px"}
