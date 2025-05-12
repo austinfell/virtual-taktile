@@ -8,23 +8,6 @@
    [vtakt-client.midi.subs :as subs]
    [vtakt-client.midi.styles :as styles]))
 
-;; TODO Still want to work with a more cohesive MIDI tuple data structure here.
-(defn midi-status
-  "Show the current status of MIDI based on if the browser has access to any devices."
-  [outputs]
-  (if (empty? outputs)
-    [re-com/alert-box
-     :alert-type :danger
-     :class (styles/status-notification)
-     :style {:margin-bottom 0}
-     :body "Host connection is not functioning: there may be an issue with your browser permissions or you may have no MIDI devices available."
-     :heading "MIDI Not Connected"]
-    [re-com/alert-box
-     :alert-type :info
-     :class (styles/status-notification)
-     :body "Able to transmit MIDI data to host operating system!"
-     :heading "MIDI Connected"]))
-
 (defn midi-selector
   [{:keys [outputs selected-output selected-channel on-output-change on-channel-change]}]
   [:div
@@ -63,7 +46,13 @@
      [[re-com/title
        :label "MIDI Configuration"
        :level :level2]
-      [midi-status midi-outputs]
+      (if (empty? midi-outputs)
+        [re-com/alert-box
+         :alert-type :danger
+         :class (styles/status-notification)
+         :style {:margin-bottom 0}
+         :body "Host connection is not functioning: there may be an issue with your browser permissions or you may have no MIDI devices available."
+         :heading "MIDI Not Connected"])
       (when (seq midi-outputs)
         [:<>
          [midi-selector
