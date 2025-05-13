@@ -2,7 +2,6 @@
   (:require
    [re-com.core :as re-com]
    [re-frame.core :as re-frame]
-   [vtakt-client.events :as events]
    [vtakt-client.styles :as general-styles]
    [vtakt-client.midi.events :as midi-events]
    [vtakt-client.midi.subs :as subs]
@@ -43,7 +42,7 @@
      :class (general-styles/configurator-container)
      :gap "15px"
      :children
-     [[re-com/title
+     [ [re-com/title
        :label "MIDI Configuration"
        :level :level2]
       (if (empty? midi-outputs)
@@ -60,9 +59,4 @@
            :selected-output selected-output
            :selected-channel selected-channel
            :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output %])
-           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]
-         ;; TODO - Eventually this will be removed
-         [re-com/hyperlink
-          :label "go to Keyboard"
-          :style {:margin-top "10px"}
-          :on-click #(re-frame/dispatch [::events/navigate :keyboard])]])]]))
+           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]])]]))

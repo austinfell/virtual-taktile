@@ -3,6 +3,7 @@
    [re-frame.core :as re-frame]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
+   [vtakt-client.project.views :as project]
    [vtakt-client.midi.views :as midi]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
@@ -68,7 +69,10 @@
   [re-com/v-box
    :src      (at)
    :gap      "1em"
-   :children [[kb/keyboard-configurator] [kb/keyboard]]])
+   :children [[kb/keyboard-configurator]
+              [kb/keyboard]
+              [midi/midi-configurator]
+              [project/save-project-as]]])
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])
