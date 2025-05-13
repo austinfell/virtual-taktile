@@ -72,7 +72,8 @@
    :children [[kb/keyboard-configurator]
               [kb/keyboard]
               [midi/midi-configurator]
-              [project/save-project-as]]])
+              [project/save-project-as]
+              [project/project-name-display]]])
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])

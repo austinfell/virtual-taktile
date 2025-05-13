@@ -1,6 +1,7 @@
 (ns vtakt-client.db
   (:require
    [vtakt-client.keyboard.chord :as chord]
+   [vtakt-client.project.core :as pj]
    [vtakt-client.keyboard.core :as kb]))
 
 (def default-db
@@ -29,4 +30,6 @@
    :midi-outputs nil
    :selected-midi-channel 0
    :selected-midi-output nil
+
+   :current-project (pj/->Project "Untitled" 0)
    })
