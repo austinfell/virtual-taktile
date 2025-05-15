@@ -31,5 +31,7 @@
    :selected-midi-channel 0
    :selected-midi-output nil
 
-   :current-project (pj/->Project "Untitled" 0)
+   :current-project (pj/->Project "Untitled" 0 false)
+   :loaded-projects []
+   :selected-projects #{}
    })

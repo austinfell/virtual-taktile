@@ -73,7 +73,7 @@
               [kb/keyboard]
               [midi/midi-configurator]
               [project/save-project-as]
-              [project/project-name-display]]])
+              [project/project-manager]]])
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])
