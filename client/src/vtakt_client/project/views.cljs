@@ -16,23 +16,25 @@
    :label "Refresh Projects"
    :on-click #(re-frame/dispatch [::events/load-projects])])
 
-(defn save-project-as-btn [enabled?]
+(defn save-project-as-btn [enabled? project-name]
+  ;; TODO - This needs a flow where if no project name is given, we will create a modal to select
+  ;; a project name.
   [re-com/button
    :label "Save Project As"
    :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/load-projects])])
+   :on-click #(re-frame/dispatch [::events/save-project-as project-name])])
 
-(defn load-project [enabled?]
+(defn load-project [enabled? project-id]
   [re-com/button
    :label "Load Project"
    :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/load-projects])])
+   :on-click #(re-frame/dispatch [::events/load-project project-id])])
 
-(defn delete-projects [enabled?]
+(defn delete-projects [enabled? project-ids]
   [re-com/button
    :label "Delete Project(s)"
    :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/load-projects])])
+   :on-click #(re-frame/dispatch [::events/delete-projects project-ids])])
 
 (def selected-projects (reagent/atom #{}))
 
@@ -54,9 +56,15 @@
                                                      [re-com/v-box
                                                       :gap "10px"
                                                       :children [[refresh-projects]
-                                                                 [save-project-as-btn (< (count @selected-projects) 2)]
-                                                                 [load-project (= (count @selected-projects) 1)]
-                                                                 [delete-projects (> (count @selected-projects) 0)]]]]]]]))
+                                                                 [save-project-as-btn
+                                                                  (< (count @selected-projects) 2)
+                                                                  (first @selected-projects)]
+                                                                 [load-project
+                                                                  (= (count @selected-projects) 1)
+                                                                  (first @selected-projects)]
+                                                                 [delete-projects
+                                                                  (> (count @selected-projects) 0)
+                                                                  @selected-projects]]]]]]]))
 
 (defn save-project-as []
   (let [project-name (reagent/atom "")]

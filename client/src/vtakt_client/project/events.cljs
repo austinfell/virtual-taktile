@@ -16,3 +16,20 @@
    {:db (assoc db :loaded-projects [(pj/->Project "Untitled" 0 false)
                                     (pj/->Project "loaded-project" 2 false)
                                     (pj/->Project "loaded-project 2" 3 false)])}))
+(re-frame/reg-event-fx
+ ::save-project-as
+ (fn [{:keys [db]} [_ project-name]]
+   ;; TODO - Implement this
+   {:db db}))
+
+(re-frame/reg-event-fx
+ ::load-project
+ (fn [{:keys [db]} [_ project-id]]
+   ;; TODO - Implement this
+   {:db db}))
+
+(re-frame/reg-event-fx
+ ::delete-projects
+ (fn [{:keys [db]} [_ project-ids]]
+   ;; TODO - Implement this
+   {:db db}))
