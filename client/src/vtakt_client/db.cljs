@@ -31,7 +31,6 @@
    :selected-midi-channel 0
    :selected-midi-output nil
 
-   :current-project (pj/->Project "Untitled" 0 false)
+   :current-project (pj/->Project nil "Untitled" "Austin Fell" "Tue May 20 09:41:07 EDT 2025")
    :loaded-projects []
-   :selected-projects #{}
-   })
+   :selected-projects #{}})

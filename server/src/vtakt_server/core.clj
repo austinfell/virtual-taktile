@@ -2,6 +2,7 @@
   (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
             [compojure.route :as route]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
             [ring.util.response :refer [response created not-found]]
             [ring.adapter.jetty9 :as j]
@@ -9,7 +10,6 @@
             [vtakt-server.operations :as ops]
             [vtakt-server.schema :as s]
             [clojure.walk :as walk]))
-
 
 ;; ----- Helper Functions -----
 (defn db
@@ -36,9 +36,13 @@
        (instance? java.util.Date x) (.toString x)
        (instance? java.util.UUID x) (.toString x)
        (= (type x) datomic.db.DbId) (str x)
+       (map? x) (reduce-kv
+                 (fn [m k v]
+                   (assoc m (keyword (name k)) v))
+                 {}
+                 x)
        :else x))
    data))
-
 
 ;; ----- Routes -----
 
@@ -166,18 +170,25 @@
 
 ;; ----- Server -----
 ;; Create our handler with middleware
+(defn wrap-cors [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (-> response
+          (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
+          (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
+          (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
 
 (def app
-  (wrap-defaults (create-routes (if (d/create-database "datomic:mem://digitone")
-                                  (let [new-conn (d/connect "datomic:mem://digitone")]
-                                    (s/install-schema new-conn)
-                                    new-conn)
-                                  (d/connect "datomic:mem://digitone"))) api-defaults))
+  (wrap-cors
+   (wrap-defaults
+    (create-routes (if (d/create-database "datomic:mem://digitone")
+                     (let [new-conn (d/connect "datomic:mem://digitone")]
+                       (s/install-schema new-conn)
+                       new-conn)
+                     (d/connect "datomic:mem://digitone"))) api-defaults)))
 
 ;; Function to start the server
 (defn start-server [port]
   (j/run-jetty app {:port port :join? false}))
 
-(start-server 8080)
-
-
+(start-server 8001)

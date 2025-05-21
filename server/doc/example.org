@@ -1,0 +1,19 @@
+* Performing a project creation request:
+#+BEGIN_SRC bash
+  curl -X POST localhost:8001/api/projects --data '{"name": "another one", "author": "austin", "bpm": 129.0}' -H "Content-Type: application/json"
+#+END_SRC
+
+* Listing Projects
+#+BEGIN_SRC bash
+  curl localhost:8080/api/projects
+#+END_SRC
+
+#+BEGIN_SRC text
+[
+    {"project/id":"6c6e48f5-3806-43e5-aff2-64c035747fb9",
+     "project/name":"test",
+     "project/author":"austin",
+     "project/created-at":"Tue May 20 09:41:07 EDT 2025"
+    }
+]
+#END_SRC

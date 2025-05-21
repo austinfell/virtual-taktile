@@ -90,10 +90,9 @@
 (defn list-projects
   "List all VTakt projects"
   [db]
-  (let [projects (d/q '[:find [(pull ?e [:project/id :project/name :project/author :project/created-at]) ...]
+  (d/q '[:find [(pull ?e [:project/id :project/name :project/author :project/created-at]) ...]
                          :where [?e :project/id]]
-                       db)]
-    projects))
+                       db))
 
 ;; ----- Pattern Operations -----
 
