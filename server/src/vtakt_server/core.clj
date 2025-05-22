@@ -11,6 +11,7 @@
             [vtakt-server.schema :as s]
             [clojure.walk :as walk]))
 
+
 ;; ----- Helper Functions -----
 (defn db
   "Get the current database value from the connection"
@@ -33,7 +34,10 @@
   (walk/postwalk
    (fn [x]
      (cond
-       (instance? java.util.Date x) (.toString x)
+       (instance? java.util.Date x)
+       (.format (java.time.format.DateTimeFormatter/ISO_INSTANT)
+                (.toInstant x))
+
        (instance? java.util.UUID x) (.toString x)
        (= (type x) datomic.db.DbId) (str x)
        (map? x) (reduce-kv
@@ -180,15 +184,15 @@
 
 (def app
   (wrap-cors
-   (wrap-defaults
-    (create-routes (if (d/create-database "datomic:mem://digitone")
-                     (let [new-conn (d/connect "datomic:mem://digitone")]
-                       (s/install-schema new-conn)
-                       new-conn)
-                     (d/connect "datomic:mem://digitone"))) api-defaults)))
+  (wrap-defaults
+   (create-routes (if (d/create-database "datomic:mem://digitone")
+                    (let [new-conn (d/connect "datomic:mem://digitone")]
+                      (s/install-schema new-conn)
+                      new-conn)
+                    (d/connect "datomic:mem://digitone"))) api-defaults)))
 
 ;; Function to start the server
 (defn start-server [port]
   (j/run-jetty app {:port port :join? false}))
 
-(start-server 8001)
+(start-server 8002)
