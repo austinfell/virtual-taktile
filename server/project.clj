@@ -9,6 +9,7 @@
                  [ring/ring-core "1.13.0"]
                  [ring-cors "0.1.13"]
                  [ring/ring-json "0.5.1"]
+                 [ring/ring-devel "1.9.5"]
                  [info.sunng/ring-jetty9-adapter "0.36.1"]
                  [com.datomic/datomic-free "0.9.5697"]
                  [compojure "1.7.0"]

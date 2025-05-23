@@ -4,13 +4,9 @@ navigate to a restclient block and C-c C-c.
 
 * Project Creation
 #+BEGIN_SRC restclient
-  POST http://localhost:8001/api/projects
+  POST http://localhost:8002/api/projects
   Content-Type: application/json
-  {
-    "name": "totally new name",
-    "author": "austin",
-    "bpm": 129.0
-  }
+  {"name": "totally new name", "author": "austin", "bpm": 129.0}
 #+END_SRC
 
 * Listing Projects
