@@ -37,7 +37,7 @@
 
 (defn create-project
   "Create a new VTakt project"
-  [conn {:keys [name author bpm] :or {bpm 120.0}}]
+  [conn {:project/keys [name author bpm] :or {bpm 120.0}}]
   (let [project-id (uuid)
         project-data {:db/id "new-project"
                       :project/id project-id

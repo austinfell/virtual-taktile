@@ -6,7 +6,11 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC restclient
   POST http://localhost:8002/api/projects
   Content-Type: application/json
-  {"name": "totally new name", "author": "austin", "bpm": 129.0}
+  {
+    "project/name": "totally new name",
+    "project/author": "austin",
+    "project/bpm": 409.0
+  }
 #+END_SRC
 
 * Listing Projects
@@ -18,19 +22,18 @@ navigate to a restclient block and C-c C-c.
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/d9c09dc2-cbef-42a0-9816-30635279ddf7
+  GET http://localhost:8002/api/projects/46503708-210e-4abe-a681-81358ee72139
 #+END_SRC
 
 * Update Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  PUT http://localhost:8001/api/projects/d9c09dc2-cbef-42a0-9816-30635279ddf7
+  PUT http://localhost:8002/api/projects/46503708-210e-4abe-a681-81358ee72139
   Content-Type: application/json
   {
-    "name": "totally new name",
-    "author": "austin",
-    "bpm": 130.0
+    "project/name": "totally new name",
+    "project/author": "austin",
+    "project/bpm": 130.0
   }
 #+END_SRC
-** TODO Currently broken - need to troublshoot

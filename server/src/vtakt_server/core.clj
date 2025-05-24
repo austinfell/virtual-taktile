@@ -42,7 +42,7 @@
        (= (type x) datomic.db.DbId) (str x)
        (map? x) (reduce-kv
                  (fn [m k v]
-                   (assoc m (keyword (name k)) v))
+                   (assoc m (keyword k) v))
                  {}
                  x)
        :else x))
