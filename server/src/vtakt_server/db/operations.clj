@@ -16,36 +16,18 @@
     (schema/install-schema conn)
     conn))
 
-;; ----- Helper Functions -----
-
-(defn uuid
-  "Generate a random UUID"
-  []
-  (UUID/randomUUID))
-
-(defn now
-  "Return current date-time"
-  []
-  (Date.))
-
-(defn expand-entity
-  "Pull all attributes of an entity by its id"
-  [db entity-id]
-  (d/pull db '[*] entity-id))
-
 ;; ----- Project Operations -----
-
 (defn create-project
   "Create a new VTakt project"
   [conn {:project/keys [name author bpm] :or {bpm 120.0}}]
-  (let [project-id (uuid)
+  (let [project-id (UUID/randomUUID)
         project-data {:db/id "new-project"
                       :project/id project-id
                       :project/name name
                       :project/author author
                       :project/bpm bpm
-                      :project/created-at (now)
-                      :project/updated-at (now)}
+                      :project/created-at (Date.)
+                      :project/updated-at (Date.)}
         tx-result @(d/transact conn [project-data])]
     project-id))
 
@@ -56,7 +38,7 @@
         existing-entity (d/pull db '[*] [:project/id project-id])
         update-data (assoc project-data
                            :db/id (:db/id existing-entity)
-                           :project/updated-at (now))
+                           :project/updated-at (Date.))
         tx-result @(d/transact conn [update-data])]
     project-id))
 
@@ -101,7 +83,7 @@
   [conn project-id {:keys [name length] :or {length 16}}]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
-        pattern-id (uuid)
+        pattern-id (UUID/randomUUID)
         pattern-data {:db/id "new-pattern"
                       :pattern/id pattern-id
                       :pattern/name name
@@ -109,7 +91,7 @@
         tx-data [pattern-data
                  {:db/id project-entity-id
                   :project/patterns "new-pattern"
-                  :project/updated-at (now)}]
+                  :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
     pattern-id))
 
@@ -131,7 +113,7 @@
         tx-data [[:db/retract project-entity-id :project/patterns pattern-entity-id]
                  [:db/retractEntity pattern-entity-id]
                  {:db/id project-entity-id
-                  :project/updated-at (now)}]
+                  :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
     true))
 
@@ -142,14 +124,14 @@
   [conn project-id sound-data]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
-        sound-id (uuid)
+        sound-id (UUID/randomUUID)
         base-sound {:db/id "new-sound"
                     :sound/id sound-id}
         sound-with-data (merge base-sound sound-data)
         tx-data [sound-with-data
                  {:db/id project-entity-id
                   :project/sounds "new-sound"
-                  :project/updated-at (now)}]
+                  :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
     sound-id))
 
@@ -171,7 +153,7 @@
         tx-data [[:db/retract project-entity-id :project/sounds sound-entity-id]
                  [:db/retractEntity sound-entity-id]
                  {:db/id project-entity-id
-                  :project/updated-at (now)}]
+                  :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
     true))
 
@@ -183,7 +165,7 @@
   (let [db (d/db conn)
         pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/id pattern-id]))
         sound-entity-id (:db/id (d/pull db '[:db/id] [:sound/id sound-id]))
-        track-id (uuid)
+        track-id (UUID/randomUUID)
         track-data {:db/id "new-track"
                     :track/id track-id
                     :track/number number
@@ -201,7 +183,7 @@
   [conn track-id step-data]
   (let [db (d/db conn)
         track-entity-id (:db/id (d/pull db '[:db/id] [:track/id track-id]))
-        step-id (uuid)
+        step-id (UUID/randomUUID)
         step-with-id (assoc step-data 
                             :db/id "new-step"
                             :step/id step-id)
@@ -227,7 +209,7 @@
   [conn step-id {:keys [parameter value]}]
   (let [db (d/db conn)
         step-entity-id (:db/id (d/pull db '[:db/id] [:step/id step-id]))
-        plock-id (uuid)
+        plock-id (UUID/randomUUID)
         plock-data {:db/id "new-plock"
                     :plock/id plock-id
                     :plock/parameter parameter
@@ -259,10 +241,10 @@
                                x))
                            form))
         project-with-ids (assign-temp-ids project-data)
-        project-id (or (:project/id project-with-ids) (uuid))
+        project-id (or (:project/id project-with-ids) (UUID/randomUUID))
         project-with-dates (-> project-with-ids
                                (assoc :project/id project-id)
-                               (assoc :project/created-at (now))
-                               (assoc :project/updated-at (now)))
+                               (assoc :project/created-at (Date.))
+                               (assoc :project/updated-at (Date.)))
         tx-result @(d/transact conn [project-with-dates])]
     project-id))
