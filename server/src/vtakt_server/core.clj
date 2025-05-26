@@ -2,7 +2,6 @@
   (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
             [compojure.route :as route]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
-            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
             [ring.util.response :refer [response created not-found]]
             [ring.adapter.jetty9 :as j]
@@ -11,7 +10,6 @@
             [datomic.api :as d]
             [vtakt-server.operations :as ops]
             [clojure.walk :as walk]))
-
 
 ;; ----- Helper Functions -----
 
@@ -42,13 +40,14 @@
        (= (type x) datomic.db.DbId) (str x)
        (map? x) (reduce-kv
                  (fn [m k v]
-                   (assoc m (keyword k) v))
+                   (assoc m (name k) v))
                  {}
                  x)
        :else x))
    data))
 
 ;; ----- Routes -----
+
 (defn create-routes
   "Create routes with a database connection"
   []
@@ -175,18 +174,23 @@
 ;; Create our handler with middleware
 (defn wrap-cors [handler]
   (fn [request]
-    (let [response (handler request)]
-      (-> response
-          (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
-          (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
-          (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
+    (if (= (:request-method request) :options)
+      {:status 200
+       :headers {"Access-Control-Allow-Origin" "*"
+                 "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE, OPTIONS"
+                 "Access-Control-Allow-Headers" "Content-Type, Authorization"}}
+      (let [response (handler request)]
+        (-> response
+            (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
+            (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
+            (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization"))))))
 
 (def app
   (-> (create-routes)
+      wrap-cors
       wrap-reload
       (wrap-json-body {:keywords? true})
       (wrap-json-response)
-      wrap-cors
       (wrap-defaults api-defaults)))
 
 (defn init-db! []
@@ -201,7 +205,7 @@
   (when-let [server @server-state]
     (.stop server))
   (reset! server-state
-          (j/run-jetty (create-routes)
+          (j/run-jetty app
                        {:port port :join? false})))
 
 (defn stop-server! []
