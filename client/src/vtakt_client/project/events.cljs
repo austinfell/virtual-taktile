@@ -16,7 +16,7 @@
  (fn [{:keys [db]} _]
    {:db (assoc db :loading-projects? true)
     :http-xhrio {:method          :get
-                 :uri             "http://localhost:8001/api/projects"
+                 :uri             "http://localhost:8002/api/projects"
                  :timeout         8000
                  :response-format (ajax/json-response-format {:keywords? true})
                  :on-success      [::fetch-projects-success]
@@ -30,9 +30,9 @@
    ;; Transform the response data to match your record structure
    (let [projects (mapv (fn [project]
                           (pj/->Project
-                           (:id project)         ;; Using non-namespaced keys assuming your 
-                           (:name project)       ;; prepare-response function now returns
-                           (:author project)     ;; keys without namespaces
+                           (:id project)
+                           (:name project)
+                           (:author project)
                            (:created-at project)))
                         response)]
      {:db (-> db
