@@ -1,4 +1,4 @@
-(ns vtakt-server.schema
+(ns vtakt-server.db.schema
   (:require [datomic.api :as d]))
 
 (def vtakt-schema

@@ -1,4 +1,4 @@
-(ns vtakt-server.api
+(ns vtakt-server.core
   (:require [compojure.core :refer [defroutes GET POST PUT DELETE]]
             [compojure.route :as route]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
@@ -6,10 +6,11 @@
             [ring.util.response :refer [response created not-found]]
             [ring.adapter.jetty9 :as j]
             [ring.middleware.reload :refer [wrap-reload]]
-            [vtakt-server.schema :as s]
+            [vtakt-server.db.schema :as s]
+            [vtakt-server.db.operations :as ops]
             [datomic.api :as d]
-            [vtakt-server.operations :as ops]
             [clojure.walk :as walk]))
+
 
 ;; ----- Helper Functions -----
 
@@ -189,7 +190,6 @@
   (-> (create-routes)
       wrap-cors
       wrap-reload
-      (wrap-json-body {:keywords? true})
       (wrap-json-response)
       (wrap-defaults api-defaults)))
 

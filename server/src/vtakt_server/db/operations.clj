@@ -1,10 +1,8 @@
-(ns vtakt-server.operations
+(ns vtakt-server.db.operations
   (:require [datomic.api :as d]
-            [clojure.spec.alpha :as s]
-            [vtakt-server.schema :as schema]
+            [vtakt-server.db.schema :as schema]
             [clojure.walk :as walk])
   (:import [java.util UUID Date]))
-
 
 ;; ----- Database Connection -----
 
@@ -19,7 +17,7 @@
 ;; ----- Project Operations -----
 (defn create-project
   "Create a new VTakt project"
-  [conn {:project/keys [name author bpm] :or {bpm 120.0}}]
+  [conn {:keys [name author bpm] :or {bpm 120.0}}]
   (let [project-id (UUID/randomUUID)
         project-data {:db/id "new-project"
                       :project/id project-id
@@ -36,7 +34,13 @@
   [conn project-id project-data]
   (let [db (d/db conn)
         existing-entity (d/pull db '[*] [:project/id project-id])
-        update-data (assoc project-data
+        key-transforms {:name :project/name
+                        :author :project/author
+                        :bpm :project/bpm}
+        transformed-data (->> project-data
+                              (map (fn [[k v]] [(get key-transforms k k) v]))
+                              (into {}))
+        update-data (assoc transformed-data
                            :db/id (:db/id existing-entity)
                            :project/updated-at (Date.))
         tx-result @(d/transact conn [update-data])]
