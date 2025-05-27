@@ -22,7 +22,6 @@
                  :on-success      [::fetch-projects-success]
                  :on-failure      [::fetch-projects-failure]}}))
 
-
 ;; Event to handle successful response
 (re-frame/reg-event-fx
  ::fetch-projects-success
@@ -62,5 +61,32 @@
 (re-frame/reg-event-fx
  ::delete-projects
  (fn [{:keys [db]} [_ project-ids]]
-   ;; TODO - Implement this
-   {:db db}))
+   (let [current-pending (get db :pending-deletes 0)
+         new-pending (+ current-pending (count project-ids))]
+     {:db (-> db
+              (assoc :deleting-projects? true)
+              (assoc :pending-deletes new-pending))
+      :fx (mapv (fn [project-id]
+                  [:http-xhrio {:method          :delete
+                                :uri             (str "http://localhost:8002/api/projects/" project-id)
+                                :timeout         8000
+                                :format          (ajax/url-request-format)
+                                :response-format (ajax/json-response-format)
+                                :on-success      [::delete-completed project-id nil]
+                                :on-failure      [::delete-completed project-id]}])
+                project-ids)})))
+
+(re-frame/reg-event-fx
+ ::delete-completed
+ (fn [{:keys [db]} [_ project-id response-or-error]]
+   (let [is-error (or (nil? response-or-error)
+                      (not (:deleted response-or-error)))]
+     (when is-error
+       ;; TODO - Handle error (ownership changed, etc.)
+       ;; Could dispatch another event with project-id and error details
+       )
+     (let [remaining (dec (:pending-deletes db))]
+       (if (zero? remaining)
+         {:db (-> db (dissoc :pending-deletes :deleting-projects?))
+          :dispatch [::load-projects]}
+         {:db (assoc db :pending-deletes remaining)})))))
