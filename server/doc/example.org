@@ -37,3 +37,10 @@ project exists in the DB matching that ID.
     "bpm": 130.0
   }
 #+END_SRC
+
+* Delete Project
+Note that the ID provided is an example ID... Will 404 if no
+project exists in the DB matching that ID.
+#+BEGIN_SRC restclient
+  DELETE http://localhost:8002/api/projects/f33bc934-11bb-4b4c-a105-1e4baa656345
+#+END_SRC
