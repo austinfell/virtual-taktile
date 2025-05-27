@@ -9,7 +9,33 @@
  ::save-project-as
  (fn [{:keys [db]} [_ project-name]]
    ;; Eventually, I want to generate this and the associated ID server side.
-   {:db (assoc db :current-project (pj/->Project nil project-name "Austin Fell" "Tue May 20 09:41:07 EDT 2025"))}))
+   {:db (assoc db :saving-project? true)
+    :http-xhrio {:method          :post
+                 :uri             "http://localhost:8002/api/projects"
+                 :params {:name project-name
+                          :author "Austin Fell"
+                          :bpm (double 402)
+                          }
+
+                 :timeout         8000
+                 :format          (ajax/json-request-format)
+                 :response-format (ajax/json-response-format {:keywords? true})
+                 :on-success      [::save-project-success]
+                 :on-failure      [::save-project-failure]}}))
+
+
+;; TODO - Still need to feed in the original parameters I used to
+;; actually build the post request.
+(re-frame/reg-event-fx
+ ::save-project-success
+ (fn [{:keys [db]} [_ response]]
+     {:dispatch [::load-projects]}))
+
+(re-frame/reg-event-db
+ ::save-project-failure
+ (fn [db [_ error]]
+   (-> db
+       (assoc :request-error "Failure in saving project"))))
 
 (re-frame/reg-event-fx
  ::load-projects
@@ -22,11 +48,9 @@
                  :on-success      [::fetch-projects-success]
                  :on-failure      [::fetch-projects-failure]}}))
 
-;; Event to handle successful response
 (re-frame/reg-event-fx
  ::fetch-projects-success
  (fn [{:keys [db]} [_ response]]
-   ;; Transform the response data to match your record structure
    (let [projects (mapv (fn [project]
                           (pj/->Project
                            (:id project)
@@ -38,19 +62,12 @@
               (assoc :loaded-projects projects)
               (dissoc :loading-projects?))})))
 
-;; Event to handle request failure
 (re-frame/reg-event-db
  ::fetch-projects-failure
  (fn [db [_ error]]
    (-> db
        (assoc :request-error (str "Failed to fetch projects: " (get-in error [:response :status-text])))
        (dissoc :loading-projects?))))
-
-(re-frame/reg-event-fx
- ::save-project-as
- (fn [{:keys [db]} [_ project-name]]
-   ;; TODO - Implement this
-   {:db db}))
 
 (re-frame/reg-event-fx
  ::load-project

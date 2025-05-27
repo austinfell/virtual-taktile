@@ -1,4 +1,5 @@
 (ns vtakt-server.db.operations
+
   (:require [datomic.api :as d]
             [vtakt-server.db.schema :as schema]
             [clojure.walk :as walk])
@@ -23,7 +24,7 @@
                       :project/id project-id
                       :project/name name
                       :project/author author
-                      :project/bpm bpm
+                      :project/bpm (double bpm)
                       :project/created-at (Date.)
                       :project/updated-at (Date.)}
         tx-result @(d/transact conn [project-data])]
