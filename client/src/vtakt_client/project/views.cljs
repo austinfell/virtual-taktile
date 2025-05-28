@@ -82,5 +82,7 @@
                      :on-change #(reset! project-name %)]
                     [re-com/button
                      :label "Save As"
-                     :on-click #(re-frame/dispatch [::events/save-project-as @project-name])]]]]])))
+                     :on-click #(do
+                                  (re-frame/dispatch [::events/save-project-as @project-name])
+                                  (reset! project-name nil))]]]]])))
 
