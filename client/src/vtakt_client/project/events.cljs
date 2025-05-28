@@ -5,6 +5,11 @@
    [day8.re-frame.http-fx]
    [re-frame.core :as re-frame]))
 
+(re-frame/reg-event-db
+ ::set-selected-projects
+ (fn [db [_ project-ids]]
+   (assoc db :selected-projects project-ids)))
+
 (re-frame/reg-event-fx
  ::save-project-as
  (fn [{:keys [db]} [_ project-name]]
@@ -82,6 +87,7 @@
          new-pending (+ current-pending (count project-ids))]
      {:db (-> db
               (assoc :deleting-projects? true)
+              (assoc :selected-projects #{})
               (assoc :pending-deletes new-pending))
       :fx (mapv (fn [project-id]
                   [:http-xhrio {:method          :delete

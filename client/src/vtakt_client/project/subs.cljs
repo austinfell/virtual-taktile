@@ -11,3 +11,8 @@
  ::loaded-projects
  (fn [db _]
    (:loaded-projects db)))
+
+(re-frame/reg-sub
+ ::selected-projects
+ (fn [db _]
+   (:selected-projects db)))

@@ -16,6 +16,12 @@
    :label "Refresh Projects"
    :on-click #(re-frame/dispatch [::events/load-projects])])
 
+(defn load-project [enabled?]
+  [re-com/button
+   :label "Load Project"
+   :disabled? (not enabled?)
+   :on-click #(re-frame/dispatch [::events/load-projects])])
+
 (defn save-project-as-btn [enabled? project-name]
   ;; TODO - This needs a flow where if no project name is given, we will create a modal to select
   ;; a project name.
@@ -24,23 +30,16 @@
    :disabled? (not enabled?)
    :on-click #(re-frame/dispatch [::events/save-project-as project-name])])
 
-(defn load-project [enabled? project-id]
-  [re-com/button
-   :label "Load Project"
-   :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/load-project project-id])])
-
 (defn delete-projects [enabled? project-ids]
   [re-com/button
    :label "Delete Project(s)"
    :disabled? (not enabled?)
    :on-click #(re-frame/dispatch [::events/delete-projects project-ids])])
 
-(def selected-projects (reagent/atom #{}))
-
 (defn project-manager []
   (let [current-project (re-frame/subscribe [::subs/current-project])
-        loaded-projects (re-frame/subscribe [::subs/loaded-projects])]
+        loaded-projects (re-frame/subscribe [::subs/loaded-projects])
+        selected-projects (re-frame/subscribe [::subs/selected-projects])]
     [re-com/v-box
      :class (general-styles/configurator-container)
      :gap "15px"
@@ -49,7 +48,7 @@
                 [re-com/h-box :gap "15px" :children [[re-com/selection-list
                                                       :choices @loaded-projects
                                                       :model @selected-projects
-                                                      :on-change #(reset! selected-projects %)
+                                                      :on-change #(re-frame/dispatch [::events/set-selected-projects %])
                                                       :id-fn :id
                                                       :label-fn :name
                                                       :multi-select? true]
