@@ -6,6 +6,7 @@
    [vtakt-client.routes :as routes]
    [vtakt-client.views :as views]
    [vtakt-client.midi.midi-fx]
+   [vtakt-client.project.events :as pevents]
    [vtakt-client.config :as config]))
 
 (defn dev-setup []
@@ -21,5 +22,6 @@
 (defn init []
   (routes/start!)
   (re-frame/dispatch-sync [::events/initialize-db])
+  (re-frame/dispatch-sync [::pevents/load-projects])
   (dev-setup)
   (mount-root))

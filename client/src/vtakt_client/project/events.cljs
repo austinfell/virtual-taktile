@@ -19,13 +19,14 @@
                  :uri             "http://localhost:8002/api/projects"
                  :params {:name project-name
                           :author "Austin Fell"
-                          :bpm (double 402)
-                          }
+                          :bpm (double 402)}
 
                  :timeout         8000
                  :format          (ajax/json-request-format)
                  :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [::save-project-success]
+                 :on-success      [::save-project-success {:name project-name
+                                                           :author "Austin Fell"
+                                                           :bpm (double 402)}]
                  :on-failure      [::save-project-failure]}}))
 
 
@@ -33,8 +34,9 @@
 ;; actually build the post request.
 (re-frame/reg-event-fx
  ::save-project-success
- (fn [{:keys [db]} [_ response]]
-     {:dispatch [::load-projects]}))
+ (fn [{:keys [db]} [_ saved-project]]
+     {:db (assoc db :current-project (pj/map->Project saved-project))
+      :dispatch [::load-projects]}))
 
 (re-frame/reg-event-db
  ::save-project-failure
@@ -76,7 +78,7 @@
 
 (re-frame/reg-event-fx
  ::load-project
- (fn [{:keys [db]} [_ project-name]]
+ (fn [{:keys [db]} [_ project-id]]
    ;; TODO - Implement this
    {:db db}))
 
