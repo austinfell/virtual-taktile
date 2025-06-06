@@ -32,6 +32,7 @@
    :selected-midi-output nil
 
    :current-project (pj/->Project nil "Untitled" "Austin Fell" "Tue May 20 09:41:07 EDT 2025")
+   :project-name ""
    ;; TODO We should convert this to keyed map of ids to objects. Easier to work with.
    :loaded-projects []
    :selected-projects #{}})

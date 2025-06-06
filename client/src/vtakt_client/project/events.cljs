@@ -6,6 +6,11 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-db
+ ::set-project-name
+ (fn [db [_ project-name]]
+   (assoc db :project-name project-name)))
+
+(re-frame/reg-event-db
  ::set-selected-projects
  (fn [db [_ project-ids]]
    (assoc db :selected-projects project-ids)))

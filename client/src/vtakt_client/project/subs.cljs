@@ -16,3 +16,8 @@
  ::selected-projects
  (fn [db _]
    (:selected-projects db)))
+
+(re-frame/reg-sub
+ ::project-name
+ (fn [db _]
+   (:project-name db)))

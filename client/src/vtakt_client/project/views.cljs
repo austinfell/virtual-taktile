@@ -66,8 +66,7 @@
                                                                   @selected-projects]]]]]]]))
 
 (defn save-project-as []
-  (let [project-name (reagent/atom "")]
-    (fn []
+  (let [project-name (re-frame/subscribe [::subs/project-name])]
       [re-com/v-box
        :class (general-styles/configurator-container)
        :gap "15px"
@@ -79,10 +78,12 @@
          :gap "15px"
          :children [[re-com/input-text
                      :model @project-name
-                     :on-change #(reset! project-name %)]
+                     :change-on-blur? false
+                     :on-change #(re-frame/dispatch [::events/set-project-name %])]
                     [re-com/button
                      :label "Save As"
+                     :disabled? (empty? @project-name)
                      :on-click #(do
                                   (re-frame/dispatch [::events/save-project-as @project-name])
-                                  (reset! project-name nil))]]]]])))
+                                  (re-frame/dispatch [::events/set-project-name ""]))]]]]]))
 
