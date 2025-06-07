@@ -84,8 +84,33 @@
 (re-frame/reg-event-fx
  ::load-project
  (fn [{:keys [db]} [_ project-id]]
-   ;; TODO - Implement this
-   {:db db}))
+   {:db (assoc db :loading-project? true)
+    :http-xhrio {:method          :get
+                 :uri             (str "http://localhost:8002/api/projects/" project-id)
+                 :timeout         8000
+                 :response-format (ajax/json-request-format {:keywords? true})
+                 :on-success      [::fetch-project-success]
+                 :on-failure      [::fetch-project-failure]
+                 }}))
+
+(re-frame/reg-event-fx
+ ::fetch-project-success
+ (fn [{:keys [db]} [_ response]]
+   (let [project (pj/->Project
+                  (:id response)
+                  (:name response)
+                  (:author response)
+                  (:created-at response))]
+     {:db (-> db
+              (assoc :current-project project)
+              (dissoc :loading-project?))})))
+
+(re-frame/reg-event-db
+ ::fetch-project-failure
+ (fn [db [_ error]]
+   (-> db
+       (assoc :request-error (str "Failed to fetch project: " (get-in error [:response :status-text])))
+       (dissoc :loading-project?))))
 
 (re-frame/reg-event-fx
  ::delete-projects

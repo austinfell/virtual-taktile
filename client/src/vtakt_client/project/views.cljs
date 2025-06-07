@@ -16,11 +16,11 @@
    :label "Refresh Projects"
    :on-click #(re-frame/dispatch [::events/load-projects])])
 
-(defn load-project [enabled?]
+(defn load-project [enabled? project-id]
   [re-com/button
    :label "Load Project"
    :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/load-projects])])
+   :on-click #(re-frame/dispatch [::events/load-project project-id])])
 
 (defn save-project-as-btn [enabled? project-name]
   ;; TODO - This needs a flow where if no project name is given, we will create a modal to select
