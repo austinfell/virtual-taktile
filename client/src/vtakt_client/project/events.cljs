@@ -88,7 +88,7 @@
     :http-xhrio {:method          :get
                  :uri             (str "http://localhost:8002/api/projects/" project-id)
                  :timeout         8000
-                 :response-format (ajax/json-request-format {:keywords? true})
+                 :response-format (ajax/json-response-format {:keywords? true})
                  :on-success      [::fetch-project-success]
                  :on-failure      [::fetch-project-failure]
                  }}))
@@ -101,6 +101,7 @@
                   (:name response)
                   (:author response)
                   (:created-at response))]
+     (println project)
      {:db (-> db
               (assoc :current-project project)
               (dissoc :loading-project?))})))
