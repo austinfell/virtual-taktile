@@ -101,9 +101,9 @@
                   (:name response)
                   (:author response)
                   (:created-at response))]
-     (println project)
      {:db (-> db
               (assoc :current-project project)
+              (assoc :selected-projects #{})
               (dissoc :loading-project?))})))
 
 (re-frame/reg-event-db

@@ -3,7 +3,6 @@
    [vtakt-client.styles :as general-styles]
    [vtakt-client.project.events :as events]
    [vtakt-client.project.subs :as subs]
-   [reagent.core :as reagent]
    [re-frame.core :as re-frame]
    [re-com.core :as re-com]))
 
