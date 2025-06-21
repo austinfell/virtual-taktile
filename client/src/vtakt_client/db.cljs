@@ -27,10 +27,6 @@
    :triggered-notes #{} ;; Depending on polyphony, those notes get filtered down
    :sounded-notes #{} ;; Depending on chord mode, those notes get converted into chords.
 
-   :midi-outputs nil
-   :selected-midi-channel 0
-   :selected-midi-output nil
-
    :current-project (pj/->Project nil "Untitled" "Austin Fell" "Tue May 20 09:41:07 EDT 2025")
    :project-name ""
    ;; TODO We should convert this to keyed map of ids to objects. Easier to work with.
@@ -38,4 +34,8 @@
    :selected-projects #{}
 
    :selected-track 1
-   :available-tracks [1 2 3 4]})
+   :available-tracks [1 2 3 4]
+
+   :midi-outputs nil
+   :selected-midi-channel 0
+   :selected-midi-output nil})
