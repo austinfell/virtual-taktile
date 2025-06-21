@@ -35,4 +35,7 @@
    :project-name ""
    ;; TODO We should convert this to keyed map of ids to objects. Easier to work with.
    :loaded-projects []
-   :selected-projects #{}})
+   :selected-projects #{}
+
+   :selected-track 1
+   :available-tracks #{1 2 3 4}})
