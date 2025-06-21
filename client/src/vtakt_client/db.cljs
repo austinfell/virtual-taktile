@@ -38,4 +38,4 @@
    :selected-projects #{}
 
    :selected-track 1
-   :available-tracks #{1 2 3 4}})
+   :available-tracks [1 2 3 4]})
