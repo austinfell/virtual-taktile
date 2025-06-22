@@ -5,6 +5,7 @@
    [vtakt-client.keyboard.core :as kb]))
 
 (def num-tracks 4)
+(def tracks (into [] (range 1 (+ 1 num-tracks))))
 
 (def default-db
   {:name "re-frame"
@@ -36,8 +37,10 @@
    :selected-projects #{}
 
    :selected-track 1
-   :available-tracks (into [] (range 1 (+ 1 num-tracks)))
+   :available-tracks tracks
 
    :midi-outputs nil
-   :selected-midi-channel 0
-   :selected-midi-output nil})
+   ;; Selected midi data - both the device and the channel - is structured on a
+   ;; per track basis.
+   :per-track-midi-data (zipmap (range 1 (inc (count tracks)))
+                                (repeat {:midi-channel 0 :midi-output nil}))})

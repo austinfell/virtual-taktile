@@ -100,14 +100,14 @@
         removed-notes (if chord-mode? previous-sounded-notes (set/difference previous-sounded-notes new-sounded-notes))
         note-on-messages (map (fn [note]
                                 {:type :note-on
-                                 :channel (:selected-midi-channel db)
-                                 :device (:selected-midi-output db)
+                                 :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
+                                 :device (get-in db [:per-track-midi-data (:selected-track db) :midi-device])
                                  :data {:note (kb/note->midi-number note) :velocity 80}})
                               added-notes)
         note-off-messages (map (fn [note]
                                  {:type :note-off
-                                  :channel (:selected-midi-channel db)
-                                  :device (:selected-midi-output db)
+                                  :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
+                                  :device (get-in db [:per-track-midi-data (:selected-track db) :midi-device])
                                   :data {:note (kb/note->midi-number note) :velocity 0}})
                                removed-notes)
         midi-messages (concat note-off-messages note-on-messages)]

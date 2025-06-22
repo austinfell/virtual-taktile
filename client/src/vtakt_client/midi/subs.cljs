@@ -8,11 +8,13 @@
    (:midi-outputs db)))
 
 (re-frame/reg-sub
- ::selected-midi-output
+ ::selected-midi-output-for-track
  (fn [db _]
-   (:selected-midi-output db)))
+   (get-in db [:per-track-midi-data (:selected-track db) :midi-output])))
 
 (re-frame/reg-sub
- ::selected-midi-channel
+ ::selected-midi-channel-for-track
  (fn [db _]
-   (:selected-midi-channel db)))
+   (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])))
+
+

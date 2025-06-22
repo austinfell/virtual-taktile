@@ -36,8 +36,8 @@
 
 (defn midi-configurator []
   (let [midi-outputs @(re-frame/subscribe [::subs/midi-outputs])
-        selected-output @(re-frame/subscribe [::subs/selected-midi-output])
-        selected-channel @(re-frame/subscribe [::subs/selected-midi-channel])]
+        selected-output @(re-frame/subscribe [::subs/selected-midi-output-for-track])
+        selected-channel @(re-frame/subscribe [::subs/selected-midi-channel-for-track])]
     [re-com/v-box
      :class (general-styles/configurator-container)
      :gap "15px"
@@ -58,5 +58,5 @@
           {:outputs midi-outputs
            :selected-output selected-output
            :selected-channel selected-channel
-           :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output %])
-           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel %])}]])]]))
+           :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output-for-track %])
+           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track %])}]])]]))

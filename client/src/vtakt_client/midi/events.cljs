@@ -21,12 +21,13 @@
 ;;
 ;; AKA - TBD.
 (reg-event-fx
- ::set-selected-midi-output
- (fn [{:keys [db]} [_ selected-midi-output]]
-   {:db (assoc db :selected-midi-output selected-midi-output)}))
+ ::set-selected-midi-output-for-track
+ (fn [{:keys [db]} [_ midi-output]]
+   (let [selected-track (:selected-track db)]
+     {:db (assoc-in db [:per-track-midi-data selected-track :midi-output] midi-output)})))
 
 (reg-event-fx
- ::set-selected-midi-channel
- (fn [{:keys [db]} [_ selected-midi-channel]]
-   {:db (assoc db :selected-midi-channel selected-midi-channel)}))
-
+ ::set-selected-midi-channel-for-track
+ (fn [{:keys [db]} [_ midi-channel]]
+   (let [selected-track (:selected-track db)]
+     {:db (assoc-in db [:per-track-midi-data selected-track :midi-channel] midi-channel)})))
