@@ -1,8 +1,10 @@
 (ns vtakt-client.db
-  (:require
+ (:require
    [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.project.core :as pj]
    [vtakt-client.keyboard.core :as kb]))
+
+(def num-tracks 4)
 
 (def default-db
   {:name "re-frame"
@@ -34,7 +36,7 @@
    :selected-projects #{}
 
    :selected-track 1
-   :available-tracks [1 2 3 4]
+   :available-tracks (into [] (range 1 (+ 1 num-tracks)))
 
    :midi-outputs nil
    :selected-midi-channel 0
