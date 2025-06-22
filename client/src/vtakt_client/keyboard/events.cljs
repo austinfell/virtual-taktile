@@ -101,16 +101,17 @@
         note-on-messages (map (fn [note]
                                 {:type :note-on
                                  :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
-                                 :device (get-in db [:per-track-midi-data (:selected-track db) :midi-device])
+                                 :device (get-in db [:per-track-midi-data (:selected-track db) :midi-output])
                                  :data {:note (kb/note->midi-number note) :velocity 80}})
                               added-notes)
         note-off-messages (map (fn [note]
                                  {:type :note-off
                                   :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
-                                  :device (get-in db [:per-track-midi-data (:selected-track db) :midi-device])
+                                  :device (get-in db [:per-track-midi-data (:selected-track db) :midi-output])
                                   :data {:note (kb/note->midi-number note) :velocity 0}})
                                removed-notes)
         midi-messages (concat note-off-messages note-on-messages)]
+    (println midi-messages)
     {:midi-messages midi-messages
      :triggered-notes new-triggered-notes
      :sounded-notes new-sounded-notes}))

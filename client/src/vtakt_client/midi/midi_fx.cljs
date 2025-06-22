@@ -60,9 +60,11 @@
                            :note-off [(:note data) (:velocity data)])]
           (.send output (clj->js (cons status-byte data-bytes)))
           (when on-success
+            (print "succ")
             (dispatch on-success)))))
     (catch js/Error e
       (when on-failure
+        (print "fail")
         (dispatch on-failure)))))
 
 (reg-fx
