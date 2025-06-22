@@ -42,7 +42,7 @@
      :class (general-styles/configurator-container)
      :gap "15px"
      :children
-     [ [re-com/title
+     [[re-com/title
        :label "MIDI Configuration"
        :level :level2]
       (if (empty? midi-outputs)

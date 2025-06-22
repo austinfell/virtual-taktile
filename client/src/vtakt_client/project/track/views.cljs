@@ -14,8 +14,11 @@
      :class (general-styles/configurator-container)
      :gap "15px"
      :children
-     [[re-com/horizontal-tabs
-      :model @selected-track
-      :tabs (mapv (fn [track] {:id track :label (str track)}) @available-tracks)
-      :on-change #(re-frame/dispatch [::events/set-selected-track %])]]]))
+     [[re-com/title
+       :label "Track Selection"
+       :level :level2]
+      [re-com/horizontal-tabs
+       :model @selected-track
+       :tabs (mapv (fn [track] {:id track :label (str track)}) @available-tracks)
+       :on-change #(re-frame/dispatch [::events/set-selected-track %])]]]))
 
