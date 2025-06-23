@@ -13,9 +13,59 @@ navigate to a restclient block and C-c C-c.
   }
 #+END_SRC
 
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "0a930070-a1ad-421e-ae32-afe1e57dc051"
+}
+// POST http://localhost:8002/api/projects
+// HTTP/1.1 201 Created
+// Server: Jetty(12.0.16)
+// Location: /api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.018390s
+#+END_SRC
+
 * Listing Projects
 #+BEGIN_SRC restclient
   GET http://localhost:8002/api/projects
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+[
+  {
+    "id": "0a930070-a1ad-421e-ae32-afe1e57dc051",
+    "name": "another",
+    "author": "test",
+    "created-at": "2025-06-23T04:19:42.914Z"
+  },
+  {
+    "id": "360a87a7-0a8d-4525-94e7-1b00b768cf5c",
+    "name": "test12345",
+    "author": "Austin Fell",
+    "created-at": "2025-06-23T03:57:07.591Z"
+  },
+  {
+    "id": "cbf9ba84-f10e-4941-be59-1ec985a0ef77",
+    "name": "another",
+    "author": "test",
+    "created-at": "2025-06-23T04:03:35.098Z"
+  }
+]
+// GET http://localhost:8002/api/projects
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.009550s
 #+END_SRC
 
 * Retrieve A Individual Project
@@ -43,4 +93,100 @@ Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
   DELETE http://localhost:8002/api/projects/f33bc934-11bb-4b4c-a105-1e4baa656345
+#+END_SRC
+
+* Create a pattern
+#+BEGIN_SRC restclient
+POST http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051/patterns
+Content-Type: application/json
+{
+  "name": "Main Beat",
+  "length": 16
+}
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "e5231ffa-8ba3-4252-988e-e5da140ec7e8"
+}
+// POST http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051/patterns
+// HTTP/1.1 201 Created
+// Server: Jetty(12.0.16)
+// Location: /api/patterns/e5231ffa-8ba3-4252-988e-e5da140ec7e8
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.007318s
+#+END_SRC
+
+* Create a track on the pattern
+#+BEGIN_SRC restclient
+POST http://localhost:8002/api/patterns/e5231ffa-8ba3-4252-988e-e5da140ec7e8/tracks
+Content-Type: application/json
+{
+  "number": 1,
+  "midi-channel": 0,
+  "midi-device": "external-synth-1"
+}
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "18ba467c-7ece-4f5f-81ae-36762529a28d"
+}
+// POST http://localhost:8002/api/patterns/e5231ffa-8ba3-4252-988e-e5da140ec7e8/tracks
+// HTTP/1.1 201 Created
+// Server: Jetty(12.0.16)
+// Location: /api/tracks/18ba467c-7ece-4f5f-81ae-36762529a28d
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.006758s
+#+END_SRC
+
+* Get information about individual project
+#+BEGIN_SRC restclient
+  GET http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "0a930070-a1ad-421e-ae32-afe1e57dc051",
+  "name": "another",
+  "author": "test",
+  "created-at": "2025-06-23T04:19:42.914Z",
+  "updated-at": "2025-06-23T04:20:16.926Z",
+  "bpm": 409.0,
+  "patterns": [
+    {
+      "id": "e5231ffa-8ba3-4252-988e-e5da140ec7e8",
+      "name": "Main Beat",
+      "length": 16,
+      "tracks": [
+        {
+          "id": "18ba467c-7ece-4f5f-81ae-36762529a28d",
+          "number": 1,
+          "midi-channel": 0,
+          "midi-device": "external-synth-1"
+        }
+      ]
+    }
+  ]
+}
+// GET http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.015238s
 #+END_SRC

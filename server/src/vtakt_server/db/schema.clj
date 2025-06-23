@@ -92,7 +92,17 @@
     :db/isComponent true
     :db/doc "Steps in this track"}
 
-   ;; Steps
+   {:db/ident :track/midi-channel
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one
+    :db/doc "Midi channel for this track to output on (0-15 if defined)"}
+
+   {:db/ident :track/midi-device
+    :db/valueType :db.type/string
+    :db/cardinality :db.cardinality/one
+    :db/doc "Identifier of the device this track will transmit on."}
+
+;; Steps
    {:db/ident :step/id
     :db/valueType :db.type/uuid
     :db/cardinality :db.cardinality/one
