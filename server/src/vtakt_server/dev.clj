@@ -10,5 +10,4 @@
   (restart))
 
 (restart)
-(reset-db)
 

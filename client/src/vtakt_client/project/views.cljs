@@ -4,6 +4,7 @@
    [vtakt-client.project.events :as events]
    [vtakt-client.project.subs :as subs]
    [re-frame.core :as re-frame]
+   [reagent.core :as reagent]
    [re-com.core :as re-com]))
 
 (defn project-name-display []
@@ -63,9 +64,10 @@
                                                                  [delete-projects
                                                                   (> (count @selected-projects) 0)
                                                                   @selected-projects]]]]]]]))
-
 (defn save-project-as []
-  (let [project-name (re-frame/subscribe [::subs/project-name])]
+  (let [project-name (re-frame/subscribe [::subs/project-name])
+        new-name (reagent/atom @project-name)] ; local state
+    (fn []
       [re-com/v-box
        :class (general-styles/configurator-container)
        :gap "15px"
@@ -76,13 +78,12 @@
         [re-com/h-box
          :gap "15px"
          :children [[re-com/input-text
-                     :model @project-name
+                     :model @new-name
                      :change-on-blur? false
-                     :on-change #(re-frame/dispatch [::events/set-project-name %])]
+                     :on-change #(reset! new-name %)]
                     [re-com/button
                      :label "Save As"
-                     :disabled? (empty? @project-name)
+                     :disabled? (empty? @new-name)
                      :on-click #(do
-                                  (re-frame/dispatch [::events/save-project-as @project-name])
-                                  (re-frame/dispatch [::events/set-project-name ""]))]]]]]))
-
+                                  (re-frame/dispatch [::events/save-project-as @new-name])
+                                  (reset! new-name ""))]]]]])))

@@ -6,11 +6,6 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-db
- ::set-project-name
- (fn [db [_ project-name]]
-   (assoc db :project-name project-name)))
-
-(re-frame/reg-event-db
  ::set-selected-projects
  (fn [db [_ project-ids]]
    (assoc db :selected-projects project-ids)))
@@ -18,29 +13,21 @@
 (re-frame/reg-event-fx
  ::save-project-as
  (fn [{:keys [db]} [_ project-name]]
-   ;; Eventually, I want to generate this and the associated ID server side.
-   {:db (assoc db :saving-project? true)
-    :http-xhrio {:method          :post
-                 :uri             "http://localhost:8002/api/projects"
-                 :params {:name project-name
-                          :author "Austin Fell"
-                          :bpm (double 402)}
+   (let [project-to-save (assoc (:current-project db) :name project-name)]
+     {:db (assoc db :saving-project? true)
+      :http-xhrio {:method          :post
+                   :uri             "http://localhost:8002/api/projects"
+                   :params project-to-save
+                   :timeout         8000
+                   :format          (ajax/json-request-format)
+                   :response-format (ajax/json-response-format {:keywords? true})
+                   :on-success      [::save-project-success project-to-save]
+                   :on-failure      [::save-project-failure]}})))
 
-                 :timeout         8000
-                 :format          (ajax/json-request-format)
-                 :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [::save-project-success {:name project-name
-                                                           :author "Austin Fell"
-                                                           :bpm (double 402)}]
-                 :on-failure      [::save-project-failure]}}))
-
-
-;; TODO - Still need to feed in the original parameters I used to
-;; actually build the post request.
 (re-frame/reg-event-fx
  ::save-project-success
- (fn [{:keys [db]} [_ saved-project]]
-     {:db (assoc db :current-project (pj/map->Project saved-project))
+ (fn [{:keys [db]} [_ saved-project response]]
+     {:db (assoc db :current-project (assoc saved-project :id (:id response)))
       :dispatch [::load-projects]}))
 
 (re-frame/reg-event-db
@@ -63,13 +50,7 @@
 (re-frame/reg-event-fx
  ::fetch-projects-success
  (fn [{:keys [db]} [_ response]]
-   (let [projects (mapv (fn [project]
-                          (pj/->Project
-                           (:id project)
-                           (:name project)
-                           (:author project)
-                           (:created-at project)))
-                        response)]
+   (let [projects (mapv pj/map->Project response)]
      {:db (-> db
               (assoc :loaded-projects projects)
               (dissoc :loading-projects?))})))
@@ -96,11 +77,7 @@
 (re-frame/reg-event-fx
  ::fetch-project-success
  (fn [{:keys [db]} [_ response]]
-   (let [project (pj/->Project
-                  (:id response)
-                  (:name response)
-                  (:author response)
-                  (:created-at response))]
+   (let [project (pj/map->Project response)]
      {:db (-> db
               (assoc :current-project project)
               (assoc :selected-projects #{})
