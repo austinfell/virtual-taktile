@@ -118,8 +118,12 @@
        ;; TODO - Handle error (ownership changed, etc.)
        ;; Could dispatch another event with project-id and error details
        )
-     (let [remaining (dec (:pending-deletes db))]
+     (let [remaining (dec (:pending-deletes db))
+           active-project-deleted? (= project-id (get-in db [:current-project :id]))]
        (if (zero? remaining)
-         {:db (-> db (dissoc :pending-deletes :deleting-projects?))
+         {:db (cond-> db
+                  true (dissoc :pending-deletes :deleting-projects?)
+                  active-project-deleted? (assoc-in [:current-project :id] nil)
+                  active-project-deleted? (assoc-in [:current-project :name] "Untitled"))
           :dispatch [::load-projects]}
          {:db (assoc db :pending-deletes remaining)})))))

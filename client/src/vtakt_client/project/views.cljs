@@ -55,9 +55,10 @@
                                                       :class (styles/project-list)
                                                       :on-change #(re-frame/dispatch [::events/set-selected-projects %])
                                                       :id-fn :id
-                                                      :label-fn #(if (= (:name @current-project) (:name %))
-                                                                   [:p {:class (styles/project-name)} (:name %)]
-                                                                   [:p (:name %)])
+                                                      :label-fn (fn [{:keys [name]}]
+                                                                  (if (= (:name @current-project) name)
+                                                                    [:p {:class (styles/project-name)} name]
+                                                                    [:p name]))
                                                       :multi-select? true]
                                                      [re-com/v-box
                                                       :gap "10px"
