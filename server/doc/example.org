@@ -13,23 +13,6 @@ navigate to a restclient block and C-c C-c.
   }
 #+END_SRC
 
-#+RESULTS:
-#+BEGIN_SRC js
-{
-  "id": "0a930070-a1ad-421e-ae32-afe1e57dc051"
-}
-// POST http://localhost:8002/api/projects
-// HTTP/1.1 201 Created
-// Server: Jetty(12.0.16)
-// Location: /api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051
-// Content-Type: application/json; charset=utf-8
-// Access-Control-Allow-Origin: *
-// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-// Access-Control-Allow-Headers: Content-Type, Authorization
-// Transfer-Encoding: chunked
-// Request duration: 0.018390s
-#+END_SRC
-
 * Listing Projects
 #+BEGIN_SRC restclient
   GET http://localhost:8002/api/projects
@@ -39,22 +22,16 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC js
 [
   {
-    "id": "0a930070-a1ad-421e-ae32-afe1e57dc051",
-    "name": "another",
-    "author": "test",
-    "created-at": "2025-06-23T04:19:42.914Z"
-  },
-  {
-    "id": "360a87a7-0a8d-4525-94e7-1b00b768cf5c",
-    "name": "test12345",
+    "id": "7cfc5c24-56ce-4505-a010-2f2f29fd192f",
+    "name": "test",
     "author": "Austin Fell",
-    "created-at": "2025-06-23T03:57:07.591Z"
+    "created-at": "2025-06-25T03:26:50.741Z"
   },
   {
-    "id": "cbf9ba84-f10e-4941-be59-1ec985a0ef77",
-    "name": "another",
-    "author": "test",
-    "created-at": "2025-06-23T04:03:35.098Z"
+    "id": "eb11c1f3-5825-437c-b84d-e0c1d16b2b9d",
+    "name": "testing 1234",
+    "author": "Austin Fell",
+    "created-at": "2025-06-25T03:26:55.636Z"
   }
 ]
 // GET http://localhost:8002/api/projects
@@ -65,14 +42,35 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.009550s
+// Request duration: 0.120323s
 #+END_SRC
 
 * Retrieve A Individual Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/98750ef0-a1c9-4810-9e3a-9bb8388a912a
+  GET http://localhost:8002/api/projects/7cfc5c24-56ce-4505-a010-2f2f29fd192f
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "7cfc5c24-56ce-4505-a010-2f2f29fd192f",
+  "name": "test",
+  "author": "Austin Fell",
+  "created-at": "2025-06-25T03:26:50.741Z",
+  "updated-at": "2025-06-25T03:26:50.741Z",
+  "bpm": 120.0
+}
+// GET http://localhost:8002/api/projects/7cfc5c24-56ce-4505-a010-2f2f29fd192f
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.003699s
 #+END_SRC
 
 * Update Project

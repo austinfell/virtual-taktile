@@ -33,7 +33,6 @@
    :current-project (pj/map->Project {:id nil
                                       :name "Untitled"
                                       :author "Austin Fell"
-                                      :created-at "Tue May 20 09:41:07 EDT 2025"
                                       :bpm 120
                                       :patterns []})
 
