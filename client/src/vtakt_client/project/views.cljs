@@ -1,6 +1,7 @@
 (ns vtakt-client.project.views
   (:require
    [vtakt-client.styles :as general-styles]
+   [vtakt-client.project.styles :as styles]
    [vtakt-client.project.events :as events]
    [vtakt-client.project.subs :as subs]
    [re-frame.core :as re-frame]
@@ -44,13 +45,19 @@
      :class (general-styles/configurator-container)
      :gap "15px"
      :children [[re-com/title :label "Manage Projects" :level :level2]
-                [re-com/h-box :gap "15px" :children [[:p "Project: " (:name @current-project)]]]
+                [re-com/h-box :gap "15px" :children [[:p {:class (styles/project-name-container)} "Project: "
+                                                      [:span
+                                                       {:class (styles/project-name)}
+                                                       (:name @current-project)]]]]
                 [re-com/h-box :gap "15px" :children [[re-com/selection-list
                                                       :choices @loaded-projects
                                                       :model @selected-projects
+                                                      :class (styles/project-list)
                                                       :on-change #(re-frame/dispatch [::events/set-selected-projects %])
                                                       :id-fn :id
-                                                      :label-fn :name
+                                                      :label-fn #(if (= (:name @current-project) (:name %))
+                                                                   [:p {:class (styles/project-name)} (:name %)]
+                                                                   [:p (:name %)])
                                                       :multi-select? true]
                                                      [re-com/v-box
                                                       :gap "10px"
