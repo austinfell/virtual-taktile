@@ -35,12 +35,9 @@
   [conn project-id project-data]
   (let [db (d/db conn)
         existing-entity (d/pull db '[*] [:project/id project-id])
-        key-transforms {:name :project/name
-                        :author :project/author
-                        :bpm :project/bpm}
-        transformed-data (->> project-data
-                              (map (fn [[k v]] [(get key-transforms k k) v]))
-                              (into {}))
+        project-bpm (double (:bpm project-data))
+        project-name (:name project-data)
+        transformed-data (assoc (assoc existing-entity :project/name project-name) :project/bpm project-bpm)
         update-data (assoc transformed-data
                            :db/id (:db/id existing-entity)
                            :project/updated-at (Date.))

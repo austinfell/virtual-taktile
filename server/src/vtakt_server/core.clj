@@ -72,6 +72,7 @@
     (PUT "/api/projects/:id" [id :as {:keys [body]}]
       (let [project-id (java.util.UUID/fromString id)
             body-with-ids (keywordize-ids body)]
+        (println body-with-ids)
         (ops/update-project @db-conn project-id body-with-ids)
         (response {:id id})))
 

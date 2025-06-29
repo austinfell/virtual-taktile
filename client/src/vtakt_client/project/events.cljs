@@ -11,6 +11,68 @@
    (assoc db :selected-projects project-ids)))
 
 (re-frame/reg-event-fx
+ ::change-project-bpm
+ (fn [{:keys [db]} [_ new-project-bpm]]
+   (if (nil? (get-in db [:current-project :id]))
+     ;; New project - basically "save as"
+     (let [project-to-save (assoc (:current-project db) :bpm new-project-bpm)]
+       {:db (assoc db :saving-project? true)
+        :http-xhrio {:method          :post
+                     :uri             "http://localhost:8002/api/projects"
+                     :params          project-to-save
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success project-to-save]
+                     :on-failure      [::save-project-failure]}})
+
+     ;; Existing project - update via PUT
+     (let [current-project (:current-project db)
+           updated-project (assoc current-project :bpm new-project-bpm)]
+       {:db (-> db
+                (assoc :current-project updated-project)
+                (assoc :saving-project? true))
+        :http-xhrio {:method          :put
+                     :uri             (str "http://localhost:8002/api/projects/" (:id current-project))
+                     :params          updated-project
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success updated-project]
+                     :on-failure      [::save-project-failure]}}))))
+
+(re-frame/reg-event-fx
+ ::change-project-name
+ (fn [{:keys [db]} [_ new-project-name]]
+   (if (nil? (get-in db [:current-project :id]))
+     ;; New project - basically "save as"
+     (let [project-to-save (assoc (:current-project db) :name new-project-name)]
+       {:db (assoc db :saving-project? true)
+        :http-xhrio {:method          :post
+                     :uri             "http://localhost:8002/api/projects"
+                     :params          project-to-save
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success project-to-save]
+                     :on-failure      [::save-project-failure]}})
+
+     ;; Existing project - update via PUT
+     (let [current-project (:current-project db)
+           updated-project (assoc current-project :name new-project-name)]
+       {:db (-> db
+                (assoc :current-project updated-project)
+                (assoc :saving-project? true))
+        :http-xhrio {:method          :put
+                     :uri             (str "http://localhost:8002/api/projects/" (:id current-project))
+                     :params          updated-project
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success updated-project]
+                     :on-failure      [::save-project-failure]}}))))
+
+(re-frame/reg-event-fx
  ::save-project-as
  (fn [{:keys [db]} [_ project-name]]
    (let [project-to-save (assoc (:current-project db) :name project-name)]
