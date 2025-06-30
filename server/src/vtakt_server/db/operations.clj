@@ -18,12 +18,13 @@
 ;; ----- Project Operations -----
 (defn create-project
   "Create a new VTakt project"
-  [conn {:keys [name author bpm] :or {bpm 120.0}}]
+  [conn {:keys [name author bpm patterns] :or {bpm 120.0 patterns []}}]
   (let [project-id (UUID/randomUUID)
         project-data {:db/id "new-project"
                       :project/id project-id
                       :project/name name
                       :project/author author
+                      :project/patterns patterns
                       :project/bpm (double bpm)
                       :project/created-at (Date.)
                       :project/updated-at (Date.)}
@@ -74,9 +75,13 @@
 (defn list-projects
   "List all VTakt projects"
   [db]
-  (d/q '[:find [(pull ?e [:project/id :project/name :project/author :project/created-at]) ...]
-                         :where [?e :project/id]]
-                       db))
+  (d/q '[:find [(pull ?e [:project/id
+                          :project/name
+                          :project/author
+                          :project/created-at
+                          {:project/patterns [:pattern/id]}]) ...]
+         :where [?e :project/id]]
+       db))
 
 ;; ----- Pattern Operations -----
 

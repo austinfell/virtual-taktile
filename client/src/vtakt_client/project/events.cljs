@@ -14,19 +14,11 @@
  ::change-project-bpm
  (fn [{:keys [db]} [_ new-project-bpm]]
    (if (nil? (get-in db [:current-project :id]))
-     ;; New project - basically "save as"
-     (let [project-to-save (assoc (:current-project db) :bpm new-project-bpm)]
-       {:db (assoc db :saving-project? true)
-        :http-xhrio {:method          :post
-                     :uri             "http://localhost:8002/api/projects"
-                     :params          project-to-save
-                     :timeout         8000
-                     :format          (ajax/json-request-format)
-                     :response-format (ajax/json-response-format {:keywords? true})
-                     :on-success      [::save-project-success project-to-save]
-                     :on-failure      [::save-project-failure]}})
+     ;; New project - nothing exists server side for us to sync to... Wait for a project name
+     ;; to be defined.
+     {:db (assoc-in db [:current-project :bpm] new-project-bpm)}
 
-     ;; Existing project - update via PUT
+     ;; Existing project - update via PUT. Only update client side once everything is done.
      (let [current-project (:current-project db)
            updated-project (assoc current-project :bpm new-project-bpm)]
        {:db (-> db

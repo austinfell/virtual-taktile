@@ -19,14 +19,6 @@
    :disabled? (not enabled?)
    :on-click #(re-frame/dispatch [::events/load-project project-id])])
 
-(defn save-project-as-btn [enabled? project-name]
-  ;; TODO - This needs a flow where if no project name is given, we will create a modal to select
-  ;; a project name.
-  [re-com/button
-   :label "Save Project As"
-   :disabled? (not enabled?)
-   :on-click #(re-frame/dispatch [::events/save-project-as project-name])])
-
 (defn delete-projects [enabled? project-ids]
   [re-com/button
    :label "Delete Project(s)"
@@ -50,7 +42,9 @@
                   :on-key-down (fn [e]
                                  (case (.-key e)
                                    "Enter" (do
-                                             (re-frame/dispatch [event @new-value])
+                                             (re-frame/dispatch [event (case field-type
+                                                                         :string @new-value
+                                                                         :number (js/parseFloat @new-value))])
                                              (reset! editing false))
                                    "Escape" (reset! editing false)
                                    nil))
@@ -89,17 +83,14 @@
                                                       :class (styles/project-list)
                                                       :on-change #(re-frame/dispatch [::events/set-selected-projects %])
                                                       :id-fn :id
-                                                      :label-fn (fn [{:keys [name]}]
-                                                                  (if (= (:name @current-project) name)
+                                                      :label-fn (fn [{:keys [id name]}]
+                                                                  (if (= (:id @current-project) id)
                                                                     [:p {:class (styles/project-name)} name]
                                                                     [:p name]))
                                                       :multi-select? true]
                                                      [re-com/v-box
                                                       :gap "10px"
                                                       :children [[refresh-projects]
-                                                                 [save-project-as-btn
-                                                                  (< (count @selected-projects) 2)
-                                                                  (first @selected-projects)]
                                                                  [load-project
                                                                   (= (count @selected-projects) 1)
                                                                   (first @selected-projects)]

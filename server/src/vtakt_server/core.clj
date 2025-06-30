@@ -30,6 +30,7 @@
 (defn prepare-response
   "Convert Datomic entities to a format suitable for JSON responses"
   [data]
+  (println data)
   (walk/postwalk
    (fn [x]
      (cond
@@ -55,7 +56,12 @@
   (defroutes app-routes
     ;; Project routes
     (GET "/api/projects" []
-      (response (prepare-response (ops/list-projects (d/db @db-conn)))))
+      (response
+       (prepare-response
+        ;; Not always a guarantee datomic will give us patterns. This normalizes it for the
+        ;; client.
+        (->> (ops/list-projects (d/db @db-conn))
+             (map #(assoc % :project/patterns (get % :project/patterns [])))))))
 
     (GET "/api/projects/:id" [id]
       (let [project-id (java.util.UUID/fromString id)

@@ -47,16 +47,22 @@
     :db/doc "Sounds in this project"}
 
    ;; Patterns
-   {:db/ident :pattern/id
-    :db/valueType :db.type/uuid
+   {:db/ident :pattern/bank
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one
+    :db/doc "Pattern bank (1-8)"}
+
+   {:db/ident :pattern/number
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one
+    :db/doc "Pattern number (1-16)"}
+
+   {:db/ident :pattern/bank+number
+    :db/valueType :db.type/tuple
+    :db/tupleAttrs [:pattern/bank :pattern/number]
     :db/cardinality :db.cardinality/one
     :db/unique :db.unique/identity
-    :db/doc "Unique identifier for a pattern"}
-
-   {:db/ident :pattern/name
-    :db/valueType :db.type/string
-    :db/cardinality :db.cardinality/one
-    :db/doc "Name of the pattern"}
+    :db/doc "Unique (bank, number) pair"}
 
    {:db/ident :pattern/length
     :db/valueType :db.type/long

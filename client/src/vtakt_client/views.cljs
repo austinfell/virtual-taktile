@@ -74,8 +74,7 @@
               [kb/keyboard]
               [midi/midi-configurator]
               [project/save-project-as]
-              [project/project-manager]
-              [track/track-selector]]])
+              [project/project-manager]]])
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])

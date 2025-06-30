@@ -4,50 +4,41 @@
    [vtakt-client.project.core :as pj]
    [vtakt-client.keyboard.core :as kb]))
 
-(def num-tracks 4)
-(def tracks (into [] (range 1 (+ 1 num-tracks))))
-
 (def default-db
   {:name "re-frame"
-   :keyboard-root (kb/create-note :c 4)
-
-   :selected-scale :chromatic
-
-   :keyboard-mode :chromatic
-   :keyboard-transpose 0
-   :scales kb/scales
 
    ;;
-   ;; Chord mode
+   ;; (Currently static) chord data. May be user definable in the future.
    ;;
    :chromatic-chords chord/chromatic-chords
    :diatonic-chords chord/diatonic-chords
 
+   ;;
+   ;; Keyboard data
+   ;;
+   ;; -> Base keyboard configuration
+   :keyboard-root (kb/create-note :c 4)
+   :selected-scale :chromatic
+   :keyboard-mode :chromatic
+   :keyboard-transpose 0
+   :scales kb/scales
+   ;; -> Chord mode selections
    :selected-chromatic-chord :single-note
    :selected-diatonic-chord :single-note
-
-   :pressed-notes [] ;; User presses some arbitrary set of notes...
+   ;; -> Active keyboard state - "what is being pressed down"
+   :pressed-notes []    ;; User presses some arbitrary set of notes...
    :triggered-notes #{} ;; Depending on polyphony, those notes get filtered down
-   :sounded-notes #{} ;; Depending on chord mode, those notes get converted into chords.
+   :sounded-notes #{}   ;; Depending on chord mode, those notes get converted into chords.
 
+   ;;
+   ;; Base project data
+   ;;
+   :loaded-projects []
+   :selected-projects #{}
    :current-project (pj/map->Project {:id nil
                                       :name "Untitled"
                                       :author "Austin Fell"
                                       :bpm 120
                                       :patterns []})
-
-   ;; TODO We should convert this to keyed map of ids to objects. Easier to work with.
-   :loaded-projects []
-   :selected-projects #{}
-
-   ;; This is scoped to the current project.
-   :loaded-patterns []
-
-   :selected-track 1
-   :available-tracks tracks
-
-   :midi-outputs nil
-   ;; Selected midi data - both the device and the channel - is structured on a
-   ;; per track basis.
-   :per-track-midi-data (zipmap (range 1 (inc (count tracks)))
-                                (repeat {:midi-channel 0 :midi-output nil}))})
+   ;; -> Pattern data scoped to the current active project.
+   :current-patterns []})
