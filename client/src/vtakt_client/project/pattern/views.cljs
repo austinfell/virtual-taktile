@@ -4,11 +4,13 @@
    [vtakt-client.project.pattern.styles :as styles]
    [vtakt-client.styles :as general-styles]
    [vtakt-client.project.pattern.subs :as subs]
+   [vtakt-client.project.pattern.events :as events]
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
 (defn bank-and-pattern-select []
   (let [active-bank (re-frame/subscribe [::subs/active-bank])
+        active-pattern-in-bank (re-frame/subscribe [::subs/active-pattern-in-bank])
         selected-bank (reagent/atom @active-bank)]
     (fn []
       [re-com/v-box
@@ -40,7 +42,11 @@
                             (let [pattern-num (+ (* row 8) col 1)]
                               [:div
                                {:key pattern-num
-                                :class (styles/pattern)}
+                                :on-click #(re-frame/dispatch [::events/set-bank-and-pattern @selected-bank pattern-num])
+                                :class [(styles/pattern)
+                                        (when (and (= @selected-bank @active-bank)
+                                                   (= pattern-num @active-pattern-in-bank))
+                                          (styles/pattern-active))]}
                                (str pattern-num)]))
                           (range 8))])
                  (range 2))]]]]])))
