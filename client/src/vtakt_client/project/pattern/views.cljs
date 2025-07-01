@@ -1,6 +1,7 @@
 (ns vtakt-client.project.pattern.views
   (:require
    [re-com.core :as re-com :refer [at]]
+   [vtakt-client.project.pattern.styles :as styles]
    [vtakt-client.styles :as general-styles]
    [vtakt-client.project.pattern.subs :as subs]
    [re-frame.core :as re-frame]
@@ -39,11 +40,7 @@
                             (let [pattern-num (+ (* row 8) col 1)]
                               [:div
                                {:key pattern-num
-                                :style {:display "flex"
-                                        :align-items "center"
-                                        :justify-content "center"
-                                        :width "37.2px"
-                                        :height "37.2px"}}
+                                :class (styles/pattern)}
                                (str pattern-num)]))
                           (range 8))])
                  (range 2))]]]]])))
