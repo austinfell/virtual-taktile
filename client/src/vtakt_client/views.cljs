@@ -4,7 +4,7 @@
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
    [vtakt-client.project.views :as project]
-   [vtakt-client.project.track.views :as track]
+   [vtakt-client.project.pattern.views :as pattern]
    [vtakt-client.midi.views :as midi]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
@@ -74,7 +74,8 @@
               [kb/keyboard]
               [midi/midi-configurator]
               [project/save-project-as]
-              [project/project-manager]]])
+              [project/project-manager]
+              [pattern/bank-and-pattern-select]]])
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])
