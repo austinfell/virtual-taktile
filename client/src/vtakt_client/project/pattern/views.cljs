@@ -26,4 +26,24 @@
                          {:id bank-num
                           :label (str bank-num)})
                        (range 1 9))
-           :on-change #(reset! selected-bank %)]]]]])))
+           :on-change #(reset! selected-bank %)]
+
+          [re-com/v-box
+           :gap "4px"
+           :children
+           (mapv (fn [row]
+                   [re-com/h-box
+                    :gap "4px"
+                    :children
+                    (mapv (fn [col]
+                            (let [pattern-num (+ (* row 8) col 1)]
+                              [:div
+                               {:key pattern-num
+                                :style {:display "flex"
+                                        :align-items "center"
+                                        :justify-content "center"
+                                        :width "37.2px"
+                                        :height "37.2px"}}
+                               (str pattern-num)]))
+                          (range 8))])
+                 (range 2))]]]]])))
