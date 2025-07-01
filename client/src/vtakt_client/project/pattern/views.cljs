@@ -42,7 +42,7 @@
                             (let [pattern-num (+ (* row 8) col 1)]
                               [:div
                                {:key pattern-num
-                                :on-click #(re-frame/dispatch [::events/set-bank-and-pattern @selected-bank pattern-num])
+                                :on-click #(re-frame/dispatch [::events/set-active-pattern @selected-bank pattern-num])
                                 :class [(styles/pattern)
                                         (when (and (= @selected-bank @active-bank)
                                                    (= pattern-num @active-pattern-in-bank))

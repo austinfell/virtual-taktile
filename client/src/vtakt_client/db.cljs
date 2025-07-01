@@ -41,6 +41,5 @@
                                       :bpm 120
                                       :patterns []})
    ;; -> Pattern data scoped to the current active project.
-   ;; -> Active pattern selections
-   :active-bank 1
-   :active-pattern-in-bank 1})
+   :active-pattern [1 1] ;; bank-pattern tuple
+   })
