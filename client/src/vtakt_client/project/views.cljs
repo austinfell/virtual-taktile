@@ -99,7 +99,7 @@
                                                                   @selected-projects]]]]]]]))
 (defn save-project-as []
   (let [project-name (re-frame/subscribe [::subs/project-name])
-        new-name (reagent/atom @project-name)] ; local state
+        new-name (reagent/atom @project-name)]
     (fn []
       [re-com/v-box
        :class (general-styles/configurator-container)

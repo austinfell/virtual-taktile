@@ -2,11 +2,13 @@
   (:require
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.styles :as general-styles]
+   [vtakt-client.project.pattern.subs :as subs]
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
 (defn bank-and-pattern-select []
-  (let [selected-bank (reagent/atom 1)]
+  (let [active-bank (re-frame/subscribe [::subs/active-bank])
+        selected-bank (reagent/atom @active-bank)]
     (fn []
       [re-com/v-box
        :class (general-styles/configurator-container)

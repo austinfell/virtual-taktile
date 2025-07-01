@@ -42,5 +42,5 @@
                                       :patterns []})
    ;; -> Pattern data scoped to the current active project.
    ;; -> Active pattern selections
-   :active-bank 0
-   :active-pattern-in-bank 0})
+   :active-bank 1
+   :active-pattern-in-bank 1})
