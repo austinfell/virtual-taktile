@@ -11,7 +11,7 @@
                  [ring/ring-json "0.5.1"]
                  [ring/ring-devel "1.9.5"]
                  [info.sunng/ring-jetty9-adapter "0.36.1"]
-                 [com.datomic/datomic-free "0.9.5697"]
+                 [com.datomic/peer "1.0.7387"]
                  [compojure "1.7.0"]
                  [org.clojure/core.async "1.7.701"]
                  [org.clojure/tools.logging "1.3.0"]
