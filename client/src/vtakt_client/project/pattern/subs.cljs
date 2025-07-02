@@ -5,11 +5,9 @@
 (re-frame/reg-sub
  ::active-bank
  (fn [db _]
-   ;; First dimension in tuple is bank
-   (first (:active-pattern db))))
+   (:active-bank db)))
 
 (re-frame/reg-sub
- ::active-pattern-in-bank
+ ::active-pattern
  (fn [db _]
-   ;; Second dimension in tuple is pattern
-   (second (:active-pattern db))))
+   (:active-pattern db)))

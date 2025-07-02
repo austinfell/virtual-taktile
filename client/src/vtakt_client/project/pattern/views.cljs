@@ -10,7 +10,7 @@
 
 (defn bank-and-pattern-select []
   (let [active-bank (re-frame/subscribe [::subs/active-bank])
-        active-pattern-in-bank (re-frame/subscribe [::subs/active-pattern-in-bank])
+        active-pattern (re-frame/subscribe [::subs/active-pattern])
         selected-bank (reagent/atom @active-bank)]
     (fn []
       [re-com/v-box
@@ -45,7 +45,7 @@
                                 :on-click #(re-frame/dispatch [::events/set-active-pattern @selected-bank pattern-num])
                                 :class [(styles/pattern)
                                         (when (and (= @selected-bank @active-bank)
-                                                   (= pattern-num @active-pattern-in-bank))
+                                                   (= pattern-num @active-pattern))
                                           (styles/pattern-active))]}
                                (str pattern-num)]))
                           (range 8))])

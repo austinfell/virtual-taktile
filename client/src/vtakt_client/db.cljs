@@ -40,6 +40,7 @@
                                       :author "Austin Fell"
                                       :bpm 120
                                       :patterns []})
-   ;; -> Pattern data scoped to the current active project.
-   :active-pattern [1 1] ;; bank-pattern tuple
+   ;; -> Pattern & track selections
+   :active-bank 1
+   :active-pattern 1
    :active-track 1})
