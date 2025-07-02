@@ -3,11 +3,6 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
- ::selected-track
+ ::active-track
  (fn [db _]
-   (:selected-track db)))
-
-(re-frame/reg-sub
- ::available-tracks
- (fn [db _]
-   (:available-tracks db)))
+   (:active-track db)))

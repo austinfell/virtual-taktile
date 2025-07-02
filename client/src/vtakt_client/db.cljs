@@ -42,4 +42,4 @@
                                       :patterns []})
    ;; -> Pattern data scoped to the current active project.
    :active-pattern [1 1] ;; bank-pattern tuple
-   })
+   :active-track 1})

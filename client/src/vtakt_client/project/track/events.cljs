@@ -3,6 +3,6 @@
    [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-db
- ::set-selected-track
- (fn [db [_ track-number]]
-   (assoc db :selected-track track-number)))
+ ::set-active-track
+ (fn [db [_ track]]
+   (assoc db :active-track track)))
