@@ -22,16 +22,16 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC js
 [
   {
-    "id": "7cfc5c24-56ce-4505-a010-2f2f29fd192f",
-    "name": "test",
+    "id": "f59d7e6a-aee7-4afa-bc45-1c7f5361cee7",
+    "name": "testa",
     "author": "Austin Fell",
-    "created-at": "2025-06-25T03:26:50.741Z"
-  },
-  {
-    "id": "eb11c1f3-5825-437c-b84d-e0c1d16b2b9d",
-    "name": "testing 1234",
-    "author": "Austin Fell",
-    "created-at": "2025-06-25T03:26:55.636Z"
+    "created-at": "2025-07-03T03:18:59.613Z",
+    "patterns": [
+      {
+        "bank": 1,
+        "number": 1
+      }
+    ]
   }
 ]
 // GET http://localhost:8002/api/projects
@@ -42,7 +42,7 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.120323s
+// Request duration: 0.006851s
 #+END_SRC
 
 * Retrieve A Individual Project
@@ -95,29 +95,31 @@ project exists in the DB matching that ID.
 
 * Create a pattern
 #+BEGIN_SRC restclient
-POST http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051/patterns
-Content-Type: application/json
-{
-  "name": "Main Beat",
-  "length": 16
-}
+  POST http://localhost:8002/api/projects/f59d7e6a-aee7-4afa-bc45-1c7f5361cee7/patterns
+  Content-Type: application/json
+  {
+    "name": "Main Beat",
+    "length": 16,
+    "bank": 1,
+    "number": 1
+  }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "e5231ffa-8ba3-4252-988e-e5da140ec7e8"
+  "id": "[1 1]"
 }
-// POST http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051/patterns
+// POST http://localhost:8002/api/projects/f59d7e6a-aee7-4afa-bc45-1c7f5361cee7/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/patterns/e5231ffa-8ba3-4252-988e-e5da140ec7e8
+// Location: /api/patterns/[1 1]
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.007318s
+// Request duration: 0.010082s
 #+END_SRC
 
 * Create a track on the pattern

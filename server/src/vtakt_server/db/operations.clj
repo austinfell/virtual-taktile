@@ -80,7 +80,7 @@
                           :project/name
                           :project/author
                           :project/created-at
-                          {:project/patterns [:pattern/id]}]) ...]
+                          {:project/patterns [:pattern/bank :pattern/number]}]) ...]
          :where [?e :project/id]]
        db))
 
@@ -88,20 +88,20 @@
 
 (defn add-pattern
   "Add a pattern to a project"
-  [conn project-id {:keys [name length] :or {length 16}}]
+  [conn project-id {:keys [name length bank number] :or {length 16}}]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
-        pattern-id (UUID/randomUUID)
-        pattern-data {:db/id "new-pattern"
-                      :pattern/id pattern-id
-                      :pattern/name name
+        pattern-tempid (d/tempid :db.part/user)
+        pattern-data {:db/id pattern-tempid
+                      :pattern/bank bank
+                      :pattern/number number
                       :pattern/length length}
         tx-data [pattern-data
                  {:db/id project-entity-id
-                  :project/patterns "new-pattern"
+                  :project/patterns pattern-tempid
                   :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
-    pattern-id))
+    [bank number]))
 
 (defn update-pattern
   "Update a pattern"
