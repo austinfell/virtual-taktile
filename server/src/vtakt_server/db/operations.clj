@@ -24,7 +24,8 @@
                       :project/id project-id
                       :project/name name
                       :project/author author
-                      :project/patterns patterns
+                      :project/patterns (->> patterns (map #(assoc (val %) :id (key %)))
+                                             vec)
                       :project/bpm (double bpm)
                       :project/created-at (Date.)
                       :project/updated-at (Date.)}

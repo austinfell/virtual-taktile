@@ -48,6 +48,13 @@
        :else x))
    data))
 
+(defn patterns-vec->map [patterns-vec]
+  (->> patterns-vec
+       (map #(vector (:id %) (dissoc % :id)))
+       (into {})))
+
+(defn normalize-project-patterns [project]
+  (update project :project/patterns patterns-vec->map))
 ;; ----- Routes -----
 
 (defn create-routes
@@ -61,7 +68,7 @@
         ;; Not always a guarantee datomic will give us patterns. This normalizes it for the
         ;; client.
         (->> (ops/list-projects (d/db @db-conn))
-             (map #(assoc % :project/patterns (get % :project/patterns [])))))))
+             (map normalize-project-patterns)))))
 
     (GET "/api/projects/:id" [id]
       (let [project-id (java.util.UUID/fromString id)

@@ -5,9 +5,7 @@
    [vtakt-client.keyboard.core :as kb]))
 
 (def default-db
-  {:name "re-frame"
-
-   ;;
+  {;;
    ;; (Currently static) chord data. May be user definable in the future.
    ;;
    :chromatic-chords chord/chromatic-chords
@@ -39,7 +37,7 @@
                                       :name "Untitled"
                                       :author "Austin Fell"
                                       :bpm 120
-                                      :patterns []})
+                                      :patterns {}})
    ;; -> Pattern & track selections
    :active-bank 1
    :active-pattern 1

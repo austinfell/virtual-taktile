@@ -108,7 +108,7 @@
     :db/cardinality :db.cardinality/one
     :db/doc "Identifier of the device this track will transmit on."}
 
-;; Steps
+    ;; Steps
    {:db/ident :step/id
     :db/valueType :db.type/uuid
     :db/cardinality :db.cardinality/one
