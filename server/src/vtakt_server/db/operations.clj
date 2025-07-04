@@ -58,14 +58,7 @@
   "Get a VTakt project by id"
   [db project-id]
   (let [project-pattern '[*
-                          {:project/patterns
-                           [*
-                            {:pattern/tracks
-                             [*
-                              {:track/sound-ref [*]}
-                              {:track/steps
-                               [*
-                                {:step/parameter-locks [*]}]}]}]}
+                          {:project/patterns [:pattern/bank :pattern/number]}
                           {:project/sounds
                            [*
                             {:sound/operators [*]}

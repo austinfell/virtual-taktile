@@ -20,49 +20,78 @@ navigate to a restclient block and C-c C-c.
 
 #+RESULTS:
 #+BEGIN_SRC js
-[
-  {
-    "id": "f59d7e6a-aee7-4afa-bc45-1c7f5361cee7",
-    "name": "testa",
-    "author": "Austin Fell",
-    "created-at": "2025-07-03T03:18:59.613Z",
-    "patterns": [
-      {
-        "bank": 1,
-        "number": 1
-      }
-    ]
-  }
-]
-// GET http://localhost:8002/api/projects
-// HTTP/1.1 200 OK
-// Server: Jetty(12.0.16)
-// Content-Type: application/json; charset=utf-8
-// Access-Control-Allow-Origin: *
-// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-// Access-Control-Allow-Headers: Content-Type, Authorization
-// Transfer-Encoding: chunked
-// Request duration: 0.006851s
+  [
+    {
+      "id": "90fa1dd0-649c-4502-b563-925642585a9a",
+      "name": "test",
+      "author": "Austin Fell",
+      "created-at": "2025-07-04T03:50:46.015Z",
+      "patterns": [
+        {
+          "bank": 1,
+          "number": 1
+        },
+        {
+          "bank": 2,
+          "number": 1
+        }
+      ]
+    }
+  ]
+  // GET http://localhost:8002/api/projects
+  // HTTP/1.1 200 OK
+  // Server: Jetty(12.0.16)
+  // Content-Type: application/json; charset=utf-8
+  // Access-Control-Allow-Origin: *
+  // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  // Access-Control-Allow-Headers: Content-Type, Authorization
+  // Transfer-Encoding: chunked
+  // Request duration: 0.014648s
 #+END_SRC
+
+#+RESULTS:
+: undefined
 
 * Retrieve A Individual Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/7cfc5c24-56ce-4505-a010-2f2f29fd192f
+  GET http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "7cfc5c24-56ce-4505-a010-2f2f29fd192f",
+  "id": "90fa1dd0-649c-4502-b563-925642585a9a",
   "name": "test",
   "author": "Austin Fell",
-  "created-at": "2025-06-25T03:26:50.741Z",
-  "updated-at": "2025-06-25T03:26:50.741Z",
-  "bpm": 120.0
+  "created-at": "2025-07-04T03:50:46.015Z",
+  "updated-at": "2025-07-04T03:54:11.897Z",
+  "bpm": 120.0,
+  "patterns": [
+    {
+      "id": 17592186045420,
+      "bank": 1,
+      "number": 1,
+      "bank+number": [
+        1,
+        1
+      ],
+      "length": 16
+    },
+    {
+      "id": 17592186045422,
+      "bank": 2,
+      "number": 1,
+      "bank+number": [
+        2,
+        1
+      ],
+      "length": 16
+    }
+  ]
 }
-// GET http://localhost:8002/api/projects/7cfc5c24-56ce-4505-a010-2f2f29fd192f
+// GET http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -70,7 +99,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.003699s
+// Request duration: 0.010510s
 #+END_SRC
 
 * Update Project
@@ -95,12 +124,12 @@ project exists in the DB matching that ID.
 
 * Create a pattern
 #+BEGIN_SRC restclient
-  POST http://localhost:8002/api/projects/f59d7e6a-aee7-4afa-bc45-1c7f5361cee7/patterns
+  POST http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a/patterns
   Content-Type: application/json
   {
     "name": "Main Beat",
     "length": 16,
-    "bank": 1,
+    "bank": 2,
     "number": 1
   }
 #+END_SRC
@@ -108,18 +137,18 @@ project exists in the DB matching that ID.
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "[1 1]"
+  "id": "[2 1]"
 }
-// POST http://localhost:8002/api/projects/f59d7e6a-aee7-4afa-bc45-1c7f5361cee7/patterns
+// POST http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/patterns/[1 1]
+// Location: /api/patterns/[2 1]
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.010082s
+// Request duration: 0.009445s
 #+END_SRC
 
 * Create a track on the pattern
@@ -153,7 +182,7 @@ Content-Type: application/json
 * Get information about individual project
 #+BEGIN_SRC restclient
   GET http://localhost:8002/api/projects/0a930070-a1ad-421e-ae32-afe1e57dc051
-#+END_SRC
+#+END_S
 
 #+RESULTS:
 #+BEGIN_SRC js
