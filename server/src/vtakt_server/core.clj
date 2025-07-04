@@ -87,10 +87,10 @@
         (response {:deleted true})))
 
     ;; Pattern routes
-    (GET "/api/projects/:project-id/patterns/:id" [id project-id :as {:keys [body]}]
-      (let [proj-id (java.util.UUID/fromString project-id)
-            [bank number] (mapv Long/parseLong (clojure.string/split id #"-"))]
-        (response (prepare-response (ops/get-pattern (d/db @db-conn) proj-id bank number)))))
+    (GET "/api/projects/:project-id/patterns/:id" [id project-id]
+      (let [project-uuid (java.util.UUID/fromString project-id)
+            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split id #"-"))]
+        (response (prepare-response (ops/get-pattern (d/db @db-conn) project-uuid bank-number pattern-number)))))
 
     (POST "/api/projects/:project-id/patterns" [project-id :as {:keys [body]}]
       (let [proj-id (java.util.UUID/fromString project-id)

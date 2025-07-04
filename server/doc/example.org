@@ -136,40 +136,40 @@ project exists in the DB matching that ID.
     "name": "Main Beat",
     "length": 16,
     "bank": 4,
-    "number": 3
+    "number": 4
   }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "4-3"
+  "id": "4-4"
 }
 // POST http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+// Location: /api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-4
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.008790s
+// Request duration: 0.008126s
 #+END_SRC
 
 * Get a pattern
 #+BEGIN_SRC restclient
- GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+ GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-4
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
   "bank": 4,
-  "number": 3,
+  "number": 4,
   "length": 16
 }
-// GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+// GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-4
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -177,7 +177,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.187629s
+// Request duration: 0.005722s
 #+END_SRC
 
 
