@@ -20,33 +20,45 @@ navigate to a restclient block and C-c C-c.
 
 #+RESULTS:
 #+BEGIN_SRC js
-  [
-    {
-      "id": "90fa1dd0-649c-4502-b563-925642585a9a",
-      "name": "test",
-      "author": "Austin Fell",
-      "created-at": "2025-07-04T03:50:46.015Z",
-      "patterns": [
-        {
-          "bank": 1,
-          "number": 1
-        },
-        {
-          "bank": 2,
-          "number": 1
-        }
-      ]
-    }
-  ]
-  // GET http://localhost:8002/api/projects
-  // HTTP/1.1 200 OK
-  // Server: Jetty(12.0.16)
-  // Content-Type: application/json; charset=utf-8
-  // Access-Control-Allow-Origin: *
-  // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
-  // Access-Control-Allow-Headers: Content-Type, Authorization
-  // Transfer-Encoding: chunked
-  // Request duration: 0.014648s
+[
+  {
+    "id": "90fa1dd0-649c-4502-b563-925642585a9a",
+    "name": "test",
+    "author": "Austin Fell",
+    "created-at": "2025-07-04T03:50:46.015Z",
+    "patterns": [
+      {
+        "bank": 1,
+        "number": 1
+      },
+      {
+        "bank": 2,
+        "number": 1
+      },
+      {
+        "bank": 2,
+        "number": 2
+      },
+      {
+        "bank": 3,
+        "number": 2
+      },
+      {
+        "bank": 3,
+        "number": 3
+      }
+    ]
+  }
+]
+// GET http://localhost:8002/api/projects
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.008305s
 #+END_SRC
 
 #+RESULTS:
@@ -70,24 +82,12 @@ project exists in the DB matching that ID.
   "bpm": 120.0,
   "patterns": [
     {
-      "id": 17592186045420,
       "bank": 1,
-      "number": 1,
-      "bank+number": [
-        1,
-        1
-      ],
-      "length": 16
+      "number": 1
     },
     {
-      "id": 17592186045422,
       "bank": 2,
-      "number": 1,
-      "bank+number": [
-        2,
-        1
-      ],
-      "length": 16
+      "number": 1
     }
   ]
 }
@@ -99,7 +99,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.010510s
+// Request duration: 0.009293s
 #+END_SRC
 
 * Update Project
@@ -129,26 +129,26 @@ project exists in the DB matching that ID.
   {
     "name": "Main Beat",
     "length": 16,
-    "bank": 2,
-    "number": 1
+    "bank": 3,
+    "number": 3
   }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "[2 1]"
+  "id": "3-2"
 }
 // POST http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/patterns/[2 1]
+// Location: /api/projects/90fa1dd0-649c-4502-b563-925642585a9a/3-2
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.009445s
+// Request duration: 0.159901s
 #+END_SRC
 
 * Create a track on the pattern
