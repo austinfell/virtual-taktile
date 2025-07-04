@@ -110,12 +110,17 @@
 
 (defn update-pattern
   "Update a pattern"
-  [conn pattern-id pattern-data]
+  [conn project-id bank-number pattern-number pattern-data]
   (let [db (d/db conn)
-        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/id pattern-id]))
-        tx-data [(assoc pattern-data :db/id pattern-entity-id)]
-        tx-result @(d/transact conn tx-data)]
-    pattern-id))
+        project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
+        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/project+bank+number [project-entity-id bank-number pattern-number]]))
+        ;; TODO - I really need to implement a consistent way to do this.
+        namespaced-data (reduce-kv (fn [m k v]
+                                     (assoc m (keyword "pattern" (name k)) v))
+                                   {}
+                                   pattern-data)
+        tx-data (merge {:db/id pattern-entity-id} namespaced-data)]
+    @(d/transact conn [tx-data])))
 
 (defn delete-pattern
   "Delete a pattern from a project"

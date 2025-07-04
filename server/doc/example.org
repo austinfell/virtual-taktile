@@ -59,6 +59,10 @@ navigate to a restclient block and C-c C-c.
       {
         "bank": 4,
         "number": 3
+      },
+      {
+        "bank": 4,
+        "number": 4
       }
     ]
   }
@@ -71,33 +75,24 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.007240s
+// Request duration: 0.008540s
 #+END_SRC
 
 * Retrieve A Individual Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/e3910100-f6eb-47ec-82e4-3f75bfce9ab0
+  GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "e3910100-f6eb-47ec-82e4-3f75bfce9ab0",
-  "name": "another",
-  "author": "test",
-  "created-at": "2025-07-04T04:44:58.606Z",
-  "updated-at": "2025-07-04T04:45:14.797Z",
-  "bpm": 409.0,
-  "patterns": [
-    {
-      "bank": 3,
-      "number": 3
-    }
-  ]
+  "bank": 4,
+  "number": 3,
+  "length": 16
 }
-// GET http://localhost:8002/api/projects/e3910100-f6eb-47ec-82e4-3f75bfce9ab0
+// GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -105,7 +100,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.013056s
+// Request duration: 0.006835s
 #+END_SRC
 
 * Update Project
@@ -179,7 +174,32 @@ project exists in the DB matching that ID.
 // Transfer-Encoding: chunked
 // Request duration: 0.005722s
 #+END_SRC
+* Update a pattern
+#+BEGIN_SRC restclient
+  PUT http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-4
+  Content-Type: application/json
+  {
+    "length": 24,
+    "bank": 4,
+    "number": 4
+  }
+#+END_SRC
 
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "4-4"
+}
+// PUT http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-4
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.007611s
+#+END_SRC
 
 
 * Create a track on the pattern

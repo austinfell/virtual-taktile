@@ -87,11 +87,6 @@
         (response {:deleted true})))
 
     ;; Pattern routes
-    (GET "/api/projects/:project-id/patterns/:id" [id project-id]
-      (let [project-uuid (java.util.UUID/fromString project-id)
-            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split id #"-"))]
-        (response (prepare-response (ops/get-pattern (d/db @db-conn) project-uuid bank-number pattern-number)))))
-
     (POST "/api/projects/:project-id/patterns" [project-id :as {:keys [body]}]
       (let [proj-id (java.util.UUID/fromString project-id)
             pattern-vec (ops/add-pattern @db-conn proj-id body)
@@ -99,10 +94,15 @@
         (created (str "/api/projects/" proj-id "/patterns/" computed-id)
                  {:id computed-id})))
 
-    (PUT "/api/projects/:project-id/patterns/:id" [id :as {:keys [body]}]
-      (let [pattern-id (java.util.UUID/fromString id)
-            body-with-ids (keywordize-ids body)]
-        (ops/update-pattern @db-conn pattern-id body-with-ids)
+    (GET "/api/projects/:project-id/patterns/:id" [id project-id]
+      (let [project-uuid (java.util.UUID/fromString project-id)
+            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split id #"-"))]
+        (response (prepare-response (ops/get-pattern (d/db @db-conn) project-uuid bank-number pattern-number)))))
+
+    (PUT "/api/projects/:project-id/patterns/:id" [id project-id :as {:keys [body]}]
+      (let [project-uuid (java.util.UUID/fromString project-id)
+            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split id #"-"))]
+        (ops/update-pattern @db-conn project-uuid bank-number pattern-number body)
         (response {:id id})))
 
     (DELETE "/api/projects/:project-id/patterns/:pattern-id" [project-id pattern-id]
