@@ -97,6 +97,17 @@
         tx-result @(d/transact conn tx-data)]
     [bank number]))
 
+(defn get-pattern
+  [db project-id bank number]
+  (let [project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
+        pattern-pull '[:pattern/bank
+                       :pattern/number
+                       :pattern/length
+                       {:pattern/tracks [*]}]
+        lookup-key [:pattern/project+bank+number [project-entity-id bank number]]
+        pattern (d/pull db pattern-pull lookup-key)]
+    pattern))
+
 (defn update-pattern
   "Update a pattern"
   [conn pattern-id pattern-data]
