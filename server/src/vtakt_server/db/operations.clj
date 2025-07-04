@@ -124,16 +124,14 @@
 
 (defn delete-pattern
   "Delete a pattern from a project"
-  [conn project-id pattern-id]
+  [conn project-id bank-number pattern-number]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
-        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/id pattern-id]))
-        tx-data [[:db/retract project-entity-id :project/patterns pattern-entity-id]
-                 [:db/retractEntity pattern-entity-id]
+        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/project+bank+number [project-entity-id bank-number pattern-number]]))
+        tx-data [[:db/retractEntity pattern-entity-id]
                  {:db/id project-entity-id
-                  :project/updated-at (Date.)}]
-        tx-result @(d/transact conn tx-data)]
-    true))
+                  :project/updated-at (Date.)}]]
+    @(d/transact conn tx-data)))
 
 ;; ----- Sound Operations -----
 

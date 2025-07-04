@@ -82,17 +82,20 @@ navigate to a restclient block and C-c C-c.
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+  GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "bank": 4,
-  "number": 3,
-  "length": 16
+  "id": "7aa0b7f0-dff0-4343-8aa9-514aa1b4d521",
+  "name": "test 2",
+  "author": "test",
+  "created-at": "2025-07-04T05:00:31.588Z",
+  "updated-at": "2025-07-04T06:12:30.809Z",
+  "bpm": 409.0
 }
-// GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+// GET http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -100,7 +103,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.006835s
+// Request duration: 0.005973s
 #+END_SRC
 
 * Update Project
@@ -201,6 +204,26 @@ project exists in the DB matching that ID.
 // Request duration: 0.007611s
 #+END_SRC
 
+* Delete a pattern
+#+BEGIN_SRC restclient
+  DELETE http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "deleted": true
+}
+// DELETE http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.006784s
+#+END_SRC
 
 * Create a track on the pattern
 #+BEGIN_SRC restclient

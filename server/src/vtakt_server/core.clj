@@ -105,13 +105,13 @@
         (ops/update-pattern @db-conn project-uuid bank-number pattern-number body)
         (response {:id id})))
 
-    (DELETE "/api/projects/:project-id/patterns/:pattern-id" [project-id pattern-id]
-      (let [proj-id (java.util.UUID/fromString project-id)
-            pat-id (java.util.UUID/fromString pattern-id)]
-        (ops/delete-pattern @db-conn proj-id pat-id)
+    (DELETE "/api/projects/:project-id/patterns/:pattern-id" [pattern-id project-id]
+      (let [project-uuid (java.util.UUID/fromString project-id)
+            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split pattern-id #"-"))]
+        (ops/delete-pattern @db-conn project-uuid bank-number pattern-number)
         (response {:deleted true})))
 
-    ;; Sound routes
+        ;; Sound routes
     (POST "/api/projects/:project-id/sounds" [project-id :as {:keys [body]}]
       (let [proj-id (java.util.UUID/fromString project-id)
             body-with-ids (keywordize-ids body)
