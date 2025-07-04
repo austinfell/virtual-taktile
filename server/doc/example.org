@@ -7,10 +7,27 @@ navigate to a restclient block and C-c C-c.
   POST http://localhost:8002/api/projects
   Content-Type: application/json
   {
-    "name": "another",
+    "name": "test 2",
     "author": "test",
     "bpm": 409.0
   }
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "7aa0b7f0-dff0-4343-8aa9-514aa1b4d521"
+}
+// POST http://localhost:8002/api/projects
+// HTTP/1.1 201 Created
+// Server: Jetty(12.0.16)
+// Location: /api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.008432s
 #+END_SRC
 
 * Listing Projects
@@ -22,29 +39,25 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC js
 [
   {
-    "id": "90fa1dd0-649c-4502-b563-925642585a9a",
-    "name": "test",
-    "author": "Austin Fell",
-    "created-at": "2025-07-04T03:50:46.015Z",
+    "id": "7a434dba-bd0d-45c0-86aa-faa8dbf9b9ae",
+    "name": "test 2",
+    "author": "test",
+    "created-at": "2025-07-04T05:00:26.652Z",
     "patterns": [
       {
-        "bank": 1,
-        "number": 1
-      },
+        "bank": 4,
+        "number": 3
+      }
+    ]
+  },
+  {
+    "id": "7aa0b7f0-dff0-4343-8aa9-514aa1b4d521",
+    "name": "test 2",
+    "author": "test",
+    "created-at": "2025-07-04T05:00:31.588Z",
+    "patterns": [
       {
-        "bank": 2,
-        "number": 1
-      },
-      {
-        "bank": 2,
-        "number": 2
-      },
-      {
-        "bank": 3,
-        "number": 2
-      },
-      {
-        "bank": 3,
+        "bank": 4,
         "number": 3
       }
     ]
@@ -58,7 +71,7 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.008305s
+// Request duration: 0.013240s
 #+END_SRC
 
 #+RESULTS:
@@ -68,30 +81,26 @@ navigate to a restclient block and C-c C-c.
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a
+  GET http://localhost:8002/api/projects/e3910100-f6eb-47ec-82e4-3f75bfce9ab0
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "90fa1dd0-649c-4502-b563-925642585a9a",
-  "name": "test",
-  "author": "Austin Fell",
-  "created-at": "2025-07-04T03:50:46.015Z",
-  "updated-at": "2025-07-04T03:54:11.897Z",
-  "bpm": 120.0,
+  "id": "e3910100-f6eb-47ec-82e4-3f75bfce9ab0",
+  "name": "another",
+  "author": "test",
+  "created-at": "2025-07-04T04:44:58.606Z",
+  "updated-at": "2025-07-04T04:45:14.797Z",
+  "bpm": 409.0,
   "patterns": [
     {
-      "bank": 1,
-      "number": 1
-    },
-    {
-      "bank": 2,
-      "number": 1
+      "bank": 3,
+      "number": 3
     }
   ]
 }
-// GET http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a
+// GET http://localhost:8002/api/projects/e3910100-f6eb-47ec-82e4-3f75bfce9ab0
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -99,7 +108,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.009293s
+// Request duration: 0.013056s
 #+END_SRC
 
 * Update Project
@@ -124,12 +133,12 @@ project exists in the DB matching that ID.
 
 * Create a pattern
 #+BEGIN_SRC restclient
-  POST http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a/patterns
+  POST http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns
   Content-Type: application/json
   {
     "name": "Main Beat",
     "length": 16,
-    "bank": 3,
+    "bank": 4,
     "number": 3
   }
 #+END_SRC
@@ -137,18 +146,18 @@ project exists in the DB matching that ID.
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "3-2"
+  "id": "4-3"
 }
-// POST http://localhost:8002/api/projects/90fa1dd0-649c-4502-b563-925642585a9a/patterns
+// POST http://localhost:8002/api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/90fa1dd0-649c-4502-b563-925642585a9a/3-2
+// Location: /api/projects/7aa0b7f0-dff0-4343-8aa9-514aa1b4d521/patterns/4-3
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.159901s
+// Request duration: 0.008790s
 #+END_SRC
 
 * Create a track on the pattern

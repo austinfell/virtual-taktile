@@ -57,12 +57,17 @@
     :db/cardinality :db.cardinality/one
     :db/doc "Pattern number (1-16)"}
 
-   {:db/ident :pattern/bank+number
+   {:db/ident :pattern/project
+    :db/valueType :db.type/ref
+    :db/cardinality :db.cardinality/one
+    :db/doc "Reference to the project this pattern belongs to"}
+
+   {:db/ident :pattern/project+bank+number
     :db/valueType :db.type/tuple
-    :db/tupleAttrs [:pattern/bank :pattern/number]
+    :db/tupleAttrs [:pattern/project :pattern/bank :pattern/number]
     :db/cardinality :db.cardinality/one
     :db/unique :db.unique/identity
-    :db/doc "Unique (bank, number) pair"}
+    :db/doc "Unique (project, bank, number) triple"}
 
    {:db/ident :pattern/length
     :db/valueType :db.type/long

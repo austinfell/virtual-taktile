@@ -88,7 +88,8 @@
         pattern-data {:db/id pattern-tempid
                       :pattern/bank bank
                       :pattern/number number
-                      :pattern/length length}
+                      :pattern/length length
+                      :pattern/project project-entity-id}
         tx-data [pattern-data
                  {:db/id project-entity-id
                   :project/patterns pattern-tempid
