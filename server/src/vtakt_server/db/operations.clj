@@ -103,7 +103,9 @@
         pattern-pull '[:pattern/bank
                        :pattern/number
                        :pattern/length
-                       {:pattern/tracks [*]}]
+                       {:pattern/tracks
+                        [:track/number
+                         :track/midi-channel]}]
         lookup-key [:pattern/project+bank+number [project-entity-id bank number]]
         pattern (d/pull db pattern-pull lookup-key)]
     pattern))
@@ -133,8 +135,28 @@
                   :project/updated-at (Date.)}]]
     @(d/transact conn tx-data)))
 
-;; ----- Sound Operations -----
+;; ----- Track Operations -----
 
+(defn add-track
+  "Add a track to a pattern"
+  [conn project-id bank-number pattern-number {:keys [number midi-channel]}]
+  (let [db (d/db conn)
+        project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
+        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/project+bank+number [project-entity-id bank-number pattern-number]]))
+        track-tempid (d/tempid :db.part/user)
+        track-data {:db/id track-tempid
+                    :track/pattern pattern-entity-id
+                    :track/number number
+                    :track/midi-channel midi-channel}
+        tx-data [track-data
+                 {:db/id pattern-entity-id
+                  :pattern/tracks track-tempid}
+                 {:db/id project-entity-id
+                  :project/updated-at (Date.)}]
+        tx-result @(d/transact conn tx-data)]
+    number))
+
+;; ----- Sound Operations -----
 (defn add-sound
   "Add a sound to a project"
   [conn project-id sound-data]
@@ -172,31 +194,6 @@
                   :project/updated-at (Date.)}]
         tx-result @(d/transact conn tx-data)]
     true))
-
-;; ----- Track Operations -----
-(defn add-track
-  "Add a track to a pattern"
-  [conn pattern-id {:keys [number sound-id midi-channel midi-device]}]
-  (let [db (d/db conn)
-        pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/id pattern-id]))
-        track-id (UUID/randomUUID)
-        base-track {:db/id "new-track"
-                    :track/id track-id
-                    :track/number number}
-        ;; Only add sound-ref if sound-id provided
-        track-with-sound (if sound-id
-                           (let [sound-entity-id (:db/id (d/pull db '[:db/id] [:sound/id sound-id]))]
-                             (assoc base-track :track/sound-ref sound-entity-id))
-                           base-track)
-        ;; Add MIDI params if provided
-        track-data (cond-> track-with-sound
-                     midi-channel (assoc :track/midi-channel midi-channel)
-                     midi-device (assoc :track/midi-device midi-device))
-        tx-data [track-data
-                 {:db/id pattern-entity-id
-                  :pattern/tracks "new-track"}]
-        tx-result @(d/transact conn tx-data)]
-    track-id))
 
 ;; ----- Step Operations -----
 

@@ -111,7 +111,15 @@
         (ops/delete-pattern @db-conn project-uuid bank-number pattern-number)
         (response {:deleted true})))
 
-        ;; Sound routes
+    ;; Track routes
+    (POST "/api/projects/:project-id/patterns/:pattern-id/tracks" [pattern-id project-id :as {:keys [body]}]
+      (let [project-uuid (java.util.UUID/fromString project-id)
+            [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split pattern-id #"-"))
+            track-id (ops/add-track @db-conn project-uuid bank-number pattern-number body)]
+        (created (str "/api/projects/" project-id "/patterns/" pattern-id "/tracks")
+                 {:id (str track-id)})))
+
+    ;; Sound routes
     (POST "/api/projects/:project-id/sounds" [project-id :as {:keys [body]}]
       (let [proj-id (java.util.UUID/fromString project-id)
             body-with-ids (keywordize-ids body)
@@ -130,15 +138,6 @@
             snd-id (java.util.UUID/fromString sound-id)]
         (ops/delete-sound @db-conn proj-id snd-id)
         (response {:deleted true})))
-
-    ;; Track routes
-    (POST "/api/patterns/:pattern-id/tracks" [pattern-id :as {:keys [body]}]
-      (let [pat-id (java.util.UUID/fromString pattern-id)
-            body-with-ids (keywordize-ids body)
-            track-id (ops/add-track @db-conn pat-id body-with-ids)]
-        (created (str "/api/tracks/" track-id)
-                 {:id (str track-id)})))
-
     ;; Step routes
     (POST "/api/tracks/:track-id/steps" [track-id :as {:keys [body]}]
       (let [trk-id (java.util.UUID/fromString track-id)

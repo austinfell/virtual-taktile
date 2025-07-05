@@ -81,21 +81,22 @@
     :db/doc "Tracks in this pattern"}
 
    ;; Tracks
-   {:db/ident :track/id
-    :db/valueType :db.type/uuid
-    :db/cardinality :db.cardinality/one
-    :db/unique :db.unique/identity
-    :db/doc "Unique identifier for a track"}
-
    {:db/ident :track/number
     :db/valueType :db.type/long
     :db/cardinality :db.cardinality/one
-    :db/doc "Track number (1-4 for VTakt)"}
+    :db/doc "Track number"}
 
-   {:db/ident :track/sound-ref
+   {:db/ident :track/pattern
     :db/valueType :db.type/ref
     :db/cardinality :db.cardinality/one
-    :db/doc "Reference to the sound used in this track"}
+    :db/doc "Reference to the parent pattern associated with a track."}
+
+   {:db/ident :track/pattern+number
+    :db/valueType :db.type/tuple
+    :db/tupleAttrs [:track/pattern :track/number]
+    :db/cardinality :db.cardinality/one
+    :db/unique :db.unique/identity
+    :db/doc "Unique (pattern, number) tuple"}
 
    {:db/ident :track/steps
     :db/valueType :db.type/ref
@@ -107,11 +108,6 @@
     :db/valueType :db.type/long
     :db/cardinality :db.cardinality/one
     :db/doc "Midi channel for this track to output on (0-15 if defined)"}
-
-   {:db/ident :track/midi-device
-    :db/valueType :db.type/string
-    :db/cardinality :db.cardinality/one
-    :db/doc "Identifier of the device this track will transmit on."}
 
     ;; Steps
    {:db/ident :step/id
