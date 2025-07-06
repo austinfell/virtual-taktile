@@ -8,7 +8,7 @@
    [vtakt-client.midi.styles :as styles]))
 
 (defn midi-selector
-  [{:keys [outputs selected-output selected-channel on-output-change on-channel-change]}]
+  [{:keys [outputs selected-output on-output-change]}]
   [:div
    [:div
     {:class (styles/midi-row)}
@@ -20,24 +20,11 @@
      :width "200px"
      :model selected-output
      :filter-box? true
-     :on-change on-output-change]]
-   [:div
-    {:class (styles/midi-channel-row)}
-    [:div
-     {:class (styles/midi-row)}
-     [:p {:class (styles/midi-key-name)} "Channel:"]
-     [re-com/single-dropdown
-      :choices (->> (range 16)
-                    (mapv (fn [v] {:id v :label (inc v)})))
-      :width "60px"
-      :model selected-channel
-      :filter-box? true
-      :on-change on-channel-change]]]])
+     :on-change on-output-change]]])
 
 (defn midi-configurator []
   (let [midi-outputs @(re-frame/subscribe [::subs/midi-outputs])
-        selected-output @(re-frame/subscribe [::subs/selected-midi-output-for-track])
-        selected-channel @(re-frame/subscribe [::subs/selected-midi-channel-for-track])]
+        selected-output @(re-frame/subscribe [::subs/selected-midi-output])]
     [re-com/v-box
      :class (general-styles/configurator-container)
      :gap "15px"
@@ -57,6 +44,4 @@
          [midi-selector
           {:outputs midi-outputs
            :selected-output selected-output
-           :selected-channel selected-channel
-           :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output-for-track %])
-           :on-channel-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track %])}]])]]))
+           :on-output-change #(re-frame/dispatch [::midi-events/set-selected-midi-output %])}]])]]))

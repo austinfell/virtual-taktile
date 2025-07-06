@@ -4,8 +4,26 @@
    [vtakt-client.project.track.styles :as styles]
    [vtakt-client.styles :as general-styles]
    [vtakt-client.project.track.subs :as subs]
+   [vtakt-client.midi.subs :as midi-subs]
    [vtakt-client.project.track.events :as events]
+   [vtakt-client.midi.events :as midi-events]
    [re-frame.core :as re-frame]))
+
+(defn midi-channel-selector []
+  (let [selected-channel (re-frame/subscribe [::midi-subs/selected-midi-channel-for-track])]
+    (fn []
+      [:div
+       {:class (styles/channel-row)}
+       [:p {:class (styles/channel-key-name)} "Channel:"]
+       [re-com/input-text
+        :model (str (inc (or @selected-channel 0)))
+        :width "60px"
+        :attr {:type "number"
+               :min 1
+               :max 16
+               :on-input #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track
+                                              (dec (js/parseInt (-> % .-target .-value) 10))])}
+        :on-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track (dec (js/parseInt % 10))])]])))
 
 (defn track-select []
   (let [active-track (re-frame/subscribe [::subs/active-track])]
@@ -17,6 +35,7 @@
        [[re-com/title
          :label "Track"
          :level :level2]
+        [midi-channel-selector]
         [re-com/v-box
          :gap "8px"
          :children

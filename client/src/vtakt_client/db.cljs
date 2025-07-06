@@ -5,7 +5,10 @@
    [vtakt-client.keyboard.core :as kb]))
 
 (def default-db
-  {;;
+  {;; Midi device is configurable globally across tracks.
+   :selected-midi-output nil
+
+   ;;
    ;; (Currently static) chord data. May be user definable in the future.
    ;;
    :chromatic-chords chord/chromatic-chords

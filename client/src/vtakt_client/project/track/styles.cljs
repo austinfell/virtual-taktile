@@ -35,3 +35,9 @@
   [:&:hover
    {:filter "brightness(0.8) saturate(1.2)"
     :box-shadow "0 0 20px rgba(255,255,255,0.8), inset 0 2px 12px rgba(0,0,0,0.5)"}])
+
+(defclass channel-row []
+  {:display "flex" :align-items "center"})
+
+(defclass channel-key-name []
+  {:color "black" :margin 0  :margin-right "5px"})

@@ -8,13 +8,15 @@
    (:midi-outputs db)))
 
 (re-frame/reg-sub
- ::selected-midi-output-for-track
+ ::selected-midi-output
  (fn [db _]
-   (get-in db [:per-track-midi-data (:selected-track db) :midi-output])))
+   (get db :selected-midi-output)))
 
+;; TODO - This has to be fetched from the server and syncronized bak as wellc
 (re-frame/reg-sub
  ::selected-midi-channel-for-track
  (fn [db _]
-   (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])))
-
-
+   (get-in
+    db
+    [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track)]
+    0)))
