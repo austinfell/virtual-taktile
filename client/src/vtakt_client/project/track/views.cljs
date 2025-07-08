@@ -21,9 +21,10 @@
         :attr {:type "number"
                :min 1
                :max 16
-               :on-input #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track
+               :on-input #(re-frame/dispatch [::events/set-selected-midi-channel-for-track-and-save
                                               (dec (js/parseInt (-> % .-target .-value) 10))])}
-        :on-change #(re-frame/dispatch [::midi-events/set-selected-midi-channel-for-track (dec (js/parseInt % 10))])]])))
+        :on-change #(re-frame/dispatch [::events/set-selected-midi-channel-for-track-and-save (dec (js/parseInt % 10))])]])))
+
 
 (defn track-select []
   (let [active-track (re-frame/subscribe [::subs/active-track])]

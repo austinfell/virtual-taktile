@@ -12,11 +12,10 @@
  (fn [db _]
    (get db :selected-midi-output)))
 
-;; TODO - This has to be fetched from the server and syncronized bak as wellc
 (re-frame/reg-sub
  ::selected-midi-channel-for-track
  (fn [db _]
    (get-in
     db
-    [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track)]
+    [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track) :midi-channel]
     0)))

@@ -84,6 +84,7 @@
   [conn project-id {:keys [name length bank number] :or {length 16}}]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
+        x (println project-id)
         pattern-tempid (d/tempid :db.part/user)
         pattern-data {:db/id pattern-tempid
                       :pattern/bank bank
@@ -136,25 +137,26 @@
     @(d/transact conn tx-data)))
 
 ;; ----- Track Operations -----
-
 (defn add-track
   "Add a track to a pattern"
-  [conn project-id bank-number pattern-number {:keys [number midi-channel]}]
+  [conn project-id bank-number pattern-number track-number {:keys [midi-channel]}]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
         pattern-entity-id (:db/id (d/pull db '[:db/id] [:pattern/project+bank+number [project-entity-id bank-number pattern-number]]))
-        track-tempid (d/tempid :db.part/user)
-        track-data {:db/id track-tempid
-                    :track/pattern pattern-entity-id
-                    :track/number number
-                    :track/midi-channel midi-channel}
-        tx-data [track-data
+        track-num (Integer/parseInt track-number)
+        track-entity-id (:db/id (d/pull db '[:db/id] [:track/pattern+number [pattern-entity-id track-num]]))
+        midi-chan (Long/valueOf midi-channel)
+        track-tempid (if (nil? track-entity-id) (d/tempid :db.part/user) track-entity-id)
+        tx-data [{:db/id track-tempid
+                  :track/pattern pattern-entity-id
+                  :track/number track-num
+                  :track/midi-channel midi-chan}
                  {:db/id pattern-entity-id
                   :pattern/tracks track-tempid}
                  {:db/id project-entity-id
-                  :project/updated-at (Date.)}]
-        tx-result @(d/transact conn tx-data)]
-    number))
+                  :project/updated-at (Date.)}]]
+    @(d/transact conn tx-data)
+    track-num))
 
 ;; ----- Sound Operations -----
 (defn add-sound

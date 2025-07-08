@@ -16,18 +16,18 @@ navigate to a restclient block and C-c C-c.
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "4b6a30c8-7a5e-4e11-b355-91727c425a18"
+  "id": "d58d3bf5-8f72-451b-96ad-64cb034b5a0c"
 }
 // POST http://localhost:8002/api/projects
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18
+// Location: /api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.338526s
+// Request duration: 0.164188s
 #+END_SRC
 
 * Listing Projects
@@ -112,7 +112,7 @@ project exists in the DB matching that ID.
 
 * Create a pattern
 #+BEGIN_SRC restclient
-  POST http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns
+  POST http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns
   Content-Type: application/json
   {
     "name": "Main Beat",
@@ -127,21 +127,21 @@ project exists in the DB matching that ID.
 {
   "id": "4-4"
 }
-// POST http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns
+// POST http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4
+// Location: /api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.013581s
+// Request duration: 0.020208s
 #+END_SRC
 
 * Get a pattern
 #+BEGIN_SRC restclient
-GET http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4
+GET http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4
 #+END_SRC
 
 #+RESULTS:
@@ -149,9 +149,23 @@ GET http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patt
 {
   "bank": 4,
   "number": 4,
-  "length": 16
+  "length": 16,
+  "tracks": [
+    {
+      "number": 1,
+      "midi-channel": 1
+    },
+    {
+      "number": 2,
+      "midi-channel": 4
+    },
+    {
+      "number": 3,
+      "midi-channel": 5
+    }
+  ]
 }
-// GET http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4
+// GET http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -159,7 +173,7 @@ GET http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patt
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.005179s
+// Request duration: 0.006277s
 #+END_SRC
 
 * Update a pattern
@@ -212,29 +226,28 @@ GET http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patt
 
 * Create a track on the pattern
 #+BEGIN_SRC restclient
-POST http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4/tracks
+PUT http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks/3
 Content-Type: application/json
 {
-  "number": 9,
-  "midi-channel": 1
+  "midi-channel": 5
 }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "9"
+  "id": 3
 }
-// POST http://localhost:8002/api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4/tracks
+// PUT http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks/3
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/4b6a30c8-7a5e-4e11-b355-91727c425a18/patterns/4-4/tracks
+// Location: /api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.009555s
+// Request duration: 0.006535s
 #+END_SRC
 
 

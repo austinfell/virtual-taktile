@@ -29,4 +29,5 @@
  ::set-selected-midi-channel-for-track
  (fn [{:keys [db]} [_ midi-channel]]
    (let [selected-track (:selected-track db)]
-     {:db (assoc-in db [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track)] midi-channel)})))
+     {:db (assoc-in db [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track) :midi-channel] midi-channel)})))
+

@@ -112,12 +112,12 @@
         (response {:deleted true})))
 
     ;; Track routes
-    (POST "/api/projects/:project-id/patterns/:pattern-id/tracks" [pattern-id project-id :as {:keys [body]}]
+    (PUT "/api/projects/:project-id/patterns/:pattern-id/tracks/:track-id" [pattern-id project-id track-id :as {:keys [body]}]
       (let [project-uuid (java.util.UUID/fromString project-id)
             [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split pattern-id #"-"))
-            track-id (ops/add-track @db-conn project-uuid bank-number pattern-number body)]
+            track-id (ops/add-track @db-conn project-uuid bank-number pattern-number track-id body)]
         (created (str "/api/projects/" project-id "/patterns/" pattern-id "/tracks")
-                 {:id (str track-id)})))
+                 {:id track-id})))
 
     ;; Sound routes
     (POST "/api/projects/:project-id/sounds" [project-id :as {:keys [body]}]
