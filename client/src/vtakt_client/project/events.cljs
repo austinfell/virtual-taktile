@@ -16,14 +16,12 @@
    (if (nil? (get-in db [:current-project :id]))
      ;; New project - nothing exists server side for us to sync to... Wait for a project name
      ;; to be defined.
-     {:db (assoc-in db [:current-project :bpm] new-project-bpm)}
+     {:db (assoc-in db [:current-project :global-bpm] new-project-bpm)}
 
      ;; Existing project - update via PUT. Only update client side once everything is done.
      (let [current-project (:current-project db)
-           updated-project (assoc current-project :bpm new-project-bpm)]
-       {:db (-> db
-                (assoc :current-project updated-project)
-                (assoc :saving-project? true))
+           updated-project (assoc current-project :global-bpm new-project-bpm)]
+       {:db (assoc db :current-project updated-project)
         :http-xhrio {:method          :put
                      :uri             (str "http://localhost:8002/api/projects/" (:id current-project))
                      :params          updated-project
@@ -104,7 +102,7 @@
 (re-frame/reg-event-fx
  ::fetch-projects-success
  (fn [{:keys [db]} [_ response]]
-   (let [projects (mapv pj/map->Project response)]
+   (let [projects response]
      {:db (-> db
               (assoc :loaded-projects projects)
               (dissoc :loading-projects?))})))
@@ -131,7 +129,7 @@
 (re-frame/reg-event-fx
  ::fetch-project-success
  (fn [{:keys [db]} [_ response]]
-   (let [project (pj/map->Project response)]
+   (let [project response]
      {:db (-> db
               (assoc :current-project project)
               (assoc :selected-projects #{})

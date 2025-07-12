@@ -64,7 +64,7 @@
 (defn project-bpm-display []
   (project-editable-field {:field-name "BPM"
                           :field-type :number
-                          :project-key :bpm
+                          :project-key :global-bpm
                           :event ::events/change-project-bpm}))
 
 (defn project-manager []

@@ -1,5 +1,5 @@
 (ns vtakt-client.db
- (:require
+  (:require
    [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.project.core :as pj]
    [vtakt-client.keyboard.core :as kb]))
@@ -33,14 +33,12 @@
 
    ;;
    ;; Base project data
+   ;; See the project core module for exactly how this data structure is defined
    ;;
    :loaded-projects []
    :selected-projects #{}
-   :current-project (pj/map->Project {:id nil
-                                      :name "Untitled"
-                                      :author "Austin Fell"
-                                      :bpm 120
-                                      :patterns {}})
+   :current-project pj/initial-project
+
    ;; -> Pattern & track selections
    :active-bank 1
    :active-pattern 1

@@ -20,4 +20,4 @@
 (re-frame/reg-sub
  ::project-name
  (fn [db _]
-   (get-in db [:current-project :project-name])))
+   (get-in db [:current-project :name])))

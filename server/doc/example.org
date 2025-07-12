@@ -7,27 +7,27 @@ navigate to a restclient block and C-c C-c.
   POST http://localhost:8002/api/projects
   Content-Type: application/json
   {
-    "name": "test 2",
+    "name": "test 3",
     "author": "test",
-    "bpm": 409.0
+    "global-bpm": 409.0
   }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "d58d3bf5-8f72-451b-96ad-64cb034b5a0c"
+  "id": "8500abdc-c8ae-49f4-b2ac-fbb706e8cc30"
 }
 // POST http://localhost:8002/api/projects
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c
+// Location: /api/projects/8500abdc-c8ae-49f4-b2ac-fbb706e8cc30
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.164188s
+// Request duration: 0.015199s
 #+END_SRC
 
 * Listing Projects
@@ -39,16 +39,11 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC js
 [
   {
-    "id": "4b6a30c8-7a5e-4e11-b355-91727c425a18",
+    "id": "97a9b203-0dca-4e5f-83f3-c19640e4831f",
     "name": "test 2",
     "author": "test",
-    "created-at": "2025-07-06T02:57:25.577Z",
-    "patterns": [
-      {
-        "bank": 4,
-        "number": 4
-      }
-    ]
+    "created-at": "2025-07-12T03:16:58.319Z",
+    "global-bpm": 120.0
   }
 ]
 // GET http://localhost:8002/api/projects
@@ -59,7 +54,7 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.006083s
+// Request duration: 0.248785s
 #+END_SRC
 
 * Retrieve A Individual Project

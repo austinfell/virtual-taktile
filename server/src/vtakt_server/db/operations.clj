@@ -18,7 +18,7 @@
 ;; ----- Project Operations -----
 (defn create-project
   "Create a new VTakt project"
-  [conn {:keys [name author bpm patterns] :or {bpm 120.0 patterns []}}]
+  [conn {:keys [name author global-bpm patterns] :or {global-bpm 120.0 patterns []}}]
   (let [project-id (UUID/randomUUID)
         project-data {:db/id "new-project"
                       :project/id project-id
@@ -26,7 +26,7 @@
                       :project/author author
                       :project/patterns (->> patterns (map #(assoc (val %) :id (key %)))
                                              vec)
-                      :project/bpm (double bpm)
+                      :project/global-bpm (double global-bpm)
                       :project/created-at (Date.)
                       :project/updated-at (Date.)}
         tx-result @(d/transact conn [project-data])]
@@ -37,9 +37,9 @@
   [conn project-id project-data]
   (let [db (d/db conn)
         existing-entity (d/pull db '[*] [:project/id project-id])
-        project-bpm (double (:bpm project-data))
+        global-bpm (double (:global-bpm project-data))
         project-name (:name project-data)
-        transformed-data (assoc (assoc existing-entity :project/name project-name) :project/bpm project-bpm)
+        transformed-data (assoc (assoc existing-entity :project/name project-name) :project/global-bpm global-bpm)
         update-data (assoc transformed-data
                            :db/id (:db/id existing-entity)
                            :project/updated-at (Date.))
@@ -73,6 +73,7 @@
                           :project/name
                           :project/author
                           :project/created-at
+                          :project/global-bpm
                           {:project/patterns [:pattern/bank :pattern/number]}]) ...]
          :where [?e :project/id]]
        db))

@@ -29,7 +29,7 @@
     :db/cardinality :db.cardinality/one
     :db/doc "When the project was last updated"}
 
-   {:db/ident :project/bpm
+   {:db/ident :project/global-bpm
     :db/valueType :db.type/float
     :db/cardinality :db.cardinality/one
     :db/doc "BPM (beats per minute) of the project"}

@@ -6,7 +6,6 @@
    [vtakt-client.project.track.subs :as subs]
    [vtakt-client.midi.subs :as midi-subs]
    [vtakt-client.project.track.events :as events]
-   [vtakt-client.midi.events :as midi-events]
    [re-frame.core :as re-frame]))
 
 (defn midi-channel-selector []
@@ -21,9 +20,10 @@
         :attr {:type "number"
                :min 1
                :max 16
-               :on-input #(re-frame/dispatch [::events/set-selected-midi-channel-for-track-and-save
-                                              (dec (js/parseInt (-> % .-target .-value) 10))])}
-        :on-change #(re-frame/dispatch [::events/set-selected-midi-channel-for-track-and-save (dec (js/parseInt % 10))])]])))
+               :on-input #(re-frame/dispatch [::events/upsert-track-into-current-pattern
+                                              {:midi-channel (dec (js/parseInt (-> % .-target .-value) 10))}])}
+        :on-change #(re-frame/dispatch [::events/upsert-track-into-current-pattern
+                                        {:midi-channel (dec (js/parseInt (-> % .-target .-value) 10))}])]])))
 
 
 (defn track-select []

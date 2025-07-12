@@ -15,7 +15,9 @@
 (re-frame/reg-sub
  ::selected-midi-channel-for-track
  (fn [db _]
-   (get-in
-    db
-    [:current-project :patterns (db :active-bank) (db :active-pattern) (db :active-track) :midi-channel]
-    0)))
+   (try
+     (get-in
+      db
+      [:current-project :patterns (db :active-bank) (db :active-pattern) :tracks (db :active-track) :midi-channel]
+      0)
+     (catch js/Error e 0))))
