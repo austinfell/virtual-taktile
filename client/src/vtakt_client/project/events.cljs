@@ -1,9 +1,7 @@
 (ns vtakt-client.project.events
-  (:require
-   [vtakt-client.project.core :as pj]
-   [ajax.core :as ajax]
-   [day8.re-frame.http-fx]
-   [re-frame.core :as re-frame]))
+  (:require [ajax.core :as ajax]
+            [day8.re-frame.http-fx]
+            [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-db
  ::set-selected-projects
@@ -13,54 +11,43 @@
 (re-frame/reg-event-fx
  ::change-project-bpm
  (fn [{:keys [db]} [_ new-project-bpm]]
-   (if (nil? (get-in db [:current-project :id]))
-     ;; New project - nothing exists server side for us to sync to... Wait for a project name
-     ;; to be defined.
-     {:db (assoc-in db [:current-project :global-bpm] new-project-bpm)}
+   (let [current-project (:current-project db)
+         project-id (:id current-project)
+         modified-project (assoc current-project :global-bpm new-project-bpm)]
+     (if (nil? project-id)
+       ;; New project - nothing exists server side for us to sync to... Define
+       ;; the project name and call it a day.
+       {:db (assoc db current-project modified-project)}
 
-     ;; Existing project - update via PUT. Only update client side once everything is done.
-     (let [current-project (:current-project db)
-           updated-project (assoc current-project :global-bpm new-project-bpm)]
-       {:db (assoc db :current-project updated-project)
-        :http-xhrio {:method          :put
-                     :uri             (str "http://localhost:8002/api/projects/" (:id current-project))
-                     :params          updated-project
+       ;; Existing project - update via PUT. Only update client side once everything
+       ;; is done.
+       {:http-xhrio {:method          :put
+                     :uri             (str "http://localhost:8002/api/projects/" project-id)
+                     :params          modified-project
                      :timeout         8000
                      :format          (ajax/json-request-format)
                      :response-format (ajax/json-response-format {:keywords? true})
-                     :on-success      [::save-project-success updated-project]
+                     :on-success      [::save-project-success-optimistic modified-project]
                      :on-failure      [::save-project-failure]}}))))
-
 (re-frame/reg-event-fx
  ::change-project-name
  (fn [{:keys [db]} [_ new-project-name]]
-   (if (nil? (get-in db [:current-project :id]))
-     ;; New project - basically "save as"
-     (let [project-to-save (assoc (:current-project db) :name new-project-name)]
-       {:db (assoc db :saving-project? true)
-        :http-xhrio {:method          :post
-                     :uri             "http://localhost:8002/api/projects"
-                     :params          project-to-save
-                     :timeout         8000
-                     :format          (ajax/json-request-format)
-                     :response-format (ajax/json-response-format {:keywords? true})
-                     :on-success      [::save-project-success project-to-save]
-                     :on-failure      [::save-project-failure]}})
-
-     ;; Existing project - update via PUT
-     (let [current-project (:current-project db)
-           updated-project (assoc current-project :name new-project-name)]
-       {:db (-> db
-                (assoc :current-project updated-project)
-                (assoc :saving-project? true))
-        :http-xhrio {:method          :put
-                     :uri             (str "http://localhost:8002/api/projects/" (:id current-project))
-                     :params          updated-project
-                     :timeout         8000
-                     :format          (ajax/json-request-format)
-                     :response-format (ajax/json-response-format {:keywords? true})
-                     :on-success      [::save-project-success updated-project]
-                     :on-failure      [::save-project-failure]}}))))
+   (let [current-project (:current-project db)
+         project-id (:id current-project)
+         modified-project (assoc current-project :name new-project-name)
+         base-request {:params          modified-project
+                       :timeout         8000
+                       :format          (ajax/json-request-format)
+                       :response-format (ajax/json-response-format {:keywords? true})
+                       :on-success      [::save-project-success-optimistic modified-project]
+                       :on-failure      [::save-project-failure]}]
+     {:http-xhrio (if (nil? project-id)
+                    (merge base-request
+                           {:method :post
+                            :uri    "http://localhost:8002/api/projects"})
+                    (merge base-request
+                           {:method :put
+                            :uri    (str "http://localhost:8002/api/projects/" project-id)}))})))
 
 (re-frame/reg-event-fx
  ::save-project-as
@@ -69,24 +56,29 @@
      {:db (assoc db :saving-project? true)
       :http-xhrio {:method          :post
                    :uri             "http://localhost:8002/api/projects"
-                   :params project-to-save
+                   :params          project-to-save
                    :timeout         8000
                    :format          (ajax/json-request-format)
                    :response-format (ajax/json-response-format {:keywords? true})
                    :on-success      [::save-project-success project-to-save]
                    :on-failure      [::save-project-failure]}})))
 
+;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
+;; state without doing an additional GET. Beware!!
+(re-frame/reg-event-fx
+ ::save-project-success-optimistic
+ (fn [{:keys [db]} [_ saved-project]]
+   {:db (assoc db :current-project saved-project
+                  :loaded-projects (mapv #(if (= (:id %) (:id saved-project))
+                                            saved-project
+                                            %)
+                                         (:loaded-projects db)))}))
+
 (re-frame/reg-event-fx
  ::save-project-success
  (fn [{:keys [db]} [_ saved-project response]]
-     {:db (assoc db :current-project (assoc saved-project :id (:id response)))
-      :dispatch [::load-projects]}))
-
-(re-frame/reg-event-db
- ::save-project-failure
- (fn [db [_ error]]
-   (-> db
-       (assoc :request-error "Failure in saving project"))))
+   {:db (assoc db :current-project (assoc saved-project :id (:id response)))
+    :dispatch [::load-projects]}))
 
 (re-frame/reg-event-fx
  ::load-projects
@@ -103,16 +95,18 @@
  ::fetch-projects-success
  (fn [{:keys [db]} [_ response]]
    (let [projects response]
-     {:db (-> db
-              (assoc :loaded-projects projects)
-              (dissoc :loading-projects?))})))
+     {:db (assoc db :loaded-projects projects)})))
 
 (re-frame/reg-event-db
  ::fetch-projects-failure
  (fn [db [_ error]]
-   (-> db
-       (assoc :request-error (str "Failed to fetch projects: " (get-in error [:response :status-text])))
-       (dissoc :loading-projects?))))
+   (assoc db :request-error "Failure in saving project")))
+
+;; TODO Figure out how to handle API failures.
+(re-frame/reg-event-db
+ ::save-project-failure
+ (fn [db [_ error]]
+   (assoc db :request-error "Failure in saving project")))
 
 (re-frame/reg-event-fx
  ::load-project
@@ -123,8 +117,7 @@
                  :timeout         8000
                  :response-format (ajax/json-response-format {:keywords? true})
                  :on-success      [::fetch-project-success]
-                 :on-failure      [::fetch-project-failure]
-                 }}))
+                 :on-failure      [::fetch-project-failure]}}))
 
 (re-frame/reg-event-fx
  ::fetch-project-success
@@ -132,15 +125,12 @@
    (let [project response]
      {:db (-> db
               (assoc :current-project project)
-              (assoc :selected-projects #{})
-              (dissoc :loading-project?))})))
+              (assoc :selected-projects #{}))})))
 
 (re-frame/reg-event-db
  ::fetch-project-failure
  (fn [db [_ error]]
-   (-> db
-       (assoc :request-error (str "Failed to fetch project: " (get-in error [:response :status-text])))
-       (dissoc :loading-project?))))
+   (assoc db :request-error (str "Failed to fetch project: " (get-in error [:response :status-text])))))
 
 (re-frame/reg-event-fx
  ::delete-projects
@@ -174,8 +164,8 @@
            active-project-deleted? (= project-id (get-in db [:current-project :id]))]
        (if (zero? remaining)
          {:db (cond-> db
-                  true (dissoc :pending-deletes :deleting-projects?)
-                  active-project-deleted? (assoc-in [:current-project :id] nil)
-                  active-project-deleted? (assoc-in [:current-project :name] "Untitled"))
+                true (dissoc :pending-deletes :deleting-projects?)
+                active-project-deleted? (assoc-in [:current-project :id] nil)
+                active-project-deleted? (assoc-in [:current-project :name] "Untitled"))
           :dispatch [::load-projects]}
          {:db (assoc db :pending-deletes remaining)})))))

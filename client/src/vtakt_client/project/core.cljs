@@ -92,6 +92,7 @@
 ;; Minimal project definition we can start with.
 (def default-project-bpm 120)
 (def initial-project {:global-bpm default-project-bpm
+                      :author "Undefined"
                       :name "Untitled"
                       :patterns {}})
 

@@ -21,3 +21,8 @@
  ::project-name
  (fn [db _]
    (get-in db [:current-project :name])))
+
+(re-frame/reg-sub
+ ::global-bpm
+ (fn [db _]
+   (get-in db [:current-project :global-bpm])))
