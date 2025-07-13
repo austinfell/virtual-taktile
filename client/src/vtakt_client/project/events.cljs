@@ -29,7 +29,6 @@
                      :response-format (ajax/json-response-format {:keywords? true})
                      :on-success      [::save-project-success-optimistic modified-project]
                      :on-failure      [::save-project-failure]}}))))
-
 ;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
 ;; state without doing an additional GET. Beware!!
 (re-frame/reg-event-fx
@@ -152,7 +151,12 @@
 (re-frame/reg-event-fx
  ::delete-project-success-optimistic
  (fn [{:keys [db]} [_ project-id]]
-   {:db (assoc db :loaded-projects (filterv #(not= (:id %) project-id) (:loaded-projects db)))}))
+   (let [is-current-project? (= project-id (get-in db [:current-project :id]))]
+     {:db (-> db
+              (update :loaded-projects #(filterv (fn [p] (not= (:id p) project-id)) %))
+              (cond-> is-current-project?
+                (-> (assoc-in [:current-project :id] nil)
+                    (assoc-in [:current-project :name] "Untitled"))))})))
 
 (re-frame/reg-event-db
  ::fetch-project-failure
