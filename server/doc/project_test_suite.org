@@ -1,0 +1,40 @@
+* Purpose
+This is the manual integration tests to run for the project management UI.
+** Note
+This should eventually be converted into a proper set of integration tests.
+
+* Project Name Field Edits
+** Can be set if project name is undefined.
+*** And if items are checked on the project selection box.
+** Can be set if project name is defined.
+*** And if items are checked on the project selection box.
+** Can exit out of the UI using ESC and changes will not propagate.
+
+* BPM Field Edits
+** Can change BPM is project is not persisted yet to API
+** Can change BPM is project is persisted to API
+** Can set BPM to a decimal value
+** Field doesn't allow non-numeric fields
+
+* Save As
+** Empty string not allowed as save as name.
+** User can save a project with the name "test"
+** User can save a duplicate project name.
+** User can save a project as a new name, even if the current project is saved.
+
+* Refresh Projects
+** Refresh projects shows new projects that were saved server side
+** Refreshing with no server side changes results in no-op
+
+* Load Project
+** Project with non-ambiguous name can be loaded and has all the correct fields
+** Project with ambiguous name can be loaded and has all the correct fields
+
+* Delete Projects
+** Single project that is not the current project can be deleted
+** Single project that is not the current project, and current project is not persisted, can be deleted
+** Multiple projects that are not the current project can be deleted.
+*** This should result in current project being set to Untitled.
+** Single project that IS the current project can be deleted
+*** This should result in current project being set to Untitled.
+** Multiple projects, one of whic that is the current project, can be deleted.
