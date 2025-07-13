@@ -29,6 +29,18 @@
                      :response-format (ajax/json-response-format {:keywords? true})
                      :on-success      [::save-project-success-optimistic modified-project]
                      :on-failure      [::save-project-failure]}}))))
+
+;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
+;; state without doing an additional GET. Beware!!
+(re-frame/reg-event-fx
+ ::save-project-success-optimistic
+ (fn [{:keys [db]} [_ saved-project]]
+   {:db (assoc db :current-project saved-project
+               :loaded-projects (mapv #(if (= (:id %) (:id saved-project))
+                                         saved-project
+                                         %)
+                                      (:loaded-projects db)))}))
+
 (re-frame/reg-event-fx
  ::change-project-name
  (fn [{:keys [db]} [_ new-project-name]]
@@ -39,12 +51,15 @@
                        :timeout         8000
                        :format          (ajax/json-request-format)
                        :response-format (ajax/json-response-format {:keywords? true})
-                       :on-success      [::save-project-success-optimistic modified-project]
+                       :on-success      [::save-project-success modified-project]
                        :on-failure      [::save-project-failure]}]
      {:http-xhrio (if (nil? project-id)
+                    ;; New project - if we are setting a "new name" we treat it as a save as and set it
+                    ;; to be the current project.
                     (merge base-request
                            {:method :post
                             :uri    "http://localhost:8002/api/projects"})
+                    ;; Updating the name of the project.
                     (merge base-request
                            {:method :put
                             :uri    (str "http://localhost:8002/api/projects/" project-id)}))})))
@@ -63,48 +78,36 @@
                    :on-success      [::save-project-success project-to-save]
                    :on-failure      [::save-project-failure]}})))
 
-;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
-;; state without doing an additional GET. Beware!!
-(re-frame/reg-event-fx
- ::save-project-success-optimistic
- (fn [{:keys [db]} [_ saved-project]]
-   {:db (assoc db :current-project saved-project
-                  :loaded-projects (mapv #(if (= (:id %) (:id saved-project))
-                                            saved-project
-                                            %)
-                                         (:loaded-projects db)))}))
-
 (re-frame/reg-event-fx
  ::save-project-success
  (fn [{:keys [db]} [_ saved-project response]]
    {:db (assoc db :current-project (assoc saved-project :id (:id response)))
     :dispatch [::load-projects]}))
 
+;; TODO Figure out how to handle API failures.
+(re-frame/reg-event-db
+ ::save-project-failure
+ (fn [db [_ error]]
+   (assoc db :request-error "Failure in saving project")))
+
 (re-frame/reg-event-fx
  ::load-projects
  (fn [{:keys [db]} _]
-   {:db (assoc db :loading-projects? true)
-    :http-xhrio {:method          :get
+   {:http-xhrio {:method          :get
                  :uri             "http://localhost:8002/api/projects"
                  :timeout         8000
                  :response-format (ajax/json-response-format {:keywords? true})
-                 :on-success      [::fetch-projects-success]
-                 :on-failure      [::fetch-projects-failure]}}))
+                 :on-success      [::load-projects-success]
+                 :on-failure      [::load-projects-failure]}}))
 
 (re-frame/reg-event-fx
- ::fetch-projects-success
+ ::load-projects-success
  (fn [{:keys [db]} [_ response]]
    (let [projects response]
      {:db (assoc db :loaded-projects projects)})))
 
 (re-frame/reg-event-db
- ::fetch-projects-failure
- (fn [db [_ error]]
-   (assoc db :request-error "Failure in saving project")))
-
-;; TODO Figure out how to handle API failures.
-(re-frame/reg-event-db
- ::save-project-failure
+ ::load-projects-failure
  (fn [db [_ error]]
    (assoc db :request-error "Failure in saving project")))
 
@@ -135,37 +138,24 @@
 (re-frame/reg-event-fx
  ::delete-projects
  (fn [{:keys [db]} [_ project-ids]]
-   (let [current-pending (get db :pending-deletes 0)
-         new-pending (+ current-pending (count project-ids))]
-     {:db (-> db
-              (assoc :deleting-projects? true)
-              (assoc :selected-projects #{})
-              (assoc :pending-deletes new-pending))
-      :fx (mapv (fn [project-id]
-                  [:http-xhrio {:method          :delete
-                                :uri             (str "http://localhost:8002/api/projects/" project-id)
-                                :timeout         8000
-                                :format          (ajax/url-request-format)
-                                :response-format (ajax/json-response-format)
-                                :on-success      [::delete-completed project-id nil]
-                                :on-failure      [::delete-completed project-id]}])
-                project-ids)})))
+   {:db (assoc db :selected-projects #{})
+    :fx (mapv (fn [project-id]
+                [:http-xhrio {:method          :delete
+                              :uri             (str "http://localhost:8002/api/projects/" project-id)
+                              :timeout         8000
+                              :format          (ajax/url-request-format)
+                              :response-format (ajax/json-response-format)
+                              :on-success      [::delete-project-success-optimistic project-id]
+                              :on-failure      [::delete-project-failure project-id]}])
+                project-ids)}))
 
 (re-frame/reg-event-fx
- ::delete-completed
- (fn [{:keys [db]} [_ project-id response-or-error]]
-   (let [is-error (or (nil? response-or-error)
-                      (not (:deleted response-or-error)))]
-     (when is-error
-       ;; TODO - Handle error (ownership changed, etc.)
-       ;; Could dispatch another event with project-id and error details
-       )
-     (let [remaining (dec (:pending-deletes db))
-           active-project-deleted? (= project-id (get-in db [:current-project :id]))]
-       (if (zero? remaining)
-         {:db (cond-> db
-                true (dissoc :pending-deletes :deleting-projects?)
-                active-project-deleted? (assoc-in [:current-project :id] nil)
-                active-project-deleted? (assoc-in [:current-project :name] "Untitled"))
-          :dispatch [::load-projects]}
-         {:db (assoc db :pending-deletes remaining)})))))
+ ::delete-project-success-optimistic
+ (fn [{:keys [db]} [_ project-id]]
+   {:db (assoc db :loaded-projects (filterv #(not= (:id %) project-id) (:loaded-projects db)))}))
+
+(re-frame/reg-event-db
+ ::fetch-project-failure
+ (fn [db [_ error]]
+   (assoc db :request-error (str "Failed to delete project: " (get-in error [:response :status-text])))))
+
