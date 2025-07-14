@@ -29,6 +29,7 @@
                      :response-format (ajax/json-response-format {:keywords? true})
                      :on-success      [::save-project-success-optimistic modified-project]
                      :on-failure      [::save-project-failure modified-project]}}))))
+
 ;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
 ;; state without doing an additional GET. Beware!!
 (re-frame/reg-event-fx

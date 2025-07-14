@@ -44,7 +44,7 @@
 (defn string->pattern-id
   "Parses a pattern-id string (e.g. '2-4') back into a pattern-id."
   [s]
-  {:pre [(s/valid? ::pattern-id-string s)]}
+  {:pre 
   (let [[bank-str number-str] (clojure.string/split s #"-")]
     (create-pattern-id (js/parseInt bank-str) (js/parseInt number-str))))
 
@@ -65,7 +65,8 @@
 
 (s/def ::track-number (s/int-in 1 5))
 (s/def ::tracks (s/map-of ::track-number ::track))
-(s/def ::pattern (s/keys :req-un [::tracks]))
+(s/def ::length int?)
+(s/def ::pattern (s/keys :req-un [::tracks ::length ::bank ::number]))
 (s/def ::patterns (s/map-of ::pattern-id ::pattern))
 
 ;; Base level project. This contains basic root metadata as
@@ -95,6 +96,13 @@
                       :author "Undefined"
                       :name "Untitled"
                       :patterns {}})
+
+(defn create-default-pattern
+  [project {:keys [bank number]}]
+  {:length 16
+   :bank bank
+   :number number
+   :tracks []})
 
 (defn query-project
   "Allows querying of a project"

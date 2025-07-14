@@ -82,16 +82,16 @@
 
 (defn add-pattern
   "Add a pattern to a project"
-  [conn project-id {:keys [name length bank number] :or {length 16}}]
+  [conn project-id {:keys [length bank number] :or {length 16}}]
   (let [db (d/db conn)
         project-entity-id (:db/id (d/pull db '[:db/id] [:project/id project-id]))
-        x (println project-id)
         pattern-tempid (d/tempid :db.part/user)
         pattern-data {:db/id pattern-tempid
                       :pattern/bank bank
                       :pattern/number number
                       :pattern/length length
                       :pattern/project project-entity-id}
+
         tx-data [pattern-data
                  {:db/id project-entity-id
                   :project/patterns pattern-tempid

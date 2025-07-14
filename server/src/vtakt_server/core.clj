@@ -86,9 +86,10 @@
         (response {:deleted true})))
 
     ;; Pattern routes
-    (POST "/api/projects/:project-id/patterns" [project-id :as {:keys [body]}]
-      (let [proj-id (java.util.UUID/fromString project-id)
-            pattern-vec (ops/add-pattern @db-conn proj-id body)
+    (POST "/api/projects/:id/patterns" [id :as {:keys [body]}]
+      (let [proj-id (java.util.UUID/fromString id)
+            body-with-ids (keywordize-ids body)
+            pattern-vec (ops/add-pattern @db-conn proj-id body-with-ids)
             computed-id (clojure.string/join "-" (mapv str pattern-vec))]
         (created (str "/api/projects/" proj-id "/patterns/" computed-id)
                  {:id computed-id})))
