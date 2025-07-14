@@ -17,7 +17,7 @@
      (if (nil? project-id)
        ;; New project - nothing exists server side for us to sync to... Define
        ;; the project name and call it a day.
-       {:db (assoc db current-project modified-project)}
+       {:db (assoc db :current-project modified-project)}
 
        ;; Existing project - update via PUT. Only update client side once everything
        ;; is done.
@@ -28,7 +28,7 @@
                      :format          (ajax/json-request-format)
                      :response-format (ajax/json-response-format {:keywords? true})
                      :on-success      [::save-project-success-optimistic modified-project]
-                     :on-failure      [::save-project-failure]}}))))
+                     :on-failure      [::save-project-failure modified-project]}}))))
 ;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
 ;; state without doing an additional GET. Beware!!
 (re-frame/reg-event-fx
@@ -51,7 +51,7 @@
                        :format          (ajax/json-request-format)
                        :response-format (ajax/json-response-format {:keywords? true})
                        :on-success      [::save-project-success modified-project]
-                       :on-failure      [::save-project-failure]}]
+                       :on-failure      [::save-project-failure modified-project]}]
      {:http-xhrio (if (nil? project-id)
                     ;; New project - if we are setting a "new name" we treat it as a save as and set it
                     ;; to be the current project.
@@ -75,7 +75,7 @@
                    :format          (ajax/json-request-format)
                    :response-format (ajax/json-response-format {:keywords? true})
                    :on-success      [::save-project-success project-to-save]
-                   :on-failure      [::save-project-failure]}})))
+                   :on-failure      [::save-project-failure project-to-save]}})))
 
 (re-frame/reg-event-fx
  ::save-project-success
@@ -86,8 +86,9 @@
 ;; TODO Figure out how to handle API failures.
 (re-frame/reg-event-db
  ::save-project-failure
- (fn [db [_ error]]
-   (assoc db :request-error "Failure in saving project")))
+ (fn [db [_ modified-project]]
+   (assoc db :request-error "Failure in saving project"
+             :current-project modified-project)))
 
 (re-frame/reg-event-fx
  ::load-projects

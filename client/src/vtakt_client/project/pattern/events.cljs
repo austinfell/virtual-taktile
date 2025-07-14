@@ -2,24 +2,25 @@
   (:require
    [day8.re-frame.http-fx]
    [ajax.core :as ajax]
+   [vtakt-client.project.core :as p]
    [re-frame.core :as re-frame]))
 
 
 (re-frame/reg-event-fx
  ::set-active-pattern
- (fn [{:keys [db]} [_ bank pattern]]
+ (fn [{:keys [db]} [_ pattern-id]]
    (let [project-id (get-in db [:current-project :id])
-         get-url (str "http://localhost:8002/api/projects/" project-id "/patterns/" bank "-" pattern)]
-     {:db (assoc db 
-                :active-bank bank
-                :active-pattern pattern)
+         get-url (str "http://localhost:8002/api/projects/" project-id "/patterns/" (p/pattern-id->string pattern-id))
+         bank (:bank pattern-id)
+         number (:number pattern-id)]
+     {:db (assoc db :active-pattern (p/create-pattern-id bank number))
       :http-xhrio {:method :get
                    :uri get-url
                    :timeout 8000
                    :format (ajax/json-request-format)
                    :response-format (ajax/json-response-format {:keywords? true})
-                   :on-success [::pattern-fetch-success bank pattern]
-                   :on-failure [::pattern-fetch-failure bank pattern]}})))
+                   :on-success [::pattern-fetch-success bank number]
+                   :on-failure [::pattern-fetch-failure bank number]}})))
 
 (re-frame/reg-event-db
  ::pattern-fetch-success
@@ -30,7 +31,7 @@
 
 (re-frame/reg-event-fx
  ::pattern-fetch-failure
- (fn [{:keys [db]} [_ bank pattern error]]
+ (fn [{:keys [db]} [_ bank pattern]]
    ;; Pattern doesn't exist, create it
    (let [project-id (get-in db [:current-project :id])
          create-url (str "http://localhost:8002/api/projects/" project-id "/patterns")]
@@ -49,6 +50,7 @@
 (re-frame/reg-event-db
  ::pattern-create-success
  (fn [db [_ bank pattern response]]
+   (println (db :active-pattern))
    (-> db
        (assoc-in [:current-project :patterns bank pattern] 
                  {:bank bank :number pattern :length 16 :name "Main Beat" :tracks []})

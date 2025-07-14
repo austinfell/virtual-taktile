@@ -118,9 +118,9 @@
     :else
     (get-in patterns [(create-pattern-id bank pattern) :tracks track] track-keys)))
 
-(defn update-project
+(defn upsert-project
   "Updates project data at the specified path"
-  [project {:keys [bank pattern track track-keys]} value]
+  [project {:keys [bank pattern track track-key]} value]
   (let [pattern-id (create-pattern-id bank pattern)]
     (cond
       ;; Replace entire pattern
@@ -128,10 +128,10 @@
       (assoc-in project [:patterns pattern-id] value)
 
       ;; Replace entire track
-      (nil? track-keys)
+      (nil? track-key)
       (assoc-in project [:patterns pattern-id :tracks track] value)
 
       ;; Replace specific track property
       :else
       (assoc-in project [:patterns pattern-id :tracks track]
-                (assoc-in (get-in project [:patterns pattern-id :tracks track]) track-keys value)))))
+                (assoc (get-in project [:patterns pattern-id :tracks track]) track-key value)))))

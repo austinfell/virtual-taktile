@@ -40,6 +40,5 @@
    :current-project pj/initial-project
 
    ;; -> Pattern & track selections
-   :active-bank 1
-   :active-pattern 1
+   :active-pattern (pj/create-pattern-id 1 1)
    :active-track 1})

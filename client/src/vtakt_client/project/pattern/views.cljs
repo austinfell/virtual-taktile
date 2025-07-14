@@ -1,10 +1,11 @@
 (ns vtakt-client.project.pattern.views
   (:require
    [re-com.core :as re-com :refer [at]]
-   [vtakt-client.project.pattern.styles :as styles]
    [vtakt-client.styles :as general-styles]
+   [vtakt-client.project.pattern.styles :as styles]
    [vtakt-client.project.pattern.subs :as subs]
    [vtakt-client.project.pattern.events :as events]
+   [vtakt-client.project.core :as p]
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
@@ -42,7 +43,7 @@
                             (let [pattern-num (+ (* row 8) col 1)]
                               [:div
                                {:key pattern-num
-                                :on-click #(re-frame/dispatch [::events/set-active-pattern @selected-bank pattern-num])
+                                :on-click #(re-frame/dispatch [::events/set-active-pattern (p/create-pattern-id @selected-bank pattern-num)])
                                 :class [(styles/pattern)
                                         (when (and (= @selected-bank @active-bank)
                                                    (= pattern-num @active-pattern))

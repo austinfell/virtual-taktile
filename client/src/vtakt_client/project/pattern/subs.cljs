@@ -5,9 +5,9 @@
 (re-frame/reg-sub
  ::active-bank
  (fn [db _]
-   (:active-bank db)))
+   (get-in db [:active-pattern :bank])))
 
 (re-frame/reg-sub
  ::active-pattern
  (fn [db _]
-   (:active-pattern db)))
+   (get-in db [:active-pattern :number])))
