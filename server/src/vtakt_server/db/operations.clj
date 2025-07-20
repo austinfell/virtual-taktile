@@ -32,6 +32,78 @@
         tx-result @(d/transact conn [project-data])]
     project-id))
 
+(defn generate-new-ids-on-project [entity]
+  (cond
+    ;; Project level - new temp ID and new UUID
+    (:project/id entity)
+    (let [new-proj-tempid (str "proj-" (UUID/randomUUID))
+          new-uuid (UUID/randomUUID)]
+      (-> entity
+          (assoc :db/id new-proj-tempid
+                 :project/id new-uuid)
+          (update :project/patterns #(mapv generate-new-ids-on-project %))))
+    ;; Pattern level - new temp ID, link to parent
+    (:pattern/bank entity)
+    (let [new-patt-tempid (str "patt-" (UUID/randomUUID))
+          parent-tempid (:db/id (:pattern/project entity))]
+      (-> entity
+          (assoc :db/id new-patt-tempid
+                 :pattern/project parent-tempid)
+          (update :pattern/project+bank+number #(assoc % 0 parent-tempid))
+          (update :pattern/tracks #(mapv (fn [track]
+                                           (generate-new-ids-on-project
+                                            (assoc track :track/pattern new-patt-tempid))) %))))
+    ;; Track level - new temp ID, link to pattern
+    (:track/number entity)
+    (let [new-track-tempid (str "track-" (UUID/randomUUID))
+          pattern-tempid (:db/id (:track/pattern entity))]
+      (-> entity
+          (assoc :db/id new-track-tempid)
+          (update :track/pattern+number #(assoc % 0 pattern-tempid))
+          (update :track/steps #(mapv generate-new-ids-on-project %))))
+    ;; Steps, plocks, etc - same pattern
+    :else entity))
+
+(defn clone-project
+  "Clones a VTakt project"
+  [conn project-id new-name]
+  (let [db (d/db conn)
+        ;; Pull entire structure.
+        project-pattern '[*
+                          {:project/patterns
+                           [*
+                            {:pattern/tracks
+                             [*
+                              {:track/steps
+                               [*
+                                {:step/parameter-locks [*]}]}]}]}
+                          {:project/sounds
+                           [*
+                            {:sound/operators [*]}
+                            {:sound/envelope-settings [*]}]}]
+        original-project (d/pull db project-pattern [:project/id project-id])
+
+        cloned-project (-> original-project
+                           generate-new-ids-on-project
+                           (assoc :project/name new-name))
+        proj-tempid (:db/id cloned-project)  ; "proj-abc123..."
+
+        _ (println cloned-project)
+        ;; Transact and get the result
+        tx-result (try @(d/transact conn [cloned-project])
+                       (catch Exception e (println e)))
+
+        ;; Resolve temp ID to real entity ID
+        real-entity-id (d/resolve-tempid (:db-after tx-result)
+                                         (:tempids tx-result)
+                                         proj-tempid)
+
+        ;; Get the business UUID if you want that instead
+        new-db (d/db conn)
+        project-uuid (:project/id (d/entity new-db real-entity-id))]
+
+    project-uuid))
+
 (defn update-project
   "Update a VTakt project"
   [conn project-id project-data]
@@ -45,6 +117,24 @@
                            :project/updated-at (Date.))
         tx-result @(d/transact conn [update-data])]
     project-id))
+
+(defn strip-db-ids-and-assign-new-uuids
+  "Recursively strip :db/id and assign new UUIDs to entities that have unique identity attrs"
+  [entity]
+  (clojure.walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (let [cleaned (dissoc x :db/id)]
+         (cond
+            ;; Has a UUID identity - assign new UUID
+           (:sound/id x) (assoc cleaned :sound/id (UUID/randomUUID))
+           (:step/id x) (assoc cleaned :step/id (UUID/randomUUID))
+           (:plock/id x) (assoc cleaned :plock/id (UUID/randomUUID))
+           (:operator/id x) (assoc cleaned :operator/id (UUID/randomUUID))
+           (:envelope/id x) (assoc cleaned :envelope/id (UUID/randomUUID))
+           :else cleaned))
+       x))
+   entity))
 
 (defn delete-project
   "Delete a VTakt project"
@@ -91,11 +181,11 @@
                       :pattern/number number
                       :pattern/length length
                       :pattern/project project-entity-id}
-
         tx-data [pattern-data
                  {:db/id project-entity-id
                   :project/patterns pattern-tempid
                   :project/updated-at (Date.)}]
+        _ (println tx-data)
         tx-result @(d/transact conn tx-data)]
     [bank number]))
 
@@ -206,7 +296,7 @@
   (let [db (d/db conn)
         track-entity-id (:db/id (d/pull db '[:db/id] [:track/id track-id]))
         step-id (UUID/randomUUID)
-        step-with-id (assoc step-data 
+        step-with-id (assoc step-data
                             :db/id "new-step"
                             :step/id step-id)
         tx-data [step-with-id
@@ -242,31 +332,3 @@
         tx-result @(d/transact conn tx-data)]
     plock-id))
 
-;; ----- Utility Functions -----
-
-(defn export-project
-  "Export a project to EDN format"
-  [db project-id]
-  (let [project (get-project db project-id)]
-    project))
-
-(defn import-project
-  "Import a project from EDN format"
-  [conn project-data]
-  (let [;; Handle nested components by assigning temporary IDs
-        next-temp-id (atom -1)
-        assign-temp-ids (fn [form]
-                          (walk/postwalk
-                           (fn [x]
-                             (if (and (map? x) (not (:db/id x)))
-                               (assoc x :db/id (str "temp-" (swap! next-temp-id dec)))
-                               x))
-                           form))
-        project-with-ids (assign-temp-ids project-data)
-        project-id (or (:project/id project-with-ids) (UUID/randomUUID))
-        project-with-dates (-> project-with-ids
-                               (assoc :project/id project-id)
-                               (assoc :project/created-at (Date.))
-                               (assoc :project/updated-at (Date.)))
-        tx-result @(d/transact conn [project-with-dates])]
-    project-id))

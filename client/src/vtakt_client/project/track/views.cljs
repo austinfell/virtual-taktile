@@ -20,10 +20,10 @@
         :attr {:type "number"
                :min 1
                :max 16
-               :on-input #(re-frame/dispatch [::events/upsert-track-into-current-pattern
-                                              {:midi-channel (dec (js/parseInt (-> % .-target .-value) 10))}])}
-        :on-change #(re-frame/dispatch [::events/upsert-track-into-current-pattern
-                                        {:midi-channel (dec (js/parseInt (-> % .-target .-value) 10))}])]])))
+               :on-input #(re-frame/dispatch [::events/set-midi-channel-on-current-track
+                                              (dec (js/parseInt (-> % .-target .-value) 10))])}
+        :on-change #(re-frame/dispatch [::events/set-midi-channel-on-current-track
+                                        (dec (js/parseInt (-> % .-target .-value) 10))])]])))
 
 
 (defn track-select []

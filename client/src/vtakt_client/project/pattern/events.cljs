@@ -5,9 +5,16 @@
    [vtakt-client.project.core :as p]
    [re-frame.core :as re-frame]))
 
+;; This file has a specific flow:
+;; ::set-active-pattern
+;; Does pattern exist API side?
+;;   Yes? Set that to current project! ::load-pattern-success
+;;   No? Persist the default value for the pattern to the db. ::load-pattern-failure
+;;      Now attempt to reload the pattern state.
 (re-frame/reg-event-fx
  ::set-active-pattern
  (fn [{:keys [db]} [_ {:keys [bank number] :as pattern-id}]]
+   (println pattern-id)
    (let [project-id (get-in db [:current-project :id])]
      {:db (assoc db :active-pattern (p/create-pattern-id bank number))
       :http-xhrio {:method :get
@@ -21,13 +28,21 @@
                    :on-success [::load-pattern-success pattern-id]
                    :on-failure [::load-pattern-failure pattern-id]}})))
 
+(defn api-tracks->client-tracks [api-tracks]
+  (->> api-tracks
+       (map (fn [{:keys [number midi-channel]}]
+              [number (p/create-track {:midi-channel midi-channel})]))
+       (into {})))
 (re-frame/reg-event-db
  ::load-pattern-success
  (fn [{:keys [current-project] :as db} [_ {:keys [bank number]} response]]
-   (assoc db :current-project (p/upsert-project current-project
-                                              {:bank bank
-                                               :pattern number}
-                                              response))))
+   (let [client-tracks (api-tracks->client-tracks (:tracks response))
+         pattern (p/create-default-pattern current-project {:bank bank :number number})
+         updated-pattern (assoc pattern :tracks client-tracks)]
+     (assoc db :current-project
+            (p/upsert-project current-project
+                              {:bank bank :pattern number}
+                              updated-pattern)))))
 
 ;; TODO This needs special http status code handling - big different if we get a 404 vs a 400.
 (re-frame/reg-event-fx

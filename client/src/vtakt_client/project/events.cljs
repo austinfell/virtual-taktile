@@ -1,12 +1,22 @@
 (ns vtakt-client.project.events
   (:require [ajax.core :as ajax]
             [day8.re-frame.http-fx]
+            [vtakt-client.project.core :as pj]
+            [vtakt-client.project.pattern.events :as ppe]
             [re-frame.core :as re-frame]))
 
 (re-frame/reg-event-db
  ::set-selected-projects
  (fn [db [_ project-ids]]
    (assoc db :selected-projects project-ids)))
+
+(re-frame/reg-event-db
+ ::initialize-project
+ (fn [db _]
+   (assoc db
+          :active-pattern (pj/create-pattern-id 1 1)
+          :active-track 1
+          :current-project pj/initial-project)))
 
 (re-frame/reg-event-fx
  ::change-project-bpm
@@ -32,6 +42,7 @@
 
 ;; Doesn't use the response! This is really only used if we are 100% sure we can synchronize
 ;; state without doing an additional GET. Beware!!
+;; TODO In reality, we basically need none of this - basically noop if save goes through.
 (re-frame/reg-event-fx
  ::save-project-success-optimistic
  (fn [{:keys [db]} [_ saved-project]]
@@ -69,14 +80,23 @@
  (fn [{:keys [db]} [_ project-name]]
    (let [project-to-save (assoc (:current-project db) :name project-name)]
      {:db (assoc db :saving-project? true)
-      :http-xhrio {:method          :post
-                   :uri             "http://localhost:8002/api/projects"
-                   :params          project-to-save
-                   :timeout         8000
-                   :format          (ajax/json-request-format)
-                   :response-format (ajax/json-response-format {:keywords? true})
-                   :on-success      [::save-project-success project-to-save]
-                   :on-failure      [::save-project-failure project-to-save]}})))
+      :http-xhrio (if (nil? (:id (:current-project db)))
+                    {:method          :post
+                     :uri             "http://localhost:8002/api/projects"
+                     :params          project-to-save
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success project-to-save]
+                     :on-failure      [::save-project-failure project-to-save]}
+                    {:method          :post
+                     :uri             (str "http://localhost:8002/api/projects/" (:id (:current-project db)) "/clone")
+                     :params          {:name project-name}
+                     :timeout         8000
+                     :format          (ajax/json-request-format)
+                     :response-format (ajax/json-response-format {:keywords? true})
+                     :on-success      [::save-project-success project-to-save]
+                     :on-failure      [::save-project-failure project-to-save]})})))
 
 (re-frame/reg-event-fx
  ::save-project-success
@@ -105,7 +125,7 @@
  ::load-projects-success
  (fn [{:keys [db]} [_ response]]
    (let [projects response]
-     {:db (assoc db :loaded-projects projects)})))
+     {:db (assoc db :loaded-projects (map #(assoc % :patterns {}) projects))})))
 
 (re-frame/reg-event-db
  ::load-projects-failure
@@ -127,8 +147,10 @@
  ::fetch-project-success
  (fn [{:keys [db]} [_ response]]
    (let [project response]
-     {:db (-> db
-              (assoc :current-project project)
+     ;; TODO - This is really where we should do the whole "if the pattern doesn't exist, create it thing."
+     {:dispatch [::ppe/set-active-pattern (:active-pattern db)]
+      :db (-> db
+              (assoc :current-project (assoc project :patterns {}))
               (assoc :selected-projects #{}))})))
 
 (re-frame/reg-event-db

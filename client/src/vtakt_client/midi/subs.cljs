@@ -18,6 +18,6 @@
    (try
      (get-in
       db
-      [:current-project :patterns (db :active-bank) (db :active-pattern) :tracks (db :active-track) :midi-channel]
+      [:current-project :patterns (db :active-pattern) :tracks (db :active-track) :midi-channel]
       0)
      (catch js/Error e 0))))

@@ -19,6 +19,11 @@
    :disabled? (not enabled?)
    :on-click #(re-frame/dispatch [::events/load-project project-id])])
 
+(defn initialize-project []
+  [re-com/button
+   :label "Initialize Project"
+   :on-click #(re-frame/dispatch [::events/initialize-project])])
+
 (defn delete-projects [enabled? project-ids]
   [re-com/button
    :label "Delete Project(s)"
@@ -91,6 +96,7 @@
                                                      [re-com/v-box
                                                       :gap "10px"
                                                       :children [[refresh-projects]
+                                                                 [initialize-project]
                                                                  [load-project
                                                                   (= (count @selected-projects) 1)
                                                                   (first @selected-projects)]

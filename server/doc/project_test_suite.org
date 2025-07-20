@@ -38,3 +38,5 @@ This should eventually be converted into a proper set of integration tests.
 ** Single project that IS the current project can be deleted
 *** This should result in current project being set to Untitled.
 ** Multiple projects, one of whic that is the current project, can be deleted.
+
+* TODO - Project cloning is broken - we're gonna really need a project clone endpoint

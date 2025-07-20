@@ -69,6 +69,15 @@
           (response (prepare-response project))
           (not-found {:error "Project not found"}))))
 
+    (POST "/api/projects/:id/clone" [id :as {:keys [body]}]
+      (let [project-id (java.util.UUID/fromString id)
+            new-name (:name (keywordize-ids body))
+            _ (println new-name)
+            new-project (ops/clone-project @db-conn project-id new-name)]
+        (if new-project
+          (response (prepare-response {:id new-project}))
+          (not-found {:error "Project not found"}))))
+
     (POST "/api/projects" {:keys [body]}
       (let [project-id (ops/create-project @db-conn body)]
         (created (str "/api/projects/" project-id)
@@ -115,11 +124,16 @@
     (PUT "/api/projects/:project-id/patterns/:pattern-id/tracks/:track-id" [pattern-id project-id track-id :as {:keys [body]}]
       (let [project-uuid (java.util.UUID/fromString project-id)
             [bank-number pattern-number] (mapv Long/parseLong (clojure.string/split pattern-id #"-"))
-            track-id (ops/add-track @db-conn project-uuid bank-number pattern-number track-id body)]
-        (created (str "/api/projects/" project-id "/patterns/" pattern-id "/tracks")
-                 {:id track-id})))
+            ;; TODO - This should probably be delegated client side.
+            pattern (try (ops/get-pattern (d/db @db-conn) project-uuid bank-number pattern-number)
+                         (catch Exception e nil))]
+        (when (nil? pattern)
+          (ops/add-pattern @db-conn project-uuid {:bank bank-number :number pattern-number :length 16}))
+        (let [track-id (ops/add-track @db-conn project-uuid bank-number pattern-number track-id body)]
+          (created (str "/api/projects/" project-id "/patterns/" pattern-id "/tracks")
+                   {:id track-id}))))
 
-    ;; Sound routes
+;; Sound routes
     (POST "/api/projects/:project-id/sounds" [project-id :as {:keys [body]}]
       (let [proj-id (java.util.UUID/fromString project-id)
             body-with-ids (keywordize-ids body)

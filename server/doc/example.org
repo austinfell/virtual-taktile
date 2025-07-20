@@ -16,18 +16,18 @@ navigate to a restclient block and C-c C-c.
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "2e7da578-2683-4195-b54d-67c750a2466a"
+  "id": "b30ce2bb-0221-4419-a953-0e9c1b51ec4b"
 }
 // POST http://localhost:8002/api/projects
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/2e7da578-2683-4195-b54d-67c750a2466a
+// Location: /api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.008092s
+// Request duration: 0.007994s
 #+END_SRC
 
 * Listing Projects
@@ -90,6 +90,31 @@ navigate to a restclient block and C-c C-c.
 // Request duration: 0.012405s
 #+END_SRC
 
+* Clone A Project
+#+BEGIN_SRC restclient
+  POST http://localhost:8002/api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b/clone
+  Content-Type: application/json
+  {
+    "name": "A different project"
+  }
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC js
+{
+  "id": "6ef138b0-fe08-4ed4-9d32-172c8f186a91"
+}
+// POST http://localhost:8002/api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b/clone
+// HTTP/1.1 200 OK
+// Server: Jetty(12.0.16)
+// Content-Type: application/json; charset=utf-8
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// Access-Control-Allow-Headers: Content-Type, Authorization
+// Transfer-Encoding: chunked
+// Request duration: 0.211626s
+#+END_SRC
+
 * Retrieve A Individual Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
@@ -99,7 +124,7 @@ project exists in the DB matching that ID.
 
 #+RESULTS:
 #+BEGIN_SRC js
-{
+
   "id": "2e7da578-2683-4195-b54d-67c750a2466a",
   "name": "test 3",
   "author": "test",

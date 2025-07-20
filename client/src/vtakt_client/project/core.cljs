@@ -44,7 +44,7 @@
 (defn string->pattern-id
   "Parses a pattern-id string (e.g. '2-4') back into a pattern-id."
   [s]
-  {:pre 
+  {:pre [(s/valid? ::pattern-id-string s)]}
   (let [[bank-str number-str] (clojure.string/split s #"-")]
     (create-pattern-id (js/parseInt bank-str) (js/parseInt number-str))))
 
@@ -52,7 +52,7 @@
 ;; be played on a sound generation device. It says where to emit
 ;; notes, what those notes are, etc.
 (def max-midi-channel 16)
-(s/def ::midi-channel (s/and number? #(and (> % 0) (<= % max-midi-channel))))
+(s/def ::midi-channel (s/and number? #(and (>= % 0) (< % max-midi-channel))))
 (s/def ::track (s/keys :req-un [::midi-channel]))
 (s/fdef create-track
   :args (s/keys :req-un [::midi-channel])
@@ -86,9 +86,7 @@
 ;; Specs for the query function
 ;;
 ;; TODO - Need formal specs here.
-(defn project-valid?
-  [p]
-  (s/valid? ::project p))
+(defn project-valid? [p] (s/valid? ::project p))
 
 ;; Minimal project definition we can start with.
 (def default-project-bpm 120)
@@ -97,12 +95,15 @@
                       :name "Untitled"
                       :patterns {}})
 
+;; TODO This will change as we expand functionality - right now doesn't actually
+;; use underlying project structure.
 (defn create-default-pattern
+  "Given current global state of project, builds a default pattern."
   [project {:keys [bank number]}]
   {:length 16
    :bank bank
    :number number
-   :tracks []})
+   :tracks {}})
 
 (defn query-project
   "Allows querying of a project"
@@ -129,6 +130,7 @@
 (defn upsert-project
   "Updates project data at the specified path"
   [project {:keys [bank pattern track track-key]} value]
+  (println project)
   (let [pattern-id (create-pattern-id bank pattern)]
     (cond
       ;; Replace entire pattern
