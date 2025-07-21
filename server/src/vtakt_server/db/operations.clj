@@ -32,42 +32,48 @@
         tx-result @(d/transact conn [project-data])]
     project-id))
 
+(defmulti generate-new-ids 
+  (fn [entity]
+    (cond
+      (:project/id entity) :project
+      (:pattern/bank entity) :pattern
+      (:track/number entity) :track
+      :else :default)))
 
-(defn generate-new-ids-on-project [entity]
-  (cond;; Project level - new temp ID and new UUID
-    (:project/id entity)
-    (let [new-proj-tempid (str "proj-" (UUID/randomUUID))
-          new-uuid (UUID/randomUUID)]
-      (-> entity
-          (assoc :db/id new-proj-tempid
-                 :project/id new-uuid)
-          (update :project/patterns #(mapv (fn [pattern]
-                                             (generate-new-ids-on-project
-                                              (assoc pattern :pattern/project {:db/id new-proj-tempid})))
-                                           %))))
+(defmethod generate-new-ids :project [entity]
+  (let [new-proj-tempid (str "proj-" (UUID/randomUUID))
+        new-uuid (UUID/randomUUID)]
+    (-> entity
+        (assoc :db/id new-proj-tempid
+               :project/id new-uuid)
+        (update :project/patterns #(mapv (fn [pattern]
+                                           (generate-new-ids
+                                            ;; Additional linking providing upstream context
+                                            (assoc pattern :pattern/project new-proj-tempid)))
+                                         %)))))
 
-    ;; Pattern level - new temp ID, link to parent
-    (:pattern/bank entity)
-    (let [new-patt-tempid (str "patt-" (UUID/randomUUID))
-          parent-tempid (:db/id (:pattern/project entity))]
-      (-> entity
-          (assoc :db/id new-patt-tempid
-                 :pattern/project parent-tempid
-                 :pattern/project+bank+number [parent-tempid (:pattern/bank entity) (:pattern/number entity)])
-          (update :pattern/tracks #(mapv (fn [track]
-                                           (generate-new-ids-on-project
-                                            (assoc track :track/pattern new-patt-tempid
-                                                   :track/pattern+number [new-patt-tempid (:track/number track)]))) %))))
+(defmethod generate-new-ids :pattern [entity]
+  (let [new-patt-tempid (str "patt-" (UUID/randomUUID))]
+    (-> entity
+        (assoc :db/id new-patt-tempid
+               ;; It is expected that (:pattern/project entity) will be set to the correct value and no
+               ;; additional regeneration is required for that particular id.
+               :pattern/project+bank+number [(:pattern/project entity) (:pattern/bank entity) (:pattern/number entity)])
+        (update :pattern/tracks #(mapv (fn [track]
+                                         (generate-new-ids
+                                          ;; Additional linking to provide upstream context
+                                          (assoc track :track/pattern new-patt-tempid))) %)))))
 
-    ;; Track level - new temp ID, link to pattern
-    (:track/number entity)
-    (let [new-track-tempid (str "track-" (UUID/randomUUID))]
-      (-> entity
-          (assoc :db/id new-track-tempid)
-          (update :track/steps #(mapv generate-new-ids-on-project %))))
+(defmethod generate-new-ids :track [entity]
+  (let [new-track-tempid (str "track-" (UUID/randomUUID))]
+    (-> entity
+        (assoc :db/id new-track-tempid
+               :track/pattern+number [(:track/pattern entity) (:track/number entity)])
+        ;; TODO - Additional linking is required here.
+        (update :track/steps #(mapv generate-new-ids %)))))
 
-    ;; Steps, plocks, etc - same pattern
-    :else entity))
+(defmethod generate-new-ids :default [entity]
+  entity)
 
 (defn clone-project
   "Clones a VTakt project"
@@ -89,12 +95,10 @@
         original-project (d/pull db project-pattern [:project/id project-id])
 
         cloned-project (-> original-project
-                           generate-new-ids-on-project
+                           generate-new-ids
                            (assoc :project/name new-name))
-        proj-tempid (:db/id cloned-project)  ; "proj-abc123..."
+        proj-tempid (:db/id cloned-project)
 
-        _ (println "Tha clone")
-        _ (println cloned-project)
         ;; Transact and get the result
         tx-result (try @(d/transact conn [cloned-project])
                        (catch Exception e (println e)))
