@@ -16,18 +16,18 @@ navigate to a restclient block and C-c C-c.
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "b30ce2bb-0221-4419-a953-0e9c1b51ec4b"
+  "id": "00f08050-5ee9-42e3-8bf6-053e608ab9bb"
 }
 // POST http://localhost:8002/api/projects
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b
+// Location: /api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.007994s
+// Request duration: 0.006045s
 #+END_SRC
 
 * Listing Projects
@@ -39,44 +39,64 @@ navigate to a restclient block and C-c C-c.
 #+BEGIN_SRC js
 [
   {
-    "id": "2e2bd627-04b2-458f-8dd0-f0281ceb22d7",
-    "name": "anothera",
-    "author": "Undefined",
-    "created-at": "2025-07-14T02:59:12.764Z",
-    "global-bpm": 128.0,
+    "id": "a6e6ce55-cdd0-4fee-8036-752ec5b38499",
+    "name": "test 3",
+    "author": "test",
+    "created-at": "2025-07-21T02:42:42.780Z",
+    "global-bpm": 409.0,
     "patterns": [
       {
-        "bank": 1,
-        "number": 2
-      },
-      {
-        "bank": 1,
-        "number": 13
-      },
-      {
-        "bank": 1,
-        "number": 15
-      },
-      {
-        "bank": 1,
-        "number": 7
-      },
-      {
-        "bank": 1,
-        "number": 4
-      },
-      {
-        "bank": 4,
-        "number": 12
+        "bank": 3,
+        "number": 5
       }
     ]
   },
   {
-    "id": "9298d639-667c-4e0b-b115-36ff273fcdff",
+    "id": "1a03edd1-4f41-4664-9d7e-eba9f995a530",
+    "name": "A different project",
+    "author": "test",
+    "created-at": "2025-07-21T02:42:42.780Z",
+    "global-bpm": 409.0,
+    "patterns": [
+      {
+        "bank": 3,
+        "number": 5
+      }
+    ]
+  },
+  {
+    "id": "00f08050-5ee9-42e3-8bf6-053e608ab9bb",
     "name": "test 3",
     "author": "test",
-    "created-at": "2025-07-14T03:51:47.664Z",
-    "global-bpm": 409.0
+    "created-at": "2025-07-21T02:44:22.914Z",
+    "global-bpm": 409.0,
+    "patterns": [
+      {
+        "bank": 3,
+        "number": 5
+      },
+      {
+        "bank": 4,
+        "number": 4
+      }
+    ]
+  },
+  {
+    "id": "df2f1a7b-5018-4857-9e0d-254a0ef355a9",
+    "name": "A totally different project",
+    "author": "test",
+    "created-at": "2025-07-21T02:44:22.914Z",
+    "global-bpm": 409.0,
+    "patterns": [
+      {
+        "bank": 3,
+        "number": 5
+      },
+      {
+        "bank": 4,
+        "number": 4
+      }
+    ]
   }
 ]
 // GET http://localhost:8002/api/projects
@@ -87,24 +107,27 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.012405s
+// Request duration: 0.025696s
 #+END_SRC
+
+#+RESULTS:
+: undefined
 
 * Clone A Project
 #+BEGIN_SRC restclient
-  POST http://localhost:8002/api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b/clone
+  POST http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/clone
   Content-Type: application/json
   {
-    "name": "A different project"
+    "name": "A totally different project"
   }
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
 {
-  "id": "6ef138b0-fe08-4ed4-9d32-172c8f186a91"
+  "id": "df2f1a7b-5018-4857-9e0d-254a0ef355a9"
 }
-// POST http://localhost:8002/api/projects/b30ce2bb-0221-4419-a953-0e9c1b51ec4b/clone
+// POST http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/clone
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -112,27 +135,27 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.211626s
+// Request duration: 0.013133s
 #+END_SRC
 
 * Retrieve A Individual Project
 Note that the ID provided is an example ID... Will 404 if no
 project exists in the DB matching that ID.
 #+BEGIN_SRC restclient
-  GET http://localhost:8002/api/projects/2e7da578-2683-4195-b54d-67c750a2466a
+  GET http://localhost:8002/api/projects/14de67b5-a214-40b5-87d6-27c994388a13
 #+END_SRC
 
 #+RESULTS:
 #+BEGIN_SRC js
-
-  "id": "2e7da578-2683-4195-b54d-67c750a2466a",
+{
+  "id": "14de67b5-a214-40b5-87d6-27c994388a13",
   "name": "test 3",
   "author": "test",
-  "created-at": "2025-07-14T04:19:11.618Z",
-  "updated-at": "2025-07-14T04:19:11.618Z",
-  "global-bpm": 409.0
+  "created-at": "2025-07-20T04:53:43.567Z",
+  "updated-at": "2025-07-20T04:53:43.567Z",
+  "bpm": 120.0
 }
-// GET http://localhost:8002/api/projects/2e7da578-2683-4195-b54d-67c750a2466a
+// GET http://localhost:8002/api/projects/14de67b5-a214-40b5-87d6-27c994388a13
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
 // Content-Type: application/json; charset=utf-8
@@ -140,7 +163,7 @@ project exists in the DB matching that ID.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.010689s
+// Request duration: 0.019240s
 #+END_SRC
 
 * Update Project
@@ -181,7 +204,7 @@ project exists in the DB matching that ID.
 
 * Create a pattern
 #+BEGIN_SRC restclient
-  POST http://localhost:8002/api/projects/2e7da578-2683-4195-b54d-67c750a2466a/patterns
+  POST http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns
   Content-Type: application/json
   {
     "bank": 3,
@@ -196,16 +219,16 @@ project exists in the DB matching that ID.
 {
   "id": "3-5"
 }
-// POST http://localhost:8002/api/projects/2e7da578-2683-4195-b54d-67c750a2466a/patterns
+// POST http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/2e7da578-2683-4195-b54d-67c750a2466a/patterns/3-5
+// Location: /api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns/3-5
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.007494s
+// Request duration: 0.010369s
 #+END_SRC
 
 * Get a pattern
@@ -281,7 +304,7 @@ GET http://localhost:8002/api/projects/2e7da578-2683-4195-b54d-67c750a2466a/patt
 
 * Create a track on the pattern
 #+BEGIN_SRC restclient
-PUT http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks/3
+PUT http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns/4-4/tracks/3
 Content-Type: application/json
 {
   "midi-channel": 5
@@ -293,16 +316,16 @@ Content-Type: application/json
 {
   "id": 3
 }
-// PUT http://localhost:8002/api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks/3
+// PUT http://localhost:8002/api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns/4-4/tracks/3
 // HTTP/1.1 201 Created
 // Server: Jetty(12.0.16)
-// Location: /api/projects/d58d3bf5-8f72-451b-96ad-64cb034b5a0c/patterns/4-4/tracks
+// Location: /api/projects/00f08050-5ee9-42e3-8bf6-053e608ab9bb/patterns/4-4/tracks
 // Content-Type: application/json; charset=utf-8
 // Access-Control-Allow-Origin: *
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.006535s
+// Request duration: 0.018339s
 #+END_SRC
 
 

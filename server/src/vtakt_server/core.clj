@@ -70,9 +70,9 @@
           (not-found {:error "Project not found"}))))
 
     (POST "/api/projects/:id/clone" [id :as {:keys [body]}]
-      (let [project-id (java.util.UUID/fromString id)
+      (let [_ (println "hello")
+            project-id (java.util.UUID/fromString id)
             new-name (:name (keywordize-ids body))
-            _ (println new-name)
             new-project (ops/clone-project @db-conn project-id new-name)]
         (if new-project
           (response (prepare-response {:id new-project}))
@@ -173,18 +173,6 @@
             plock-id (ops/add-parameter-lock @db-conn stp-id body-with-ids)]
         (created (str "/api/parameter-locks/" plock-id)
                  {:id (str plock-id)})))
-
-    ;; Import/Export routes
-    (GET "/api/projects/:id/export" [id]
-      (let [project-id (java.util.UUID/fromString id)
-            project-data (ops/export-project (d/db @db-conn) project-id)]
-        (response (prepare-response project-data))))
-
-    (POST "/api/projects/import" {:keys [body]}
-      (let [body-with-ids (keywordize-ids body)
-            project-id (ops/import-project @db-conn body-with-ids)]
-        (created (str "/api/projects/" project-id)
-                 {:id (str project-id)})))
 
     ;; Static resources and 404
     (route/resources "/")
