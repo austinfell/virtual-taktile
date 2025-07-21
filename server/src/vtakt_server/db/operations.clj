@@ -32,6 +32,7 @@
         tx-result @(d/transact conn [project-data])]
     project-id))
 
+
 (defn generate-new-ids-on-project [entity]
   (cond;; Project level - new temp ID and new UUID
     (:project/id entity)
