@@ -15,15 +15,15 @@
        {:class (styles/channel-row)}
        [:p {:class (styles/channel-key-name)} "Channel:"]
        [re-com/input-text
-        :model (str (inc (or @selected-channel 0)))
+        :model (str @selected-channel)
         :width "60px"
         :attr {:type "number"
-               :min 1
-               :max 16
+               :min 0
+               :max 15
                :on-input #(re-frame/dispatch [::events/set-midi-channel-on-current-track
-                                              (dec (js/parseInt (-> % .-target .-value) 10))])}
+                                              (js/parseInt (-> % .-target .-value) 10)])}
         :on-change #(re-frame/dispatch [::events/set-midi-channel-on-current-track
-                                        (dec (js/parseInt (-> % .-target .-value) 10))])]])))
+                                        (js/parseInt (-> % .-target .-value) 10)])]])))
 
 
 (defn track-select []

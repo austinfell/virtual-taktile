@@ -47,6 +47,7 @@
        (fn [err]
          (js/console.error "Failed to initialize MIDI:" err)))))
 
+
 (defn midi-effect [{:keys [type channel device data on-success on-failure]}]
   (try
     (let [device (get @midi-outputs device)
@@ -60,11 +61,9 @@
                            :note-off [(:note data) (:velocity data)])]
           (.send output (clj->js (cons status-byte data-bytes)))
           (when on-success
-            (print "succ")
             (dispatch on-success)))))
     (catch js/Error e
       (when on-failure
-        (print "fail")
         (dispatch on-failure)))))
 
 (reg-fx

@@ -37,83 +37,7 @@ navigate to a restclient block and C-c C-c.
 
 #+RESULTS:
 #+BEGIN_SRC js
-[
-  {
-    "id": "96a7abaf-6c7e-431c-9893-9ff1e8140d0b",
-    "name": "test 3",
-    "author": "test",
-    "created-at": "2025-07-21T04:12:12.533Z",
-    "global-bpm": 409.0,
-    "patterns": [
-      {
-        "bank": 3,
-        "number": 5
-      },
-      {
-        "bank": 4,
-        "number": 4
-      }
-    ]
-  },
-  {
-    "id": "fde3e4f1-8058-408b-8fff-4db79ebb43ab",
-    "name": "A totally different project",
-    "author": "test",
-    "created-at": "2025-07-21T04:12:12.533Z",
-    "global-bpm": 409.0,
-    "patterns": [
-      {
-        "bank": 3,
-        "number": 5
-      },
-      {
-        "bank": 4,
-        "number": 4
-      },
-      {
-        "bank": 1,
-        "number": 1
-      },
-      {
-        "bank": 1,
-        "number": 2
-      },
-      {
-        "bank": 1,
-        "number": 3
-      },
-      {
-        "bank": 2,
-        "number": 1
-      },
-      {
-        "bank": 1,
-        "number": 11
-      },
-      {
-        "bank": 2,
-        "number": 2
-      }
-    ]
-  },
-  {
-    "id": "6ebf5f0e-8097-4d98-8d5f-26714513cd21",
-    "name": "A totally different project",
-    "author": "test",
-    "created-at": "2025-07-21T04:12:12.533Z",
-    "global-bpm": 409.0,
-    "patterns": [
-      {
-        "bank": 3,
-        "number": 5
-      },
-      {
-        "bank": 4,
-        "number": 4
-      }
-    ]
-  }
-]
+[]
 // GET http://localhost:8002/api/projects
 // HTTP/1.1 200 OK
 // Server: Jetty(12.0.16)
@@ -122,7 +46,7 @@ navigate to a restclient block and C-c C-c.
 // Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
 // Access-Control-Allow-Headers: Content-Type, Authorization
 // Transfer-Encoding: chunked
-// Request duration: 0.013363s
+// Request duration: 0.006272s
 #+END_SRC
 
 #+RESULTS:

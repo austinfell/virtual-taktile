@@ -51,7 +51,7 @@
 ;; Track data structure. This is *the* polyphonic sequence that can
 ;; be played on a sound generation device. It says where to emit
 ;; notes, what those notes are, etc.
-(def max-midi-channel 16)
+(def max-midi-channel 15)
 (s/def ::midi-channel (s/and number? #(and (>= % 0) (< % max-midi-channel))))
 (s/def ::track (s/keys :req-un [::midi-channel]))
 (s/fdef create-track

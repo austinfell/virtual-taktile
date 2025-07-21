@@ -98,20 +98,23 @@
         new-sounded-notes (into #{} (mapcat #(chord/build-scale-chord scale % chords) new-triggered-notes))
         added-notes (if chord-mode? new-sounded-notes (set/difference new-sounded-notes previous-sounded-notes))
         removed-notes (if chord-mode? previous-sounded-notes (set/difference previous-sounded-notes new-sounded-notes))
+        midi-channel (get-in
+                      db
+                      [:current-project :patterns (db :active-pattern) :tracks (db :active-track) :midi-channel]
+                      0)
         note-on-messages (map (fn [note]
                                 {:type :note-on
-                                 :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
-                                 :device (get-in db [:per-track-midi-data (:selected-track db) :midi-output])
+                                 :channel midi-channel
+                                 :device (:selected-midi-output db)
                                  :data {:note (kb/note->midi-number note) :velocity 80}})
                               added-notes)
         note-off-messages (map (fn [note]
                                  {:type :note-off
-                                  :channel (get-in db [:per-track-midi-data (:selected-track db) :midi-channel])
-                                  :device (get-in db [:per-track-midi-data (:selected-track db) :midi-output])
+                                  :channel midi-channel
+                                  :device (:selected-midi-output db)
                                   :data {:note (kb/note->midi-number note) :velocity 0}})
                                removed-notes)
         midi-messages (concat note-off-messages note-on-messages)]
-    (println midi-messages)
     {:midi-messages midi-messages
      :triggered-notes new-triggered-notes
      :sounded-notes new-sounded-notes}))
