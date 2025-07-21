@@ -118,24 +118,6 @@
         tx-result @(d/transact conn [update-data])]
     project-id))
 
-(defn strip-db-ids-and-assign-new-uuids
-  "Recursively strip :db/id and assign new UUIDs to entities that have unique identity attrs"
-  [entity]
-  (clojure.walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (let [cleaned (dissoc x :db/id)]
-         (cond
-            ;; Has a UUID identity - assign new UUID
-           (:sound/id x) (assoc cleaned :sound/id (UUID/randomUUID))
-           (:step/id x) (assoc cleaned :step/id (UUID/randomUUID))
-           (:plock/id x) (assoc cleaned :plock/id (UUID/randomUUID))
-           (:operator/id x) (assoc cleaned :operator/id (UUID/randomUUID))
-           (:envelope/id x) (assoc cleaned :envelope/id (UUID/randomUUID))
-           :else cleaned))
-       x))
-   entity))
-
 (defn delete-project
   "Delete a VTakt project"
   [conn project-id]
