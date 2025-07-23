@@ -4,6 +4,7 @@
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
    [vtakt-client.project.views :as project]
+   [vtakt-client.step-input.views :as step-input]
    [vtakt-client.project.pattern.views :as pattern]
    [vtakt-client.project.track.views :as track]
    [vtakt-client.midi.views :as midi]
@@ -77,6 +78,7 @@
               [project/save-project-as]
               [project/project-manager]
               [pattern/bank-and-pattern-select]
+              [step-input/step-input]
               [track/track-select]]])
 
 (defmethod routes/panels :keyboard-panel []
@@ -87,6 +89,7 @@
    :src      (at)
    :gap      "1em"
    :children [[midi/midi-configurator]]])
+
 
 
 (defmethod routes/panels :midi-panel []
