@@ -78,7 +78,7 @@
               [project/save-project-as]
               [project/project-manager]
               [pattern/bank-and-pattern-select]
-              [step-input/step-input]
+              [step-input/step-input #(println "hello") #(println "world") #(println "left") {1 :hi}]
               [track/track-select]]])
 
 (defmethod routes/panels :keyboard-panel []
