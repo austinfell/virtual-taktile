@@ -7,7 +7,7 @@
    [garden.color :as color]))
 
 ;; Button styles
-(defclass note-trigger-button []
+(defclass step-trigger-button []
   {:width (px 30)
    :display "flex"
    :align-items "center"
@@ -16,15 +16,16 @@
    :text-decoration "underline solid black 1px"
    :height (px 40)})
 
-;; Active state style (when there's a note)
-(defclass note-trigger-active []
+(defclass step-trigger-red []
   {:color "red"})
-
-;; Inactive state style (when there's no note)
-(defclass note-trigger-inactive []
+(defclass step-trigger-green []
+  {:color "green"})
+(defclass step-trigger-white []
+  {:color "blue"})
+(defclass step-trigger-off []
   {:color "black"})
 
-(defclass seq-number-container []
+(defclass step-number-container []
   {:display "flex"
    :height "90%"
    :border-radius (px 3)
@@ -33,6 +34,6 @@
    :width (px 20)
    :border "1px solid black"})
 
-(defclass seq-number []
+(defclass step-number []
   {:margin-bottom (px 0)})
 
