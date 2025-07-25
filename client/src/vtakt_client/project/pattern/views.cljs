@@ -2,6 +2,7 @@
   (:require
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.styles :as general-styles]
+   [vtakt-client.step-input.views :as sv]
    [vtakt-client.project.pattern.styles :as styles]
    [vtakt-client.project.pattern.subs :as subs]
    [vtakt-client.project.pattern.events :as events]
@@ -9,7 +10,7 @@
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
-(defn bank-and-pattern-select []
+(defn bank-and-pattern-select-alt []
   (let [active-bank (re-frame/subscribe [::subs/active-bank])
         active-pattern (re-frame/subscribe [::subs/active-pattern])
         selected-bank (reagent/atom @active-bank)]
@@ -51,3 +52,14 @@
                                (str pattern-num)]))
                           (range 8))])
                  (range 2))]]]]])))
+
+(defn bank-and-pattern-select []
+  (let [active-bank (re-frame/subscribe [::subs/active-bank])
+        active-pattern (re-frame/subscribe [::subs/active-pattern])
+        selected-bank (reagent/atom @active-bank)]
+    [sv/step-input
+     {:on-step-release-handler
+      (fn [_ num]
+        (println "test")
+        (re-frame/dispatch [::events/set-active-pattern (p/create-pattern-id @selected-bank num)]))}
+     {}]))
