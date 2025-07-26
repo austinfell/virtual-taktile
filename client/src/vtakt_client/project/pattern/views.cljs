@@ -7,11 +7,16 @@
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
+(defn should-show-pattern-as-allocated [p] (and (not (nil? p)) (not (empty? (:tracks p)))))
+
 (defn bank-and-pattern-select []
   (let [active-bank (re-frame/subscribe [::subs/active-bank])
         active-pattern (re-frame/subscribe [::subs/active-pattern])
+        patterns (re-frame/subscribe [::subs/loaded-patterns])
         selected-bank (reagent/atom @active-bank)]
     (fn []
+      (println "here")
+      (println patterns)
       (let [pattern @active-pattern
             bank @active-bank]
         [sv/step-input
@@ -21,6 +26,9 @@
      ;; TODO - Filling this out requires some basic pattern data to be loaded on bank selection.
      ;; That is not done right now, once we do that, we can trivially determine active pattern and
      ;; populated patterns.
-         {pattern {:active true}}
-         #(if (:active %) :green :off)]))))
+         (update @patterns pattern #(assoc % :active true))
+         #(cond
+            (contains? % :active) :green
+            (should-show-pattern-as-allocated %) :white
+            :else :off)]))))
 
