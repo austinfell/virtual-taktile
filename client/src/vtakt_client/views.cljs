@@ -77,7 +77,8 @@
               [midi/midi-configurator]
               [project/save-project-as]
               [project/project-manager]
-              [pattern/pattern-select]
+              [pattern/pattern-select 3]
+              [pattern/bank-select]
               [track/track-select]]])
 
 (defmethod routes/panels :keyboard-panel []
