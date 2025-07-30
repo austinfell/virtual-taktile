@@ -7,17 +7,19 @@
    [vtakt-client.step-input.views :as step-input]
    [vtakt-client.project.pattern.views :as pattern]
    [vtakt-client.project.track.views :as track]
+   [vtakt-client.project.pattern.subs :as psubs]
    [vtakt-client.midi.views :as midi]
    [vtakt-client.events :as events]
    [vtakt-client.routes :as routes]
-   [vtakt-client.subs :as subs]))
+   [vtakt-client.subs :as subs]
+   [reagent.core :as reagent]))
 
 ;; home
 (defn home-title []
   (let [name (re-frame/subscribe [::subs/name])]
     [re-com/title
      :src   (at)
-     :label (str "Hello from " @name ". This is the Home Page." )
+     :label (str "Hello from " @name ". This is the Home Page.")
      :level :level1]))
 
 (defn link-to-about-page []
@@ -32,7 +34,6 @@
    :gap      "1em"
    :children [[home-title]
               [link-to-about-page]]])
-
 
 (defmethod routes/panels :home-panel [] [home-panel])
 
@@ -69,17 +70,28 @@
      :children [(routes/panels @active-panel)]]))
 
 (defn keyboard-panel []
-  [re-com/v-box
-   :src      (at)
-   :gap      "1em"
-   :children [[kb/keyboard-configurator]
-              [kb/keyboard]
-              [midi/midi-configurator]
-              [project/save-project-as]
-              [project/project-manager]
-              [pattern/pattern-select 3]
-              [pattern/bank-select]
-              [track/track-select]]])
+  (let [trigs-mode (reagent/atom :keyboard)
+        active-bank (re-frame/subscribe [::psubs/active-bank])]
+    (fn []
+      [re-com/v-box
+       :src      (at)
+       :gap      "1em"
+       :children [(if (= @trigs-mode :keyboard)
+                    [kb/keyboard-configurator])
+                  (if (= @trigs-mode :keyboard)
+                    [kb/keyboard])
+                  (if (= @trigs-mode :pattern-select)
+                    [pattern/pattern-select @active-bank #(reset! trigs-mode :keyboard)])
+                  (if (= @trigs-mode :bank-select)
+                    [pattern/pattern-change-workflow #(reset! trigs-mode :keyboard)])
+                  [:div
+                   [:button {:on-click #(reset! trigs-mode :keyboard)} "Keyboard"]
+                   [:button {:on-click #(reset! trigs-mode :pattern-select)} "Pattern"]
+                   [:button {:on-click #(reset! trigs-mode :bank-select)} "Bank"]]
+                  [midi/midi-configurator]
+                  [project/save-project-as]
+                  [project/project-manager]
+                  [track/track-select]]])))
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])
@@ -89,8 +101,6 @@
    :src      (at)
    :gap      "1em"
    :children [[midi/midi-configurator]]])
-
-
 
 (defmethod routes/panels :midi-panel []
   [midi-panel])

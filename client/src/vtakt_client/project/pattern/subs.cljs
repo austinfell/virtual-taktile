@@ -10,12 +10,12 @@
 (re-frame/reg-sub
  ::active-pattern
  (fn [db _]
-   (get-in db [:active-pattern :number])))
+   (get-in db [:active-pattern])))
 
 (re-frame/reg-sub
  ::loaded-patterns
- (fn [db _]
+ (fn [db [_ bank]]
    (->> (get-in db [:current-project :patterns])
-        (filter #(= 1 (:bank (key %))))
+        (filter #(= bank (:bank (key %))))
         (map (fn [[k v]] [(:number k) v]))
         (into {}))))
