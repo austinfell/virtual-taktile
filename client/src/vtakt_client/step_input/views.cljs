@@ -4,6 +4,27 @@
    [re-com.core :as re-com]
    [reagent.core :as reagent]))
 
+
+;; Map keyboard keys to positions in the keyboard layout
+;; First row: a s d f g h j k (positions 1-8)  <- TOP row
+;; Second row: z x c v b n m , (positions 9-16) <- BOTTOM row
+(def key-to-position-map
+  {"a" 1, "s" 2, "d" 3, "f" 4, "g" 5, "h" 6, "j" 7, "k" 8,
+   "z" 9, "x" 10, "c" 11, "v" 12, "b" 13, "n" 14, "m" 15, "," 16})
+
+(defn handle-key-up [event handler]
+  (let [key (.-key event)
+        position (get key-to-position-map key)]
+    (when (and position (not (.-repeat event)))
+      (handler (get key-to-position-map key)))))
+
+(defn handle-key-down [event handler]
+  (let [key (.-key event)
+        position (get key-to-position-map key)]
+    (when (and position (not (.-repeat event)))
+      (handler (get key-to-position-map key)))))
+
+
 (defn- step-trigger
   [position
    entity
@@ -30,10 +51,31 @@
                 [:p {:class (styles/step-number)} (str position)]]
                (str position))]]))
 
+(defonce keyboard-down-handler (atom #()))
+(defonce keyboard-up-handler (atom #()))
+(.addEventListener js/window "keydown" #(@keyboard-down-handler %))
+(.addEventListener js/window "keyup" #(@keyboard-up-handler %))
+
+(defn init-keyboard-listeners [on-key-down on-key-up step-to-entity-map]
+  (let [down-lambda #(on-key-down (step-to-entity-map %) %)
+        up-lambda #(on-key-up (step-to-entity-map %) %)
+        full-up-lambda #(handle-key-up % up-lambda)
+        full-down-lambda #(handle-key-down % down-lambda)]
+    (reset! keyboard-up-handler full-up-lambda)
+    (reset! keyboard-down-handler full-down-lambda)))
+
 (defn step-input []
   (reagent/create-class
-   {:reagent-render
-    (fn [handlers step-to-entity-map step-active-fn]  ; <- just re-declare the args
+   {:component-did-mount
+    (fn [this]
+      (let [{:keys [on-step-press-handler on-step-release-handler]
+             :or {on-step-press-handler #()
+                  on-step-release-handler #()}} (reagent/props this)
+            step-to-entity-map (second (reagent/argv this))] ; Second argument after handlers
+        (init-keyboard-listeners on-step-press-handler on-step-release-handler step-to-entity-map)))
+    
+    :reagent-render
+    (fn [handlers step-to-entity-map step-active-fn]
       [re-com/v-box
        :justify :center
        :children [[re-com/h-box
@@ -47,9 +89,8 @@
                                 [step-trigger idx (step-to-entity-map idx) handlers step-active-fn])
                               (range 9 17))]]])}))
 
+
 ;; TODO - What we need:
-;;    - We need a well defined interface for click-down, click-up, mouse exit events. This is for dispatching events lik
-;;    note on, note off, pattern selections, banks, etc...
 ;;    - Click down and click up events should generically be applied to the keyboard
 ;;    - Color selection interface: We need to ability to dynamically define a underlying step button as
 ;;    nil, :red, :blue.
