@@ -32,7 +32,9 @@
 
 (defn init-keyboard-listeners [on-key-down on-key-up step-to-entity-map]
   (let [down-lambda #(on-key-down (step-to-entity-map %) %)
-        up-lambda #(on-key-up (step-to-entity-map %) %)
+        up-lambda #(do
+                     (println step-to-entity-map)
+                     (on-key-up (step-to-entity-map %) %))
         full-up-lambda #(handle-key-up % up-lambda)
         full-down-lambda #(handle-key-down % down-lambda)]
     (reset! keyboard-up-handler full-up-lambda)
@@ -72,8 +74,18 @@
       (let [{:keys [on-step-press-handler on-step-release-handler]
              :or {on-step-press-handler #()
                   on-step-release-handler #()}} (reagent/props this)
-            step-to-entity-map (second (reagent/argv this))] ; Second argument after handlers
+            step-to-entity-map (nth (reagent/argv this) 2)]
         (init-keyboard-listeners on-step-press-handler on-step-release-handler step-to-entity-map)))
+
+    :component-did-update
+    (fn [this old-argv]
+      (let [old-step-to-entity-map (nth old-argv 2)
+            new-step-to-entity-map (nth (reagent/argv this) 2)]
+        (when (not= old-step-to-entity-map new-step-to-entity-map)
+          (let [{:keys [on-step-press-handler on-step-release-handler]
+                 :or {on-step-press-handler #()
+                      on-step-release-handler #()}} (reagent/props this)]
+            (init-keyboard-listeners on-step-press-handler on-step-release-handler new-step-to-entity-map)))))
 
     :reagent-render
     (fn [handlers step-to-entity-map step-active-fn]
@@ -89,3 +101,5 @@
                               (fn [idx]
                                 [step-trigger idx (step-to-entity-map idx) handlers step-active-fn])
                               (range 9 17))]]])}))
+
+;; TODO - Still need to handle mouse leave.
