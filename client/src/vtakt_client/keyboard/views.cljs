@@ -515,6 +515,9 @@
      {:on-step-press-handler
       (fn [note num]
         (re-frame/dispatch-sync [::events/add-pressed-note note]))
+      :on-mouse-leave-handler
+      (fn [note num]
+        (re-frame/dispatch-sync [::events/remove-pressed-note note]))
       :on-step-release-handler
       (fn [note num]
         (re-frame/dispatch-sync [::events/remove-pressed-note note]))}
