@@ -78,20 +78,32 @@
        :gap      "1em"
        :children [(if (= @trigs-mode :keyboard)
                     [kb/keyboard-configurator])
-                  (if (= @trigs-mode :keyboard)
-                    [kb/keyboard])
                   (if (= @trigs-mode :pattern-select)
                     [pattern/pattern-select @active-bank #(reset! trigs-mode :keyboard)])
                   (if (= @trigs-mode :bank-select)
                     [pattern/pattern-change-workflow #(reset! trigs-mode :keyboard)])
+                  (if (= @trigs-mode :midi)
+                    [midi/midi-configurator])
+                  (if (= @trigs-mode :track)
+                    [:div
+                     [track/midi-channel-selector]])
+                  (if (= @trigs-mode :project)
+                    [:div
+                     [project/save-project-as]
+                     [project/project-manager]])
+                  (if (or (= @trigs-mode :keyboard) (= @trigs-mode :midi) (= @trigs-mode :project) (= @trigs-mode :track))
+                    [:div
+                     {:style {:display "flex"
+                              :align-items "center"}}
+                     [kb/keyboard]
+                     [track/track-select]])
                   [:div
+                   [:button {:on-click #(reset! trigs-mode :project)} "Project"]
+                   [:button {:on-click #(reset! trigs-mode :midi)} "MIDI"]
+                   [:button {:on-click #(reset! trigs-mode :track)} "Track"]
                    [:button {:on-click #(reset! trigs-mode :keyboard)} "Keyboard"]
                    [:button {:on-click #(reset! trigs-mode :pattern-select)} "Pattern"]
-                   [:button {:on-click #(reset! trigs-mode :bank-select)} "Bank"]]
-                  [midi/midi-configurator]
-                  [project/save-project-as]
-                  [project/project-manager]
-                  [track/track-select]]])))
+                   [:button {:on-click #(reset! trigs-mode :bank-select)} "Bank"]]]])))
 
 (defmethod routes/panels :keyboard-panel []
   [keyboard-panel])

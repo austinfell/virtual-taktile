@@ -14,14 +14,14 @@
      :display :flex
      :align-items :center
      :justify-content :center
-     :width "60px"
-     :height "60px"
+     :width "30px"
+     :height "30px"
      :border "2px solid transparent"
      :border-radius "4px"
      :cursor :pointer
      :transition "all 0.2s ease"
      :font-weight "600"
-     :font-size "18px"
+     :font-size "14px"
      :text-shadow "0 1px 2px rgba(0,0,0,0.3)"}
 
     [:&:hover
