@@ -130,7 +130,6 @@
 (defn upsert-project
   "Updates project data at the specified path"
   [project {:keys [bank pattern track track-key]} value]
-  (println project)
   (let [pattern-id (create-pattern-id bank pattern)]
     (cond
       ;; Replace entire pattern

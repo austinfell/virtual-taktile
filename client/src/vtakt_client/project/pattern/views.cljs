@@ -1,53 +1,59 @@
 (ns vtakt-client.project.pattern.views
   (:require
-   [re-com.core :as re-com :refer [at]]
-   [vtakt-client.styles :as general-styles]
-   [vtakt-client.project.pattern.styles :as styles]
+   [vtakt-client.step-input.views :as sv]
    [vtakt-client.project.pattern.subs :as subs]
    [vtakt-client.project.pattern.events :as events]
    [vtakt-client.project.core :as p]
    [re-frame.core :as re-frame]
    [reagent.core :as reagent]))
 
-(defn bank-and-pattern-select []
-  (let [active-bank (re-frame/subscribe [::subs/active-bank])
-        active-pattern (re-frame/subscribe [::subs/active-pattern])
-        selected-bank (reagent/atom @active-bank)]
-    (fn []
-      [re-com/v-box
-       :class (general-styles/configurator-container)
-       :gap "15px"
-       :children
-       [[re-com/title
-         :label "Bank & Pattern"
-         :level :level2]
-        [re-com/v-box
-         :gap "8px"
-         :children
-         [[re-com/horizontal-tabs
-           :model selected-bank
-           :tabs (mapv (fn [bank-num]
-                         {:id bank-num
-                          :label (str bank-num)})
-                       (range 1 9))
-           :on-change #(reset! selected-bank %)]
+(defn should-show-pattern-as-allocated
+  [p]
+  (and
+   (not (nil? p))
+   (seq (:tracks p))))
 
-          [re-com/v-box
-           :gap "4px"
-           :children
-           (mapv (fn [row]
-                   [re-com/h-box
-                    :gap "4px"
-                    :children
-                    (mapv (fn [col]
-                            (let [pattern-num (+ (* row 8) col 1)]
-                              [:div
-                               {:key pattern-num
-                                :on-click #(re-frame/dispatch [::events/set-active-pattern (p/create-pattern-id @selected-bank pattern-num)])
-                                :class [(styles/pattern)
-                                        (when (and (= @selected-bank @active-bank)
-                                                   (= pattern-num @active-pattern))
-                                          (styles/pattern-active))]}
-                               (str pattern-num)]))
-                          (range 8))])
-                 (range 2))]]]]])))
+(defn bank-select [on-bank-select]
+  (let [active-bank (re-frame/subscribe [::subs/active-bank])]
+    (fn []
+      (let [bank @active-bank
+            steps (range 9 17)
+            active-step (+ 8 bank)
+            step-states (reduce (fn [acc step]
+                                  (assoc acc step {:active (= step active-step)}))
+                                {}
+                                steps)]
+        [sv/step-input
+         {:on-step-release-handler on-bank-select}
+         step-states
+         (fn [step-data]
+           (cond
+             (true? (:active step-data)) :white
+             (contains? step-data :active) :red
+             :else :off))]))))
+
+(defn pattern-select [bank on-selection]
+  (let [active-pattern (re-frame/subscribe [::subs/active-pattern])
+        patterns (re-frame/subscribe [::subs/loaded-patterns bank])]
+    (fn []
+      (let [pattern @active-pattern]
+        [sv/step-input
+         {:on-step-release-handler
+          (fn [_ num]
+            (re-frame/dispatch-sync [::events/set-active-pattern (p/create-pattern-id bank num)])
+            (on-selection))}
+         (if (= (:bank pattern) bank)
+           (update @patterns (:number pattern) #(assoc % :active true))
+           @patterns)
+         #(cond
+            (contains? % :active) :green
+            (should-show-pattern-as-allocated %) :white
+            :else :off)]))))
+
+
+(defn pattern-change-workflow [on-selection]
+  (let [selected-bank (reagent/atom nil)]
+    (fn []
+      (if (nil? @selected-bank)
+        [bank-select (fn [_ num] (reset! selected-bank (- num 8)))]
+        [pattern-select @selected-bank on-selection]))))

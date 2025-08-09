@@ -25,18 +25,9 @@
         :on-change #(re-frame/dispatch [::events/set-midi-channel-on-current-track
                                         (js/parseInt (-> % .-target .-value) 10)])]])))
 
-
 (defn track-select []
   (let [active-track (re-frame/subscribe [::subs/active-track])]
     (fn []
-      [re-com/v-box
-       :class (general-styles/configurator-container)
-       :gap "15px"
-       :children
-       [[re-com/title
-         :label "Track"
-         :level :level2]
-        [midi-channel-selector]
         [re-com/v-box
          :gap "8px"
          :children
@@ -54,4 +45,4 @@
                                         (styles/track-active track-num))]}
                              (str "T" track-num)]))
                         (range 2))])
-               (range 2))]]])))
+               (range 2))])))

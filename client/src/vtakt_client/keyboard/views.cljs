@@ -3,18 +3,15 @@
    [clojure.spec.alpha :as s]
    [re-com.core :as re-com :refer [at]]
    [re-frame.core :as re-frame]
-   [reagent.core :as reagent]
    [vtakt-client.keyboard.core :as kb]
    [vtakt-client.keyboard.chord :as chord]
    [vtakt-client.keyboard.events :as events]
-   [vtakt-client.keyboard.keyboard-controls :as kbd-ctrl]
    [vtakt-client.keyboard.styles :as styles]
    [vtakt-client.styles :as generic-styles]
    [vtakt-client.keyboard.subs :as subs]
    [vtakt-client.utils.core :as uc]
-   [vtakt-client.utils.specs :as us]))
-
-(def active-notes (atom []))
+   [vtakt-client.utils.specs :as us]
+   [vtakt-client.step-input.views :as sv]))
 
 ;; ------------------------------
 ;; Control Components
@@ -237,31 +234,6 @@
 ;; ------------------------------
 ;; Keyboard UI Components
 ;; ------------------------------
-(s/def ::keyboard-position (s/int-in 1 17))
-(s/def ::note-or-nil (s/nilable ::kb/note))
-(s/fdef note-trigger
-  :args (s/cat :position ::keyboard-position
-               :note ::note-or-nil)
-  :ret ::us/reagent-component)
-(defn note-trigger
-  [position note]
-  (let [is-measure-start? (contains? #{1 5 9 13} position)
-        has-note? (some? note)]
-    [:div {:key (str "note-trigger-" position "-" (when note (str (:name note) (:octave note))))}
-     [re-com/button
-      :attr {:on-mouse-down #(re-frame/dispatch-sync [::events/add-pressed-note note])
-             :on-mouse-up #(re-frame/dispatch-sync [::events/remove-pressed-note note])
-             :on-mouse-leave #(re-frame/dispatch-sync [::events/remove-pressed-note note])}
-      :class (str (styles/note-trigger-button) " "
-                  (if has-note?
-                    (styles/note-trigger-active)
-                    (styles/note-trigger-inactive)))
-      :label (if is-measure-start?
-               [:div {:class (styles/seq-number-container)}
-                [:p {:class (styles/seq-number)} (str position)]]
-               (str position))]]))
-
-
 (defn- chromatic-white-keys-layer
   [white-notes sounded-notes]
   (mapv (fn [note] [piano-key note (some #(= note %) sounded-notes) :white]) white-notes))
@@ -532,76 +504,24 @@
             [control-section "Chord" [diatonic-chord-selector (keys @diatonic-chords) @selected-diatonic-chord]])
           [control-section "Transpose" [transpose-control @transpose]]]]]])))
 
-(s/fdef keyboard
-  :args (s/cat)
-  :ret ::us/reagent-component)
 (defn keyboard
-  "Renders an interactive musical keyboard interface with trigger buttons arranged in two rows.
-
-  This component creates a virtual keyboard consisting of two rows of notes that users
-  can interact with to trigger musical notes and chords. The keyboard layout is determined
-  by the current keyboard state (either chromatic or folding), which includes information
-  about note arrangement, active scales, and other musical parameters.
-
-  The keyboard uses the following structure:
-  - A top row of buttons representing the first 8 positions (1-8)
-  - A bottom row of buttons representing the next 8 positions (9-16)
-
-  Each position renders a note-trigger component that:
-  - Displays the position number
-  - Shows special styling for measure starts (positions 1, 5, 9, 13)
-  - Enables playing notes when clicked
-  - Indicates when a position has no associated note
-
-  The component subscribes to:
-  - ::subs/keyboard - The current keyboard state with full note arrangement
-
-  The actual notes played depend on several factors:
-  - Current keyboard mode (chromatic or folding)
-  - Selected scale
-  - Root note
-  - Transposition value
-  - Chord settings
-
-  Notes are displayed differently in each keyboard mode:
-  - Chromatic: Natural notes on bottom row, accidentals (sharps/flats) on top row
-  - Folding: Sequential notes arranged to optimize playability
-
-  Returns:
-    A Reagent component rendering the interactive keyboard interface.
-
-  Example usage:
-    [keyboard]
-
-  See also:
-    note-trigger, keyboard-configurator, kb/rows"
   []
-  (let [ck (re-frame/subscribe [::subs/keyboard])]
-    (reagent/create-class
-     {:component-did-mount
-      (fn [_]
-        (kbd-ctrl/init-keyboard-listeners ck))
-
-      :component-will-unmount
-      (fn [_]
-        (remove-watch ck ::keyboard-listeners)
-        (kbd-ctrl/cleanup-keyboard-listeners))
-
-      :reagent-render
-      (fn []
-        (let [ck (re-frame/subscribe [::subs/keyboard])
-              keyboard-rows (kb/rows @ck)
-              top-row (:top keyboard-rows)
-              bottom-row (:bottom keyboard-rows)]
-          [re-com/v-box
-           :justify :center
-           :children [[re-com/h-box
-                       :children (map-indexed
-                                  (fn [idx note]
-                                    [note-trigger (inc idx) note active-notes])
-                                  top-row)]
-                      [re-com/h-box
-                       :children (map-indexed
-                                  (fn [idx note]
-                                    [note-trigger (+ 9 idx) note active-notes])
-                                  bottom-row)]]]))})))
+  (let [ck (re-frame/subscribe [::subs/keyboard])
+        keyboard-rows (kb/rows @ck)
+        row-data (zipmap (map inc (range))
+                         (into (:top keyboard-rows)
+                               (:bottom keyboard-rows)))]
+    [sv/step-input
+     {:on-step-press-handler
+      (fn [note _]
+        (re-frame/dispatch-sync [::events/add-pressed-note note]))
+      :on-mouse-leave-handler
+      (fn [note _]
+        (re-frame/dispatch-sync [::events/remove-pressed-note note]))
+      :on-step-release-handler
+      (fn [note _]
+        (re-frame/dispatch-sync [::events/remove-pressed-note note]))}
+     row-data
+     #(cond
+        (nil? %) :off
+        :else :green)]))
