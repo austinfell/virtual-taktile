@@ -1,0 +1,66 @@
+syntax = "proto3";
+package sequence;
+
+message Subdivision {
+  int64 numerator = 1;
+  int64 denominator = 2;
+}
+
+message Sequence {
+  uint32 sequence_length = 1;
+  Subdivision trig_subdivision = 2;
+  uint32 bpm = 3;
+  repeated Trig trigs = 4;
+}
+
+message Trig {
+  optional Note note = 1;
+  uint32 track = 2;
+  uint32 step = 3;
+  float offset = 4;
+  float length = 5;
+}
+
+enum NoteValue {
+  option allow_alias = true;
+
+  UNKNOWN_NOTE = 0;
+  C = 1;
+  C_SHARP = 2;
+  D_FLAT = 2;    // Alias for C_SHARP
+  D = 3;
+  D_SHARP = 4;
+  E_FLAT = 4;    // Alias for D_SHARP
+  E = 5;
+  F = 6;
+  F_SHARP = 7;
+  G_FLAT = 7;    // Alias for F_SHARP
+  G = 8;
+  G_SHARP = 9;
+  A_FLAT = 9;    // Alias for G_SHARP
+  A = 10;
+  A_SHARP = 11;
+  B_FLAT = 11;   // Alias for A_SHARP
+  B = 12;
+}
+
+message Note {
+  int32 octave = 1;
+  NoteValue value = 2;
+  uint32 velocity = 3;
+}
+
+message Empty {}
+
+// Or a simple acknowledgment
+message CueResponse {
+  bool success = 1;
+  uint32 remaining_steps = 2;  // Steps until the current sequence finishes and this one starts playing.
+}
+
+// Define the service
+service SequencerService {
+  rpc CueSequence(Sequence) returns (CueResponse);
+  rpc StartSequence(Empty) returns (Empty);
+  rpc StopSequence(Empty) returns (Empty);
+}
