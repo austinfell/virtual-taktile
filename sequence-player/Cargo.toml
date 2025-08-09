@@ -2,6 +2,7 @@
 name = "helloworld-tonic"
 version = "0.1.0"
 edition = "2021"
+default-run = "helloworld-server"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
 name = "helloworld-server"
