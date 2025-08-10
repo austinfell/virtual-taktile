@@ -1,0 +1,81 @@
+This file provides a basic way to test our service using gRPC. It expects that gRPCurl is installed.
+
+* Swap a sequence
+#+BEGIN_SRC bash
+  grpcurl -plaintext -d '{
+  "sequence_length": 16,
+  "trig_subdivision": {
+    "numerator": 1,
+    "denominator": 16
+  },
+  "trigs": [
+    {
+      "note": {
+        "octave": 2,
+        "value": "D",
+        "velocity": 127
+      },
+      "track": 1,
+      "step": 0,
+      "offset": 0.0,
+      "length": 4.0
+    },
+    {
+      "note": {
+        "octave": 2,
+        "value": "A",
+        "velocity": 100
+      },
+      "track": 1,
+      "step": 0,
+      "offset": 0.0,
+      "length": 4.0
+    }
+  ]
+}' [::1]:50051 sequence.SequencerService/SwapSequence
+#+END_SRC
+* Cue a sequence
+#+BEGIN_SRC bash
+  grpcurl -plaintext -d '{
+  "sequence_length": 16,
+  "trig_subdivision": {
+    "numerator": 1,
+    "denominator": 16
+  },
+  "trigs": [
+    {
+      "note": {
+        "octave": 2,
+        "value": "C",
+        "velocity": 127
+      },
+      "track": 1,
+      "step": 0,
+      "offset": 0.0,
+      "length": 4.0
+    },
+    {
+      "note": {
+        "octave": 2,
+        "value": "G",
+        "velocity": 100
+      },
+      "track": 1,
+      "step": 0,
+      "offset": 0.0,
+      "length": 4.0
+    }
+  ]
+}' [::1]:50051 sequence.SequencerService/CueSequence
+#+END_SRC
+* Play the sequence
+#+BEGIN_SRC bash
+  grpcurl -plaintext -d '{
+}' [::1]:50051 sequence.SequencerService/StartSequence
+#+END_SRC
+* Pause the sequence
+#+BEGIN_SRC bash
+  grpcurl -plaintext -d '{
+}' [::1]:50051 sequence.SequencerService/StopSequence
+#+END_SRC
+
