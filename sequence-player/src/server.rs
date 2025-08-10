@@ -279,6 +279,30 @@ struct SequencerState {
 
 #[tonic::async_trait]
 impl SequencerService for MySequencerService {
+    async fn swap_sequence(
+        &self,
+        request: Request<Sequence>,
+    ) -> Result<Response<Empty>, Status> {
+        println!("Got a SwapSequence request");
+
+        let sequence_data: SequenceData = request.into_inner().into();
+
+        println!("{}", sequence_data);
+
+        // TODO - Eventually we could diff the sequence and do a less intrusive swap...
+        let mut state = self.state.lock().unwrap();
+        let replaced_existing = state.current_sequence.is_some();
+        state.current_sequence = Some(sequence_data);
+
+        if replaced_existing {
+            println!("Replaced existing playing sequence");
+        } else {
+            println!("Replaced existing sequence");
+        }
+
+        Ok(Response::new(Empty {}))
+    }
+
     async fn cue_sequence(
         &self,
         request: Request<Sequence>,

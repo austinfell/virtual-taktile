@@ -60,6 +60,7 @@ message CueResponse {
 
 // Define the service
 service SequencerService {
+  rpc SwapSequence(Sequence) returns (Empty);
   rpc CueSequence(Sequence) returns (CueResponse);
   rpc StartSequence(Empty) returns (Empty);
   rpc StopSequence(Empty) returns (Empty);
