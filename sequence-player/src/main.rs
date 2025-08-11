@@ -6,8 +6,8 @@ use tonic_reflection::server::Builder;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let sequencer = Sequencer::new();
-    sequencer.start_playback_loop();
+    let mut sequencer = Sequencer::new();
+    sequencer.initialize_playback();
 
     let sequencer_service = SequencerServiceImpl::new(sequencer);
 
