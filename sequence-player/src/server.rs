@@ -3,7 +3,6 @@ use sequence::sequencer_service_server::{SequencerService};
 use sequence::{CueResponse, Empty, Sequence};
 use tonic::{Request, Response, Status};
 
-use crate::types::SequenceData;
 use crate::sequencer::Sequencer;
 
 pub mod sequence {
@@ -24,20 +23,13 @@ impl SequencerServiceImpl {
             sequencer: s
         }
     }
-
-    pub fn sequencer(&self) -> &Sequencer {
-        &self.sequencer
-    }
 }
 
 #[tonic::async_trait]
 impl SequencerService for SequencerServiceImpl {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
-        println!("Got a SwapSequence request");
-
-        let sequence_data: SequenceData = request.into_inner().into();
-
-        let result = self.sequencer.swap_sequence(sequence_data);
+        println!("Received a SwapSequence message");
+        let result = self.sequencer.swap_sequence(request.into_inner().into());
 
         if result.success {
             Ok(Response::new(Empty {}))
@@ -46,36 +38,35 @@ impl SequencerService for SequencerServiceImpl {
         }
     }
 
-    async fn cue_sequence(
-        &self,
-        request: Request<Sequence>,
-    ) -> Result<Response<CueResponse>, Status> {
-        println!("Got a CueSequence request");
-        let sequence_data: SequenceData = request.into_inner().into();
+    async fn cue_sequence(&self, request: Request<Sequence>,) -> Result<Response<CueResponse>, Status> {
+        println!("Received a CueSequence message");
+        let result = self.sequencer.cue_sequence(request.into_inner().into());
 
-        let result = self.sequencer.cue_sequence(sequence_data);
-
-        Ok(Response::new(CueResponse {
-            success: result.success,
-            remaining_steps: result.remaining_steps,
-        }))
+        if result.success {
+            Ok(Response::new(CueResponse {
+                success: result.success,
+                remaining_steps: result.remaining_steps,
+            }))
+        } else {
+            Err(Status::internal("Failed to cue sequence"))
+        }
     }
 
     async fn start_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        println!("Got a StartSequence request");
-
+        println!("Got a StartSequence message");
         let result = self.sequencer.start_sequence();
+
         if result.success {
             Ok(Response::new(Empty {}))
         } else {
-            Err(Status::failed_precondition(result.message))
+            Err(Status::internal("Failed to start sequence"))
         }
     }
 
     async fn stop_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         println!("Got a StopSequence request");
-
         let result = self.sequencer.stop_sequence();
+
         if result.success {
             Ok(Response::new(Empty {}))
         } else {
