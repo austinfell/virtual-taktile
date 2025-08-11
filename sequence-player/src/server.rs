@@ -1,129 +1,49 @@
 use sequence::sequencer_service_server::{SequencerService};
+
 use sequence::{CueResponse, Empty, Sequence};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-use tokio::time::interval;
 use tonic::{Request, Response, Status};
 
-// Import our extracted types
-use crate::types::{SequenceData, Trig};
+use crate::types::SequenceData;
+use crate::sequencer::Sequencer;
 
 pub mod sequence {
     tonic::include_proto!("sequence");
 }
 
-// Make these public so main.rs can use them
 pub use sequence::sequencer_service_server::SequencerServiceServer;
 pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("sequence_descriptor");
 
 #[derive(Debug)]
-pub struct MySequencerService {
-    state: Arc<Mutex<SequencerState>>,
+pub struct SequencerServiceImpl {
+    sequencer: Sequencer,
 }
 
-impl MySequencerService {
-    pub fn new() -> Self {
+impl SequencerServiceImpl {
+    pub fn new(s: Sequencer) -> Self {
         Self {
-            state: Arc::new(Mutex::new(SequencerState::default())),
+            sequencer: s
         }
     }
 
-    // Start the playback loop in the background
-    pub fn start_playback_loop(&self) {
-        let state = Arc::clone(&self.state);
-
-        tokio::spawn(async move {
-            let mut ticker = interval(Duration::from_secs(1));
-            let mut current_step = 0u32;
-
-            loop {
-                ticker.tick().await;
-
-                // Check if we should be playing and get current sequence
-                let should_play = {
-                    let state_guard = state.lock().unwrap();
-                    state_guard.playing && state_guard.current_sequence.is_some()
-                };
-
-                if should_play {
-                    let sequence_data = {
-                        let state_guard = state.lock().unwrap();
-                        state_guard.current_sequence.clone().unwrap()
-                    };
-
-                    // Print step header
-                    println!(
-                        "🎵 Step {} of {}:",
-                        current_step, sequence_data.sequence_length
-                    );
-
-                    // Find and print all trigs for this step
-                    let step_trigs: Vec<&Trig> = sequence_data
-                        .trigs
-                        .iter()
-                        .filter(|trig| trig.step == current_step)
-                        .collect();
-
-                    if step_trigs.is_empty() {
-                        println!("   (silence)");
-                    } else {
-                        for trig in step_trigs {
-                            match &trig.note {
-                                Some(note) => {
-                                    println!("   🎶 Track {}: Play {}", trig.track, note);
-                                }
-                                None => {
-                                    println!("   🔇 Track {}: REST", trig.track);
-                                }
-                            }
-                        }
-                    }
-
-                    // Advance to next step (loop back to 0 when we reach sequence length)
-                    current_step = (current_step + 1) % sequence_data.sequence_length;
-                } else {
-                    // Reset step counter when not playing
-                    current_step = 0;
-                }
-            }
-        });
+    pub fn sequencer(&self) -> &Sequencer {
+        &self.sequencer
     }
-}
-
-impl Default for MySequencerService {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug, Default)]
-struct SequencerState {
-    current_sequence: Option<SequenceData>,
-    cued_sequence: Option<SequenceData>,
-    playing: bool,
 }
 
 #[tonic::async_trait]
-impl SequencerService for MySequencerService {
+impl SequencerService for SequencerServiceImpl {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
         println!("Got a SwapSequence request");
 
         let sequence_data: SequenceData = request.into_inner().into();
 
-        println!("{}", sequence_data);
+        let result = self.sequencer.swap_sequence(sequence_data);
 
-        // TODO - Eventually we could diff the sequence and do a less intrusive swap...
-        let mut state = self.state.lock().unwrap();
-        let replaced_existing = state.current_sequence.is_some();
-        state.current_sequence = Some(sequence_data);
-
-        if replaced_existing {
-            println!("Replaced existing playing sequence");
+        if result.success {
+            Ok(Response::new(Empty {}))
         } else {
-            println!("Replaced existing sequence");
+            Err(Status::internal("Failed to swap sequence"))
         }
-
-        Ok(Response::new(Empty {}))
     }
 
     async fn cue_sequence(
@@ -131,56 +51,35 @@ impl SequencerService for MySequencerService {
         request: Request<Sequence>,
     ) -> Result<Response<CueResponse>, Status> {
         println!("Got a CueSequence request");
+        let sequence_data: SequenceData = request.into_inner().into();
 
-        let proto_sequence = request.into_inner();
-
-        // Convert to native Rust structs
-        let sequence_data: SequenceData = proto_sequence.into();
-
-        // Use the Display implementation to echo
-        println!("{}", sequence_data);
-
-        // Update the cued sequence in our state
-        let mut state = self.state.lock().unwrap();
-        let replaced_existing = state.cued_sequence.is_some();
-        state.cued_sequence = Some(sequence_data);
-
-        if replaced_existing {
-            println!("Replaced existing cued sequence");
-        } else {
-            println!("Cued new sequence");
-        }
+        let result = self.sequencer.cue_sequence(sequence_data);
 
         Ok(Response::new(CueResponse {
-            success: true,
-            // We need to rework the way our IO subsystem works to allow messaging of where it is at here.
-            remaining_steps: 16,
+            success: result.success,
+            remaining_steps: result.remaining_steps,
         }))
     }
 
     async fn start_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        let mut state = self.state.lock().unwrap();
+        println!("Got a StartSequence request");
 
-        if let Some(cued_sequence) = state.cued_sequence.take() {
-            state.current_sequence = Some(cued_sequence);
-            state.playing = true;
-            println!("▶️  Started cued sequence - now playing!");
+        let result = self.sequencer.start_sequence();
+        if result.success {
+            Ok(Response::new(Empty {}))
         } else {
-            println!("❌ No sequence cued - cannot start");
+            Err(Status::failed_precondition(result.message))
         }
-
-        Ok(Response::new(Empty {}))
     }
 
     async fn stop_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
-        let mut state = self.state.lock().unwrap();
-        state.playing = false;
-        println!("⏹️  Stopped sequence");
+        println!("Got a StopSequence request");
 
-        if let Some(current) = &state.current_sequence {
-            println!("Stopped sequence had {} trigs", current.trigs.len());
+        let result = self.sequencer.stop_sequence();
+        if result.success {
+            Ok(Response::new(Empty {}))
+        } else {
+            Err(Status::internal("Failed to stop sequence"))
         }
-
-        Ok(Response::new(Empty {}))
     }
 }
