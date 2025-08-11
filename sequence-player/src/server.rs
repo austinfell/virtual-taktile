@@ -29,7 +29,7 @@ impl SequencerServiceImpl {
 impl SequencerService for SequencerServiceImpl {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
         println!("Received a SwapSequence message");
-        let result = self.sequencer.swap_sequence(request.into_inner().into());
+        let result = self.sequencer.swap_sequence(request.into_inner());
 
         if result.success {
             Ok(Response::new(Empty {}))
@@ -40,12 +40,16 @@ impl SequencerService for SequencerServiceImpl {
 
     async fn cue_sequence(&self, request: Request<Sequence>,) -> Result<Response<CueResponse>, Status> {
         println!("Received a CueSequence message");
-        let result = self.sequencer.cue_sequence(request.into_inner().into());
+        let result = self.sequencer.cue_sequence(request.into_inner());
 
         if result.success {
             Ok(Response::new(CueResponse {
                 success: result.success,
-                remaining_steps: result.remaining_steps,
+                remaining_steps: if let Some(metadata) = &result.data {
+                    metadata.remaining_steps
+                } else {
+                    0 // or some default value
+                },
             }))
         } else {
             Err(Status::internal("Failed to cue sequence"))

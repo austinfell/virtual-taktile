@@ -11,11 +11,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let sequencer_service = SequencerServiceImpl::new(sequencer);
 
+    println!("Sequencer service listening on {}", addr);
 
-    println!("🎛️  Sequencer service listening on {}", addr);
-    println!("📡 gRPC reflection enabled - you can use grpcurl to explore the API");
-
-    // Build the reflection service
     let reflection_service = Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
         .build()
