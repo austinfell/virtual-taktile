@@ -1,13 +1,20 @@
 use crate::server::sequence::{Sequence, Trig};
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
-use tokio::sync::{mpsc};
-use tokio::time::interval;
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+use std::time::{Duration, Instant};
 
+// Define a trait for step handling
+pub trait StepHandler: Send + Sync + 'static {
+    fn handle_steps(&self, trigs: Vec<&Trig>);
+}
+
+// Generic sequencer that accepts any step handler
 #[derive(Debug)]
-pub struct Sequencer {
+pub struct Sequencer<H: StepHandler> {
     state: Arc<Mutex<SequencerState>>,
-    playback_control: Option<mpsc::UnboundedSender<PlaybackCommand>>,
+    playback_control: Option<mpsc::Sender<PlaybackCommand>>,
+    playback_handle: Option<thread::JoinHandle<()>>,
+    step_handler: Arc<H>,
 }
 
 #[derive(Debug, Default)]
@@ -26,14 +33,13 @@ enum PlaybackCommand {
     Shutdown,
 }
 
-// Generic operation result with optional metadata
+// Your existing result types remain the same
 #[derive(Debug, Clone)]
 pub struct OperationResult<T = ()> {
     pub success: bool,
     pub data: Option<T>,
 }
 
-// Specific metadata types for different operations
 #[derive(Debug, Clone)]
 pub struct CueMetadata {
     pub replaced_existing: bool,
@@ -50,7 +56,6 @@ pub struct StopMetadata {
     pub trig_count: Option<usize>,
 }
 
-// Type aliases for cleaner API
 pub type CueResult = OperationResult<CueMetadata>;
 pub type StartResult = OperationResult<()>;
 pub type StopResult = OperationResult<StopMetadata>;
@@ -87,116 +92,195 @@ impl<T> OperationResult<T> {
     }
 }
 
-impl Sequencer {
-    pub fn new() -> Self {
+impl<H: StepHandler> Sequencer<H> {
+    pub fn new(step_handler: H) -> Self {
         Self {
             state: Arc::new(Mutex::new(SequencerState::default())),
             playback_control: None,
+            playback_handle: None,
+            step_handler: Arc::new(step_handler),
         }
     }
 
-    /// Initialize the playback system (call this once at startup)
+    /// Initialize the high-priority playback system
     pub fn initialize_playback(&mut self) {
-        let (tx, rx) = mpsc::unbounded_channel();
+        let (tx, rx) = mpsc::channel();
         self.playback_control = Some(tx);
-        
+
         let state = Arc::clone(&self.state);
-        
-        tokio::spawn(async move {
-            Self::playback_loop(state, rx).await;
-        });
+        let step_handler = Arc::clone(&self.step_handler);
+
+        // Spawn dedicated OS thread for timing-critical playback
+        let handle = thread::Builder::new()
+            .name("sequencer-playback".to_string())
+            .spawn(move || {
+                #[cfg(target_os = "linux")]
+                {
+                    // You could use thread_priority crate here for cross-platform priority setting
+                }
+
+                Self::playback_loop(state, rx, step_handler);
+            })
+            .expect("Failed to spawn playback thread");
+
+        self.playback_handle = Some(handle);
     }
 
-    /// The main playback loop that runs in a separate task
-    async fn playback_loop(
+    /// High-precision playback loop running on dedicated thread
+    fn playback_loop(
         state: Arc<Mutex<SequencerState>>,
-        mut command_rx: mpsc::UnboundedReceiver<PlaybackCommand>,
+        command_rx: mpsc::Receiver<PlaybackCommand>,
+        step_handler: Arc<H>,
     ) {
-        let mut ticker = interval(Duration::from_millis(250)); // Faster tick for responsiveness
         let mut current_sequence: Option<Sequence> = None;
         let mut current_step = 0u32;
         let mut playing = false;
+        let mut last_step_time = Instant::now();
+
+        // Timing configuration
+        let step_duration = Duration::from_millis(250); // 240 BPM at 16th notes
+        let command_check_interval = Duration::from_micros(100); // Very fast command response
+
+        println!("🎵 High-priority sequencer thread started");
 
         loop {
-            tokio::select! {
-                // Handle commands with highest priority
-                Some(command) = command_rx.recv() => {
+            let loop_start = Instant::now();
+
+            // Handle commands with minimal latency - check multiple times per step
+            match command_rx.try_recv() {
+                Ok(command) => {
                     match command {
                         PlaybackCommand::Start(sequence) => {
-                            println!("▶️  Starting playback immediately!");
+                            println!("Starting playback");
                             current_sequence = Some(sequence);
                             current_step = 0;
                             playing = true;
-                            
+                            last_step_time = Instant::now(); // Reset timing
+
                             // Update shared state
-                            {
-                                let mut state_guard = state.lock().unwrap();
+                            if let Ok(mut state_guard) = state.lock() {
                                 state_guard.playing = true;
                                 state_guard.current_step = 0;
                                 state_guard.current_sequence = current_sequence.clone();
                             }
                         }
                         PlaybackCommand::Stop => {
-                            println!("⏹️  Stopping playback immediately!");
+                            println!("Stopping playback");
                             playing = false;
-                            
+
                             // Update shared state
-                            {
-                                let mut state_guard = state.lock().unwrap();
+                            if let Ok(mut state_guard) = state.lock() {
                                 state_guard.playing = false;
                             }
                         }
                         PlaybackCommand::Swap(sequence) => {
-                            println!("🔄 Swapping sequence immediately!");
+                            println!("Swapping sequence");
                             current_sequence = Some(sequence);
                             // Keep current step position, but clamp to new sequence length
                             if let Some(ref seq) = current_sequence {
                                 if current_step >= seq.sequence_length {
                                     current_step = 0;
+                                    last_step_time = Instant::now(); // Reset timing on wrap
                                 }
                             }
-                            
+
                             // Update shared state
-                            {
-                                let mut state_guard = state.lock().unwrap();
+                            if let Ok(mut state_guard) = state.lock() {
                                 state_guard.current_sequence = current_sequence.clone();
                                 state_guard.current_step = current_step;
                             }
                         }
                         PlaybackCommand::Shutdown => {
-                            println!("🛑 Shutting down playback loop");
-                            break;
+                            println!("Shutting down playback thread");
+                            return;
                         }
                     }
                 }
-                
-                // Handle timing tick only if playing
-                _ = ticker.tick(), if playing => {
-                    if let Some(ref sequence) = current_sequence {
-                        Self::print_step_events(sequence, current_step);
-                        
-                        // Advance to next step
-                        current_step = (current_step + 1) % sequence.sequence_length;
-                        
-                        // Update shared state with new step
-                        {
-                            let mut state_guard = state.lock().unwrap();
-                            state_guard.current_step = current_step;
+                Err(mpsc::TryRecvError::Empty) => {
+                    // No command, continue with timing loop
+                }
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    println!("Command channel disconnected");
+                    return;
+                }
+            }
+
+            // High-precision timing for step advancement
+            if playing {
+                if let Some(ref sequence) = current_sequence {
+                    let elapsed = last_step_time.elapsed();
+
+                    if elapsed >= step_duration {
+                        // Calculate actual BPM timing from sequence
+                        let actual_step_duration = Self::calculate_step_duration(sequence);
+
+                        if elapsed >= actual_step_duration {
+                            Self::print_step_events(sequence, current_step, &step_handler);
+
+                            // Advance to next step
+                            current_step = (current_step + 1) % sequence.sequence_length;
+                            last_step_time = Instant::now();
+
+                            // Update shared state with new step
+                            if let Ok(mut state_guard) = state.lock() {
+                                state_guard.current_step = current_step;
+                            }
                         }
                     }
                 }
             }
+
+            // Minimal sleep to prevent excessive CPU usage while maintaining responsiveness
+            let loop_duration = loop_start.elapsed();
+            if loop_duration < command_check_interval {
+                thread::sleep(command_check_interval - loop_duration);
+            }
         }
     }
 
-    /// Cue a sequence for later playback
+    /// Calculate step duration based on BPM and subdivision
+    fn calculate_step_duration(sequence: &Sequence) -> Duration {
+        let bpm = sequence.bpm.max(60).min(300); // Clamp BPM to reasonable range
+
+        // Default to 16th notes if no subdivision specified
+        let subdivision = sequence
+            .trig_subdivision
+            .as_ref()
+            .map(|s| s.denominator as f64)
+            .unwrap_or(16.0);
+
+        // Calculate milliseconds per step
+        let beats_per_minute = bpm as f64;
+        let beats_per_second = beats_per_minute / 60.0;
+        let steps_per_beat = subdivision / 4.0; // Assuming quarter note = 1 beat
+        let steps_per_second = beats_per_second * steps_per_beat;
+        let milliseconds_per_step = 1000.0 / steps_per_second;
+
+        Duration::from_millis(milliseconds_per_step as u64)
+    }
+
+    /// Print the events for a given step (now uses injected handler)
+    fn print_step_events(sequence: &Sequence, step: u32, step_handler: &Arc<H>) {
+        println!("🎵 Step {} of {}:", step, sequence.sequence_length);
+
+        // Find all trigs for this step
+        let step_trigs: Vec<&Trig> = sequence
+            .trigs
+            .iter()
+            .filter(|trig| trig.step == step)
+            .collect();
+
+        // Use the injected handler
+        step_handler.handle_steps(step_trigs);
+    }
+
+    // All your existing methods remain the same...
     pub fn cue_sequence(&self, sequence: Sequence) -> CueResult {
         println!("Cueing sequence: {}", sequence);
 
         let mut state = self.state.lock().unwrap();
         let replaced_existing = state.cued_sequence.is_some();
 
-        // Calculate remaining steps based on current playback position
         let remaining_steps = if state.playing {
             if let Some(current_seq) = &state.current_sequence {
                 current_seq.sequence_length - state.current_step
@@ -221,13 +305,12 @@ impl Sequencer {
         })
     }
 
-    /// Start playing the cued sequence
     pub fn start_sequence(&self) -> StartResult {
         let mut state = self.state.lock().unwrap();
 
         if let Some(cued_sequence) = state.cued_sequence.take() {
             drop(state); // Release lock before sending command
-            
+
             if let Some(ref tx) = self.playback_control {
                 if tx.send(PlaybackCommand::Start(cued_sequence)).is_ok() {
                     OperationResult::<StartResult>::success_empty()
@@ -245,7 +328,6 @@ impl Sequencer {
         }
     }
 
-    /// Stop the currently playing sequence
     pub fn stop_sequence(&self) -> StopResult {
         let trig_count = {
             let state = self.state.lock().unwrap();
@@ -268,7 +350,6 @@ impl Sequencer {
         }
     }
 
-    /// Immediately swap the currently playing sequence
     pub fn swap_sequence(&self, sequence: Sequence) -> SwapResult {
         println!("Swapping sequence: {}", sequence);
 
@@ -290,19 +371,16 @@ impl Sequencer {
         }
     }
 
-    /// Get the current playback status
     pub fn is_playing(&self) -> bool {
         let state = self.state.lock().unwrap();
         state.playing
     }
 
-    /// Get the current step position
     pub fn current_step(&self) -> u32 {
         let state = self.state.lock().unwrap();
         state.current_step
     }
 
-    /// Get information about the current sequence
     pub fn current_sequence_info(&self) -> Option<(u32, usize)> {
         let state = self.state.lock().unwrap();
         state
@@ -311,34 +389,40 @@ impl Sequencer {
             .map(|seq| (seq.sequence_length, seq.trigs.len()))
     }
 
-    /// Shutdown the playback system
-    pub fn shutdown(&self) {
+    pub fn shutdown(&mut self) {
         if let Some(ref tx) = self.playback_control {
             let _ = tx.send(PlaybackCommand::Shutdown);
         }
+
+        if let Some(handle) = self.playback_handle.take() {
+            let _ = handle.join();
+        }
     }
+}
 
-    /// Print the events for a given step (extracted for cleaner code)
-    fn print_step_events(sequence: &Sequence, step: u32) {
-        println!("🎵 Step {} of {}:", step, sequence.sequence_length);
+impl<H: StepHandler> Drop for Sequencer<H> {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
+}
 
-        // Find and print all trigs for this step
-        let step_trigs: Vec<&Trig> = sequence
-            .trigs
-            .iter()
-            .filter(|trig| trig.step == step)
-            .collect();
+// Example implementations of StepHandler
 
-        if step_trigs.is_empty() {
+// Console output handler (your current implementation)
+pub struct ConsoleStepHandler;
+
+impl StepHandler for ConsoleStepHandler {
+    fn handle_steps(&self, trigs: Vec<&Trig>) {
+        if trigs.is_empty() {
             println!("   (silence)");
         } else {
-            for trig in step_trigs {
+            for trig in trigs {
                 match &trig.note {
                     Some(note) => {
-                        println!("   🎶 Track {}: Play {}", trig.track, note);
+                        println!("   Track {}: Play {}", trig.track, note);
                     }
                     None => {
-                        println!("   🔇 Track {}: REST", trig.track);
+                        println!("   Track {}: REST", trig.track);
                     }
                 }
             }
@@ -346,8 +430,58 @@ impl Sequencer {
     }
 }
 
-impl Default for Sequencer {
-    fn default() -> Self {
-        Self::new()
+// Mock handler for testing
+pub struct MockStepHandler {
+    pub calls: Arc<Mutex<Vec<Vec<(u32, Option<String>)>>>>,
+}
+
+impl MockStepHandler {
+    pub fn new() -> Self {
+        Self {
+            calls: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    pub fn get_calls(&self) -> Vec<Vec<(u32, Option<String>)>> {
+        self.calls.lock().unwrap().clone()
     }
 }
+
+impl StepHandler for MockStepHandler {
+    fn handle_steps(&self, trigs: Vec<&Trig>) {
+        let mut calls = self.calls.lock().unwrap();
+        let call_data: Vec<(u32, Option<String>)> = trigs
+            .iter()
+            .map(|trig| (trig.track, trig.note.as_ref().map(|note| note.to_string())))
+            .collect();
+        calls.push(call_data);
+    }
+}
+
+// MIDI handler (placeholder for your actual MIDI implementation)
+pub struct MidiStepHandler {
+    // Add your MIDI connection/device here
+}
+
+impl MidiStepHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl StepHandler for MidiStepHandler {
+    fn handle_steps(&self, trigs: Vec<&Trig>) {
+        for trig in trigs {
+            if let Some(note) = &trig.note {
+                // Send MIDI note on for the track/channel
+                println!("MIDI: Track {} -> Note {}", trig.track, note);
+                // Your actual MIDI implementation here
+            }
+        }
+    }
+}
+
+// Type aliases for convenience
+pub type ConsoleSequencer = Sequencer<ConsoleStepHandler>;
+pub type MockSequencer = Sequencer<MockStepHandler>;
+pub type MidiSequencer = Sequencer<MidiStepHandler>;

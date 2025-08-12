@@ -1,3 +1,4 @@
+use helloworld_tonic::sequencer::ConsoleStepHandler;
 use helloworld_tonic::{Sequencer};
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
@@ -6,7 +7,7 @@ use tonic_reflection::server::Builder;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let mut sequencer = Sequencer::new();
+    let mut sequencer = Sequencer::new(ConsoleStepHandler);
     sequencer.initialize_playback();
 
     let sequencer_service = SequencerServiceImpl::new(sequencer);
