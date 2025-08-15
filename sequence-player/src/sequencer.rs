@@ -1,15 +1,19 @@
 use crate::server::sequence::{Sequence, Trig};
+use midir::MidiOutput;
+use midir::MidiOutputConnection;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::collections::HashMap;
-use midir::MidiOutput;
-use midir::MidiOutputConnection;
-
 
 // Define a trait for step handling
+pub enum StepEvent {
+    NOTE_ON,
+    NOTE_OFF,
+}
+
 pub trait StepHandler: Send + Sync + 'static {
-    fn handle_steps(&self, trigs: Vec<&Trig>);
+    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent);
 }
 
 // Generic sequencer that accepts any step handler
@@ -213,25 +217,34 @@ impl<H: StepHandler> Sequencer<H> {
             }
 
             if playing {
-                Self::process_note_off_events(&mut active_note_off_events, &step_handler, loop_start);
                 if let Some(ref sequence) = current_sequence {
                     let elapsed = last_step_time.elapsed();
 
-                        // Calculate actual BPM timing from sequence
-                        let actual_step_duration = Self::calculate_step_duration(sequence);
+                    // Calculate actual BPM timing from sequence
+                    let actual_step_duration = Self::calculate_step_duration(sequence);
 
-                        if elapsed >= actual_step_duration {
-                            Self::play_sequence_step(sequence, current_step, &step_handler, &mut active_note_off_events);
+                    if elapsed >= actual_step_duration {
+                        Self::process_note_off_events(
+                            &mut active_note_off_events,
+                            &step_handler,
+                            loop_start,
+                        );
+                        Self::play_sequence_step(
+                            sequence,
+                            current_step,
+                            &step_handler,
+                            &mut active_note_off_events,
+                        );
 
-                            // Advance to next step
-                            current_step = (current_step + 1) % sequence.sequence_length;
-                            last_step_time = Instant::now();
+                        // Advance to next step
+                        current_step = (current_step + 1) % sequence.sequence_length;
+                        last_step_time = Instant::now();
 
-                            // Update shared state with new step
-                            if let Ok(mut state_guard) = state.lock() {
-                                state_guard.current_step = current_step;
-                            }
+                        // Update shared state with new step
+                        if let Ok(mut state_guard) = state.lock() {
+                            state_guard.current_step = current_step;
                         }
+                    }
                 }
             }
 
@@ -269,7 +282,7 @@ impl<H: StepHandler> Sequencer<H> {
         sequence: &Sequence,
         step: u32,
         step_handler: &Arc<H>,
-        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>
+        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
     ) {
         println!("🎵 Step {} of {}:", step, sequence.sequence_length);
 
@@ -279,7 +292,6 @@ impl<H: StepHandler> Sequencer<H> {
             .iter()
             .filter(|trig| trig.step == step)
             .collect();
-
 
         let now = Instant::now();
         // TODO - We should really statically calculate this once.
@@ -296,15 +308,14 @@ impl<H: StepHandler> Sequencer<H> {
             }
         }
 
-        // Use the injected handler
-        step_handler.handle_steps(step_trigs);
+        step_handler.handle_steps(step_trigs, StepEvent::NOTE_ON);
     }
 
     /// New helper function to process note off events
     fn process_note_off_events(
         active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
         step_handler: &Arc<H>,
-        current_time: Instant
+        current_time: Instant,
     ) {
         // Collect all note-off events that should trigger now or earlier
         let mut events_to_remove = Vec::new();
@@ -323,12 +334,7 @@ impl<H: StepHandler> Sequencer<H> {
             active_note_off_events.remove(&time);
         }
 
-        for trig in &trigs_to_turn_off {
-            if let Some(_note) = &trig.note {
-                println!("🔇 Note-off received {}", _note);
-            }
-        }
-
+        step_handler.handle_steps(trigs_to_turn_off.iter().collect(), StepEvent::NOTE_OFF);
     }
 
     // All your existing methods remain the same...
@@ -469,7 +475,7 @@ impl<H: StepHandler> Drop for Sequencer<H> {
 pub struct ConsoleStepHandler;
 
 impl StepHandler for ConsoleStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>) {
+    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
         if trigs.is_empty() {
             println!("   (silence)");
         } else {
@@ -505,7 +511,7 @@ impl MockStepHandler {
 }
 
 impl StepHandler for MockStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>) {
+    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
         let mut calls = self.calls.lock().unwrap();
         let call_data: Vec<(u32, Option<String>)> = trigs
             .iter()
@@ -527,13 +533,13 @@ impl MidiStepHandler {
         let last_port = ports.last().unwrap();
 
         Self {
-            midi_output_connection: Mutex::new(midi_out.connect(last_port, "seq").unwrap())
+            midi_output_connection: Mutex::new(midi_out.connect(last_port, "seq").unwrap()),
         }
     }
 }
 
 impl StepHandler for MidiStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>) {
+    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
         let mut connection = self.midi_output_connection.lock().unwrap();
 
         for trig in trigs {
@@ -544,7 +550,7 @@ impl StepHandler for MidiStepHandler {
                 // let _ = connection.send(&note_on_msg);
                 // Your actual MIDI implementation here
                 // Still need to implement note off functionality, which essentially requires
-                // a transform as data is queued up... 
+                // a transform as data is queued up...
             }
         }
     }
