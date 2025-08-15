@@ -323,15 +323,12 @@ impl<H: StepHandler> Sequencer<H> {
             active_note_off_events.remove(&time);
         }
 
-        // Process note-off events if any
-        if !trigs_to_turn_off.is_empty() {
-            // You'll need to modify your StepHandler trait to support note-off events
-            // For now, this is a placeholder - you might want to add a handle_note_offs method
-            println!("🔇 Processing {} note-off events", trigs_to_turn_off.len());
-
-            // If you want to use the existing handler, you could create "note-off" versions of trigs
-            // or modify the StepHandler trait to include a separate note-off method
+        for trig in &trigs_to_turn_off {
+            if let Some(_note) = &trig.note {
+                println!("🔇 Note-off received {}", _note);
+            }
         }
+
     }
 
     // All your existing methods remain the same...
