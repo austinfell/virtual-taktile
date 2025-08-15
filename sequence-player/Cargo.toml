@@ -8,6 +8,10 @@ tonic = "0.11"
 prost = "0.12"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tonic-reflection = "0.11"
+wmidi = "4.0"
+midir = "0.9"
 
 [build-dependencies]
 tonic-build = "0.11"
+midir = "0.9"
+wmidi = "4.0"
