@@ -469,13 +469,21 @@ impl<H: StepHandler> Drop for Sequencer<H> {
     }
 }
 
-// Example implementations of StepHandler
+pub struct ConsoleStepHandler {
+    midi_connection: Mutex<MidiOutputConnection>
+}
 
-// Console output handler (your current implementation)
-pub struct ConsoleStepHandler;
+impl ConsoleStepHandler {
+    pub fn new(midi_connection: MidiOutputConnection) -> Self {
+        Self {
+            midi_connection: Mutex::new(midi_connection)
+        }
+    }
+}
 
 impl StepHandler for ConsoleStepHandler {
     fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
+        let mut connection = self.midi_connection.lock().unwrap();
         if trigs.is_empty() {
             println!("   (silence)");
         } else {

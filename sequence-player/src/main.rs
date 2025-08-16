@@ -3,15 +3,26 @@ use helloworld_tonic::{Sequencer};
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
 use tonic_reflection::server::Builder;
+use wmidi::*;
+use midir::MidiOutput;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse()?;
-    let mut sequencer = Sequencer::new(ConsoleStepHandler);
-    sequencer.initialize_playback();
+    // Wiring up MIDI
+    let midi_out = MidiOutput::new("Sequencer").unwrap();
+    let ports = midi_out.ports();
+    let last_port = ports.last().unwrap();
+    let conn = midi_out.connect(last_port, "seq").unwrap();
 
+    let step_handler = ConsoleStepHandler::new(conn);
+
+    // Wiring up sequencer
+    let mut sequencer = Sequencer::new(step_handler);
+    sequencer.initialize_playback();
     let sequencer_service = SequencerServiceImpl::new(sequencer);
 
+    // Wiring up server
+    let addr = "[::1]:50051".parse()?;
     println!("Sequencer service listening on {}", addr);
 
     let reflection_service = Builder::configure()
