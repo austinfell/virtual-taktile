@@ -516,21 +516,22 @@ impl StepHandler for MidiStepHandler {
             for trig in trigs {
                 match &trig.note {
                     Some(note) => {
-                        if let Ok(midi_note) = parse_note_to_midi(note) {
-                            let channel = (trig.track % 16) as u8; 
-                            let note_on_msg = [0x90 | channel, midi_note, note.velocity as u8];
-                            match connection.send(&note_on_msg) {
-                                Ok(_) => {
-                                    let note_name = note_value_to_string(note.value);
-                                    println!("   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
-                                            trig.track, note_name, note.octave, midi_note, note.velocity);
-                                }
+                        let midi_note = parse_note_to_midi(note);
+                        let channel = (trig.track % 16) as u8;
+                        let note_on_msg = [0x90 | channel, midi_note, note.velocity as u8];
+                        match connection.send(&note_on_msg) {
+                            Ok(_) => {
+                                let note_name = note_value_to_string(note.value);cargo run
+cargo run
 
-                                Err(e) => {
-                                    let note_name = note_value_to_string(note.value);
-                                    println!("   Track {}: Failed to send note on for {}{}: {}",
-                                            trig.track, note_name, note.octave, e);
-                                }
+                                println!("   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
+                                        trig.track, note_name, note.octave, midi_note, note.velocity);
+                            }
+
+                            Err(e) => {
+                                let note_name = note_value_to_string(note.value);
+                                println!("   Track {}: Failed to send note on for {}{}: {}",
+                                        trig.track, note_name, note.octave, e);
                             }
                         }
                     }
@@ -548,21 +549,20 @@ impl StepHandler for MidiStepHandler {
             for trig in trigs {
                 match &trig.note {
                     Some(note) => {
-                        if let Ok(midi_note) = parse_note_to_midi(note) {
-                            let channel = (trig.track % 16) as u8;
-                            let note_off_msg = [0x80 | channel, midi_note, 0];
+                        let midi_note = parse_note_to_midi(note);
+                        let channel = (trig.track % 16) as u8;
+                        let note_off_msg = [0x80 | channel, midi_note, 0];
 
-                            match connection.send(&note_off_msg) {
-                                Ok(_) => {
-                                    let note_name = note_value_to_string(note.value);
-                                    println!("   Track {}: Off {}{} (MIDI: {})",
-                                            trig.track, note_name, note.octave, midi_note);
-                                }
-                                Err(e) => {
-                                    let note_name = note_value_to_string(note.value);
-                                    println!("   Track {}: Failed to send note off for {}{}: {}",
-                                            trig.track, note_name, note.octave, e);
-                                }
+                        match connection.send(&note_off_msg) {
+                            Ok(_) => {
+                                let note_name = note_value_to_string(note.value);
+                                println!("   Track {}: Off {}{} (MIDI: {})",
+                                        trig.track, note_name, note.octave, midi_note);
+                            }
+                            Err(e) => {
+                                let note_name = note_value_to_string(note.value);
+                                println!("   Track {}: Failed to send note off for {}{}: {}",
+                                        trig.track, note_name, note.octave, e);
                             }
                         }
                     }
@@ -575,31 +575,8 @@ impl StepHandler for MidiStepHandler {
     }
 }
 
-fn parse_note_to_midi(note: &SequenceNote) -> Result<u8, String> {
-    let semitone_offset = match note.value {
-        0 => 0,   // C
-        1 => 1,   // C#/Db
-        2 => 2,   // D
-        3 => 3,   // D#/Eb
-        4 => 4,   // E
-        5 => 5,   // F
-        6 => 6,   // F#/Gb
-        7 => 7,   // G
-        8 => 8,   // G#/Ab
-        9 => 9,   // A
-        10 => 10, // A#/Bb
-        11 => 11, // B
-        _ => return Err(format!("Invalid note value: {}", note.value)),
-    };
-
-    let midi_note = (note.octave + 1) * 12 + semitone_offset as i32;
-
-    if midi_note < 0 || midi_note > 127 {
-        return Err(format!("MIDI note {} out of range (0-127) for octave {} note value {}",
-                          midi_note, note.octave, note.value));
-    }
-
-    Ok(midi_note as u8)
+fn parse_note_to_midi(note: &SequenceNote) -> u8 {
+   ((note.octave * 12) + note.value as i32).try_into().unwrap()
 }
 
 fn note_value_to_string(value: i32) -> &'static str {
