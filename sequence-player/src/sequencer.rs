@@ -17,7 +17,6 @@ pub trait StepHandler: Send + Sync + 'static {
 pub struct Sequencer<H: StepHandler> {
     state: Arc<Mutex<SequencerState>>,
     playback_control: Option<mpsc::Sender<PlaybackCommand>>,
-    playback_handle: Option<thread::JoinHandle<()>>,
     step_handler: Arc<H>,
 }
 
@@ -101,12 +100,10 @@ impl<H: StepHandler> Sequencer<H> {
         Self {
             state: Arc::new(Mutex::new(SequencerState::default())),
             playback_control: None,
-            playback_handle: None,
             step_handler: Arc::new(step_handler),
         }
     }
 
-    /// Initialize the high-priority playback system
     pub fn initialize_playback(&mut self) {
         let (tx, rx) = mpsc::channel();
         self.playback_control = Some(tx);
@@ -114,23 +111,16 @@ impl<H: StepHandler> Sequencer<H> {
         let state = Arc::clone(&self.state);
         let step_handler = Arc::clone(&self.step_handler);
 
-        // Spawn dedicated OS thread for timing-critical playback
         let handle = thread::Builder::new()
             .name("sequencer-playback".to_string())
             .spawn(move || {
-                #[cfg(target_os = "linux")]
-                {
-                    // You could use thread_priority crate here for cross-platform priority setting
-                }
-
+                println!("🎵 Sequencer thread started!");
                 Self::playback_loop(state, rx, step_handler);
             })
             .expect("Failed to spawn playback thread");
-
-        self.playback_handle = Some(handle);
     }
 
-/// High-precision playback loop running on dedicated thread
+    /// High-precision playback loop running on dedicated thread
     fn playback_loop(
         state: Arc<Mutex<SequencerState>>,
         command_rx: mpsc::Receiver<PlaybackCommand>,
@@ -143,7 +133,6 @@ impl<H: StepHandler> Sequencer<H> {
         let mut last_step_time = Instant::now();
         let mut loop_helper = LoopHelper::builder().build_with_target_rate(60.0);
 
-        println!("🎵 Sequencer thread started!");
         loop {
             let loop_start = Instant::now();
 
@@ -222,6 +211,7 @@ impl<H: StepHandler> Sequencer<H> {
                         println!("Starting playback");
                         *current_sequence = Some(sequence);
                         *current_step = 0;
+                        // TODO - This playing variable is redundant.
                         *playing = true;
                         *last_step_time = Instant::now(); // Reset timing
 
@@ -482,10 +472,6 @@ impl<H: StepHandler> Sequencer<H> {
         if let Some(ref tx) = self.playback_control {
             let _ = tx.send(PlaybackCommand::Shutdown);
         }
-
-        if let Some(handle) = self.playback_handle.take() {
-            let _ = handle.join();
-        }
     }
 }
 
@@ -521,8 +507,7 @@ impl StepHandler for MidiStepHandler {
                         let note_on_msg = [0x90 | channel, midi_note, note.velocity as u8];
                         match connection.send(&note_on_msg) {
                             Ok(_) => {
-                                let note_name = note_value_to_string(note.value);cargo run
-cargo run
+                                let note_name = note_value_to_string(note.value);
 
                                 println!("   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
                                         trig.track, note_name, note.octave, midi_note, note.velocity);
