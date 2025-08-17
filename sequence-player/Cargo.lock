@@ -376,6 +376,7 @@ version = "0.1.0"
 dependencies = [
  "midir",
  "prost",
+ "spin_sleep",
  "tokio",
  "tonic",
  "tonic-build",
@@ -891,6 +892,15 @@ checksum = "233504af464074f9d066d7b5416c5f9b894a5862a6506e306f7b816cdd6f1807"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "spin_sleep"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14ac0e4b54d028c2000a13895bcd84cd02a1d63c4f78e08e4ec5ec8f53efd4b9"
+dependencies = [
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

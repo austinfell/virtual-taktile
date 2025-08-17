@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
+use spin_sleep::LoopHelper;
 use crate::server::sequence::Note as SequenceNote;
 
 pub trait StepHandler: Send + Sync + 'static {
@@ -140,12 +141,9 @@ impl<H: StepHandler> Sequencer<H> {
         let mut playing = false;
         let mut active_note_off_events = HashMap::new();
         let mut last_step_time = Instant::now();
+        let mut loop_helper = LoopHelper::builder().build_with_target_rate(60.0);
 
-        // Timing configuration
-        let command_check_interval = Duration::from_micros(100); // Very fast command response
-
-        println!("🎵 High-priority sequencer thread started");
-
+        println!("🎵 Sequencer thread started!");
         loop {
             let loop_start = Instant::now();
 
@@ -252,11 +250,7 @@ impl<H: StepHandler> Sequencer<H> {
                 }
             }
 
-            // Minimal sleep to prevent excessive CPU usage while maintaining responsiveness
-            let loop_duration = loop_start.elapsed();
-            if loop_duration < command_check_interval {
-                thread::sleep(command_check_interval - loop_duration);
-            }
+            loop_helper.loop_sleep();
         }
     }
 
