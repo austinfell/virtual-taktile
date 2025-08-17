@@ -389,6 +389,13 @@ impl<H: StepHandler> Sequencer<H> {
 
     pub fn start_sequence(&self) -> StartResult {
         let mut state = self.state.lock().unwrap();
+        // TODO - One thing we can do to remove an entire conditional check:
+        // playback thread doesn't do anything if it isn't... playing.
+        // So why don't we only spin up the thread when the sequencer is running
+        // and otherwise we will tear it down.
+        //
+        // No constant evaluation of command state while the sequencer is running,
+        // and it will be more performant!
 
         if let Some(cued_sequence) = state.cued_sequence.take() {
             drop(state); // Release lock before sending command
