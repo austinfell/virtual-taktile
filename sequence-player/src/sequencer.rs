@@ -130,7 +130,7 @@ impl<H: StepHandler> Sequencer<H> {
         self.playback_handle = Some(handle);
     }
 
-    /// High-precision playback loop running on dedicated thread
+/// High-precision playback loop running on dedicated thread
     fn playback_loop(
         state: Arc<Mutex<SequencerState>>,
         command_rx: mpsc::Receiver<PlaybackCommand>,
@@ -147,72 +147,23 @@ impl<H: StepHandler> Sequencer<H> {
         loop {
             let loop_start = Instant::now();
 
-            // Handle commands with minimal latency - check multiple times per step
-            match command_rx.try_recv() {
-                Ok(command) => {
-                    match command {
-                        PlaybackCommand::Start(sequence) => {
-                            println!("Starting playback");
-                            current_sequence = Some(sequence);
-                            current_step = 0;
-                            playing = true;
-                            last_step_time = Instant::now(); // Reset timing
-
-                            // Update shared state
-                            if let Ok(mut state_guard) = state.lock() {
-                                state_guard.playing = true;
-                                state_guard.current_step = 0;
-                                state_guard.current_sequence = current_sequence.clone();
-                            }
-                        }
-                        PlaybackCommand::Stop => {
-                            println!("Stopping playback");
-                            playing = false;
-
-                            active_note_off_events.clear();
-
-                            // Update shared state
-                            if let Ok(mut state_guard) = state.lock() {
-                                state_guard.playing = false;
-                            }
-                        }
-                        PlaybackCommand::Swap(sequence) => {
-                            println!("Swapping sequence");
-                            current_sequence = Some(sequence);
-                            // Keep current step position, but clamp to new sequence length
-                            if let Some(ref seq) = current_sequence {
-                                if current_step >= seq.sequence_length {
-                                    current_step = 0;
-                                    last_step_time = Instant::now(); // Reset timing on wrap
-                                }
-                            }
-
-                            // Update shared state
-                            if let Ok(mut state_guard) = state.lock() {
-                                state_guard.current_sequence = current_sequence.clone();
-                                state_guard.current_step = current_step;
-                            }
-                        }
-                        PlaybackCommand::Shutdown => {
-                            println!("Shutting down playback thread");
-                            return;
-                        }
-                    }
-                }
-                Err(mpsc::TryRecvError::Empty) => {
-                    // No command, continue with timing loop
-                }
-                Err(mpsc::TryRecvError::Disconnected) => {
-                    println!("Command channel disconnected");
-                    return;
-                }
+            // Handle any incoming commands
+            if Self::handle_playback_commands(
+                &command_rx,
+                &state,
+                &mut current_sequence,
+                &mut current_step,
+                &mut playing,
+                &mut active_note_off_events,
+                &mut last_step_time,
+            ) {
+                // Command handler returned true, indicating shutdown
+                return;
             }
 
             if playing {
                 if let Some(ref sequence) = current_sequence {
                     let elapsed = last_step_time.elapsed();
-
-                    // Calculate actual BPM timing from sequence
                     let actual_step_duration = Self::calculate_step_duration(sequence);
 
                     if elapsed >= actual_step_duration {
@@ -221,7 +172,7 @@ impl<H: StepHandler> Sequencer<H> {
                             &step_handler,
                             loop_start,
                         );
-                        Self::play_sequence_step(
+                        Self::process_note_on_events(
                             sequence,
                             current_step,
                             &step_handler,
@@ -246,12 +197,84 @@ impl<H: StepHandler> Sequencer<H> {
                             }
                         }
                     }
-
                 }
             }
 
             loop_helper.loop_sleep();
         }
+    }
+
+    /// Handle incoming playback commands with minimal latency
+    /// Returns true if shutdown was requested, false otherwise
+    fn handle_playback_commands(
+        command_rx: &mpsc::Receiver<PlaybackCommand>,
+        state: &Arc<Mutex<SequencerState>>,
+        current_sequence: &mut Option<Sequence>,
+        current_step: &mut u32,
+        playing: &mut bool,
+        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
+        last_step_time: &mut Instant,
+    ) -> bool {
+        match command_rx.try_recv() {
+            Ok(command) => {
+                match command {
+                    PlaybackCommand::Start(sequence) => {
+                        println!("Starting playback");
+                        *current_sequence = Some(sequence);
+                        *current_step = 0;
+                        *playing = true;
+                        *last_step_time = Instant::now(); // Reset timing
+
+                        // Update shared state
+                        if let Ok(mut state_guard) = state.lock() {
+                            state_guard.playing = true;
+                            state_guard.current_step = 0;
+                            state_guard.current_sequence = current_sequence.clone();
+                        }
+                    }
+                    PlaybackCommand::Stop => {
+                        println!("Stopping playback");
+                        *playing = false;
+                        active_note_off_events.clear();
+
+                        // Update shared state
+                        if let Ok(mut state_guard) = state.lock() {
+                            state_guard.playing = false;
+                        }
+                    }
+                    PlaybackCommand::Swap(sequence) => {
+                        println!("Swapping sequence");
+                        *current_sequence = Some(sequence);
+                        // Keep current step position, but clamp to new sequence length
+                        if let Some(ref seq) = current_sequence {
+                            if *current_step >= seq.sequence_length {
+                                *current_step = 0;
+                                *last_step_time = Instant::now(); // Reset timing on wrap
+                            }
+                        }
+
+                        // Update shared state
+                        if let Ok(mut state_guard) = state.lock() {
+                            state_guard.current_sequence = current_sequence.clone();
+                            state_guard.current_step = *current_step;
+                        }
+                    }
+                    PlaybackCommand::Shutdown => {
+                        println!("Shutting down playback thread");
+                        return true; // Signal shutdown
+                    }
+                }
+            }
+            Err(mpsc::TryRecvError::Empty) => {
+                // No command, continue with timing loop
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                println!("Command channel disconnected");
+                return true; // Signal shutdown
+            }
+        }
+
+        false // Continue running
     }
 
     /// Calculate step duration based on BPM and subdivision
@@ -275,8 +298,7 @@ impl<H: StepHandler> Sequencer<H> {
         Duration::from_millis(milliseconds_per_step as u64)
     }
 
-    /// Print the events for a given step (now uses injected handler)
-    fn play_sequence_step(
+    fn process_note_on_events(
         sequence: &Sequence,
         step: u32,
         step_handler: &Arc<H>,
