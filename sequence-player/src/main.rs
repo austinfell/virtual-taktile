@@ -1,4 +1,4 @@
-use helloworld_tonic::sequencer::ConsoleStepHandler;
+use helloworld_tonic::sequencer::MidiStepHandler;
 use helloworld_tonic::{Sequencer};
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let last_port = ports.last().unwrap();
     let conn = midi_out.connect(last_port, "seq").unwrap();
 
-    let step_handler = ConsoleStepHandler::new(conn);
+    let step_handler = MidiStepHandler::new(conn);
 
     // Wiring up sequencer
     let mut sequencer = Sequencer::new(step_handler);

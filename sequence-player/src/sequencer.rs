@@ -1,19 +1,14 @@
 use crate::server::sequence::{Sequence, Trig};
-use midir::MidiOutput;
 use midir::MidiOutputConnection;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
-
-// Define a trait for step handling
-pub enum StepEvent {
-    NOTE_ON,
-    NOTE_OFF,
-}
+use crate::server::sequence::Note as SequenceNote;
 
 pub trait StepHandler: Send + Sync + 'static {
-    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent);
+    fn handle_notes_on(&self, trigs: Vec<&Trig>);
+    fn handle_notes_off(&self, trigs: Vec<&Trig>);
 }
 
 // Generic sequencer that accepts any step handler
@@ -308,7 +303,7 @@ impl<H: StepHandler> Sequencer<H> {
             }
         }
 
-        step_handler.handle_steps(step_trigs, StepEvent::NOTE_ON);
+        step_handler.handle_notes_on(step_trigs);
     }
 
     /// New helper function to process note off events
@@ -334,7 +329,7 @@ impl<H: StepHandler> Sequencer<H> {
             active_note_off_events.remove(&time);
         }
 
-        step_handler.handle_steps(trigs_to_turn_off.iter().collect(), StepEvent::NOTE_OFF);
+        step_handler.handle_notes_off(trigs_to_turn_off.iter().collect());
     }
 
     // All your existing methods remain the same...
@@ -469,11 +464,11 @@ impl<H: StepHandler> Drop for Sequencer<H> {
     }
 }
 
-pub struct ConsoleStepHandler {
+pub struct MidiStepHandler {
     midi_connection: Mutex<MidiOutputConnection>
 }
 
-impl ConsoleStepHandler {
+impl MidiStepHandler {
     pub fn new(midi_connection: MidiOutputConnection) -> Self {
         Self {
             midi_connection: Mutex::new(midi_connection)
@@ -481,8 +476,8 @@ impl ConsoleStepHandler {
     }
 }
 
-impl StepHandler for ConsoleStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
+impl StepHandler for MidiStepHandler {
+    fn handle_notes_on(&self, trigs: Vec<&Trig>) {
         let mut connection = self.midi_connection.lock().unwrap();
         if trigs.is_empty() {
             println!("   (silence)");
@@ -490,7 +485,23 @@ impl StepHandler for ConsoleStepHandler {
             for trig in trigs {
                 match &trig.note {
                     Some(note) => {
-                        println!("   Track {}: Play {}", trig.track, note);
+                        if let Ok(midi_note) = parse_note_to_midi(note) {
+                            let channel = (trig.track % 16) as u8; 
+                            let note_on_msg = [0x90 | channel, midi_note, note.velocity as u8];
+                            match connection.send(&note_on_msg) {
+                                Ok(_) => {
+                                    let note_name = note_value_to_string(note.value);
+                                    println!("   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
+                                            trig.track, note_name, note.octave, midi_note, note.velocity);
+                                }
+
+                                Err(e) => {
+                                    let note_name = note_value_to_string(note.value);
+                                    println!("   Track {}: Failed to send note on for {}{}: {}",
+                                            trig.track, note_name, note.octave, e);
+                                }
+                            }
+                        }
                     }
                     None => {
                         println!("   Track {}: REST", trig.track);
@@ -499,72 +510,84 @@ impl StepHandler for ConsoleStepHandler {
             }
         }
     }
-}
 
-// Mock handler for testing
-pub struct MockStepHandler {
-    pub calls: Arc<Mutex<Vec<Vec<(u32, Option<String>)>>>>,
-}
+    fn handle_notes_off(&self, trigs: Vec<&Trig>) {
+        let mut connection = self.midi_connection.lock().unwrap();
+        if !trigs.is_empty() {
+            for trig in trigs {
+                match &trig.note {
+                    Some(note) => {
+                        if let Ok(midi_note) = parse_note_to_midi(note) {
+                            let channel = (trig.track % 16) as u8;
+                            let note_off_msg = [0x80 | channel, midi_note, 0];
 
-impl MockStepHandler {
-    pub fn new() -> Self {
-        Self {
-            calls: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    pub fn get_calls(&self) -> Vec<Vec<(u32, Option<String>)>> {
-        self.calls.lock().unwrap().clone()
-    }
-}
-
-impl StepHandler for MockStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
-        let mut calls = self.calls.lock().unwrap();
-        let call_data: Vec<(u32, Option<String>)> = trigs
-            .iter()
-            .map(|trig| (trig.track, trig.note.as_ref().map(|note| note.to_string())))
-            .collect();
-        calls.push(call_data);
-    }
-}
-
-// MIDI handler (placeholder for your actual MIDI implementation)
-pub struct MidiStepHandler {
-    midi_output_connection: Mutex<MidiOutputConnection>,
-}
-
-impl MidiStepHandler {
-    pub fn new() -> Self {
-        let midi_out = MidiOutput::new("Sequencer").unwrap();
-        let ports = midi_out.ports();
-        let last_port = ports.last().unwrap();
-
-        Self {
-            midi_output_connection: Mutex::new(midi_out.connect(last_port, "seq").unwrap()),
-        }
-    }
-}
-
-impl StepHandler for MidiStepHandler {
-    fn handle_steps(&self, trigs: Vec<&Trig>, event: StepEvent) {
-        let mut connection = self.midi_output_connection.lock().unwrap();
-
-        for trig in trigs {
-            if let Some(note) = &trig.note {
-                // Send MIDI note on for the track/channel
-
-                println!("MIDI: Track {} -> Note {}", trig.track, note);
-                // let _ = connection.send(&note_on_msg);
-                // Your actual MIDI implementation here
-                // Still need to implement note off functionality, which essentially requires
-                // a transform as data is queued up...
+                            match connection.send(&note_off_msg) {
+                                Ok(_) => {
+                                    let note_name = note_value_to_string(note.value);
+                                    println!("   Track {}: Off {}{} (MIDI: {})",
+                                            trig.track, note_name, note.octave, midi_note);
+                                }
+                                Err(e) => {
+                                    let note_name = note_value_to_string(note.value);
+                                    println!("   Track {}: Failed to send note off for {}{}: {}",
+                                            trig.track, note_name, note.octave, e);
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        // No note to turn off for rests
+                    }
+                }
             }
         }
     }
 }
 
-// Type aliases for convenience
-pub type ConsoleSequencer = Sequencer<ConsoleStepHandler>;
-pub type MockSequencer = Sequencer<MockStepHandler>;
-pub type MidiSequencer = Sequencer<MidiStepHandler>;
+fn parse_note_to_midi(note: &SequenceNote) -> Result<u8, String> {
+    let semitone_offset = match note.value {
+        0 => 0,   // C
+        1 => 1,   // C#/Db
+        2 => 2,   // D
+        3 => 3,   // D#/Eb
+        4 => 4,   // E
+        5 => 5,   // F
+        6 => 6,   // F#/Gb
+        7 => 7,   // G
+        8 => 8,   // G#/Ab
+        9 => 9,   // A
+        10 => 10, // A#/Bb
+        11 => 11, // B
+        _ => return Err(format!("Invalid note value: {}", note.value)),
+    };
+
+    let midi_note = (note.octave + 1) * 12 + semitone_offset as i32;
+
+    if midi_note < 0 || midi_note > 127 {
+        return Err(format!("MIDI note {} out of range (0-127) for octave {} note value {}",
+                          midi_note, note.octave, note.value));
+    }
+
+    Ok(midi_note as u8)
+}
+
+fn note_value_to_string(value: i32) -> &'static str {
+    match value {
+        0 => "C",
+        1 => "C#",
+        2 => "D",
+        3 => "D#",
+        4 => "E",
+        5 => "F",
+        6 => "F#",
+        7 => "G",
+        8 => "G#",
+        9 => "A",
+        10 => "A#",
+        11 => "B",
+        _ => "?",
+    }
+}
+
+
+pub type ConsoleSequencer = Sequencer<MidiStepHandler>;

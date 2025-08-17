@@ -3,7 +3,197 @@ This file provides a basic way to test our service using gRPC. It expects that g
 * Swap a sequence
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
+    "sequence_length": 16,
+    "bpm": 100,
+    "trig_subdivision": {
+      "numerator": 1,
+      "denominator": 16
+    },
+    "trigs": [
+      {
+        "note": {
+          "octave": 3,
+          "value": 9,
+          "velocity": 80
+        },
+        "track": 1,
+        "step": 0,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 1,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 2,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 9,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 3,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 4,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 5,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 9,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 6,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 7,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 3,
+          "value": 7,
+          "velocity": 80
+        },
+        "track": 1,
+        "step": 8,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 9,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 10,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 7,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 11,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 12,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 13,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 7,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 14,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 15,
+        "offset": 0.0,
+        "length": 1.0
+      }
+    ]
+  }' [::1]:50051 sequence.SequencerService/SwapSequence
+#+END_SRC
+* Cue Bach Prelude Bars 1 + 2
+#+BEGIN_SRC bash
+grpcurl -plaintext -d '{
   "sequence_length": 16,
+  "bpm": 100,
   "trig_subdivision": {
     "numerator": 1,
     "denominator": 16
@@ -11,62 +201,371 @@ This file provides a basic way to test our service using gRPC. It expects that g
   "trigs": [
     {
       "note": {
-        "octave": 2,
-        "value": "D",
-        "velocity": 127
+        "octave": 4,
+        "value": 0,
+        "velocity": 80
       },
       "track": 1,
       "step": 0,
       "offset": 0.0,
-      "length": 4.0
+      "length": 1.0
     },
     {
       "note": {
-        "octave": 2,
-        "value": "A",
-        "velocity": 100
+        "octave": 4,
+        "value": 4,
+        "velocity": 70
       },
       "track": 1,
-      "step": 0,
+      "step": 1,
       "offset": 0.0,
-      "length": 4.0
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 7,
+        "velocity": 75
+      },
+      "track": 1,
+      "step": 2,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 5,
+        "value": 0,
+        "velocity": 85
+      },
+      "track": 1,
+      "step": 3,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 4,
+        "velocity": 70
+      },
+      "track": 1,
+      "step": 4,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 7,
+        "velocity": 75
+      },
+      "track": 1,
+      "step": 5,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 5,
+        "value": 0,
+        "velocity": 85
+      },
+      "track": 1,
+      "step": 6,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 4,
+        "velocity": 70
+      },
+      "track": 1,
+      "step": 7,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 0,
+        "velocity": 80
+      },
+      "track": 1,
+      "step": 8,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 2,
+        "velocity": 70
+      },
+      "track": 1,
+      "step": 9,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 9,
+        "velocity": 75
+      },
+      "track": 1,
+      "step": 10,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 5,
+        "value": 2,
+        "velocity": 85
+      },
+      "track": 1,
+      "step": 11,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 5,
+        "velocity": 70
+      },
+      "track": 1,
+      "step": 12,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 9,
+        "velocity": 75
+      },
+      "track": 1,
+      "step": 13,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 5,
+        "value": 2,
+        "velocity": 85
+      },
+      "track": 1,
+      "step": 14,
+      "offset": 0.0,
+      "length": 1.0
+    },
+    {
+      "note": {
+        "octave": 4,
+        "value": 5,
+        "velocity": 70
+      },
+      "track": 1,
+      "step": 15,
+      "offset": 0.0,
+      "length": 1.0
     }
   ]
 }' [::1]:50051 sequence.SequencerService/SwapSequence
 #+END_SRC
-* Cue a sequence
+* Cue Bach Prelude Bars 3 + 4
 #+BEGIN_SRC bash
-  grpcurl -plaintext -d '{
-  "sequence_length": 16,
-  "trig_subdivision": {
-    "numerator": 1,
-    "denominator": 16
-  },
-  "trigs": [
-    {
-      "note": {
-        "octave": 2,
-        "value": "C",
-        "velocity": 127
-      },
-      "track": 1,
-      "step": 0,
-      "offset": 0.0,
-      "length": 4.0
+grpcurl -plaintext -d '{
+    "sequence_length": 16,
+    "bpm": 100,
+    "trig_subdivision": {
+      "numerator": 1,
+      "denominator": 16
     },
-    {
-      "note": {
-        "octave": 2,
-        "value": "G",
-        "velocity": 100
+    "trigs": [
+      {
+        "note": {
+          "octave": 3,
+          "value": 9,
+          "velocity": 80
+        },
+        "track": 1,
+        "step": 0,
+        "offset": 0.0,
+        "length": 1.0
       },
-      "track": 1,
-      "step": 0,
-      "offset": 0.0,
-      "length": 4.0
-    }
-  ]
-}' [::1]:50051 sequence.SequencerService/CueSequence
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 1,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 2,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 9,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 3,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 4,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 5,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 9,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 6,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 7,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 3,
+          "value": 7,
+          "velocity": 80
+        },
+        "track": 1,
+        "step": 8,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 9,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 10,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 7,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 11,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 12,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 4,
+          "velocity": 75
+        },
+        "track": 1,
+        "step": 13,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 7,
+          "velocity": 85
+        },
+        "track": 1,
+        "step": 14,
+        "offset": 0.0,
+        "length": 1.0
+      },
+      {
+        "note": {
+          "octave": 4,
+          "value": 0,
+          "velocity": 70
+        },
+        "track": 1,
+        "step": 15,
+        "offset": 0.0,
+        "length": 1.0
+      }
+    ]
+  }' [::1]:50051 sequence.SequencerService/CueSequence
 #+END_SRC
 * Play the sequence
 #+BEGIN_SRC bash
