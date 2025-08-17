@@ -238,8 +238,18 @@ impl<H: StepHandler> Sequencer<H> {
                         // Update shared state with new step
                         if let Ok(mut state_guard) = state.lock() {
                             state_guard.current_step = current_step;
+                            if current_step == 0 {
+                                if let Some(cued_seq) = state_guard.cued_sequence.take() {
+                                    println!("Swap registered!");
+                                    // TODO Massively hacky
+                                    state_guard.current_sequence = Some(cued_seq.clone());
+                                    current_sequence = Some(cued_seq);
+                                    state_guard.cued_sequence = None;
+                                }
+                            }
                         }
                     }
+
                 }
             }
 
@@ -332,7 +342,6 @@ impl<H: StepHandler> Sequencer<H> {
         step_handler.handle_notes_off(trigs_to_turn_off.iter().collect());
     }
 
-    // All your existing methods remain the same...
     pub fn cue_sequence(&self, sequence: Sequence) -> CueResult {
         println!("Cueing sequence: {}", sequence);
 
