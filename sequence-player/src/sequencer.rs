@@ -142,7 +142,6 @@ impl<H: StepHandler> Sequencer<H> {
         let mut last_step_time = Instant::now();
 
         // Timing configuration
-        let step_duration = Duration::from_millis(250); // 240 BPM at 16th notes
         let command_check_interval = Duration::from_micros(100); // Very fast command response
 
         println!("🎵 High-priority sequencer thread started");

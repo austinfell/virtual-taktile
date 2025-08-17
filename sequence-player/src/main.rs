@@ -3,7 +3,6 @@ use helloworld_tonic::{Sequencer};
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
 use tonic::transport::Server;
 use tonic_reflection::server::Builder;
-use wmidi::*;
 use midir::MidiOutput;
 
 #[tokio::main]
