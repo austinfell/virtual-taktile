@@ -83,29 +83,29 @@ pub type StartResult = Result<(), SequencerError>;
 pub type StopResult = Result<StopMetadata, SequencerError>;
 pub type SwapResult = Result<SwapMetadata, SequencerError>;
 
+// Core sequencer implementation.
 impl<H: StepHandler> Sequencer<H> {
     pub fn new(step_handler: H) -> Self {
-        Self {
-            state: Arc::new(Mutex::new(SequencerState::default())),
-            playback_control: None,
-            step_handler: Arc::new(step_handler),
-        }
-    }
-
-    pub fn initialize_playback(&mut self) {
         let (tx, rx) = mpsc::channel();
-        self.playback_control = Some(tx);
+        let state = Arc::new(Mutex::new(SequencerState::default()));
+        let step_handler = Arc::new(step_handler);
 
-        let state = Arc::clone(&self.state);
-        let step_handler = Arc::clone(&self.step_handler);
-
-        let handle = thread::Builder::new()
+        // Cloning all of these references to our playback loop.
+        let state_clone = Arc::clone(&state);
+        let step_handler_clone = Arc::clone(&step_handler);
+        let _handle = thread::Builder::new()
             .name("sequencer-playback".to_string())
             .spawn(move || {
                 println!("🎵 Sequencer thread started!");
-                Self::playback_loop(state, rx, step_handler);
+                Self::playback_loop(state_clone, rx, step_handler_clone);
             })
             .expect("Failed to spawn playback thread");
+
+        Self {
+            state,
+            playback_control: Some(tx),
+            step_handler,
+        }
     }
 
     /// High-precision playback loop running on dedicated thread

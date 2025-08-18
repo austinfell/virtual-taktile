@@ -16,8 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let step_handler = MidiStepHandler::new(conn);
 
     // Wiring up sequencer
-    let mut sequencer = Sequencer::new(step_handler);
-    sequencer.initialize_playback();
+    let sequencer = Sequencer::new(step_handler);
     let sequencer_service = SequencerServiceImpl::new(sequencer);
 
     // Wiring up server
