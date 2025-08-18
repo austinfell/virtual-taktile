@@ -1,9 +1,9 @@
 use helloworld_tonic::sequencer::MidiStepHandler;
-use helloworld_tonic::{Sequencer};
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
+use helloworld_tonic::Sequencer;
+use midir::MidiOutput;
 use tonic::transport::Server;
 use tonic_reflection::server::Builder;
-use midir::MidiOutput;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,6 @@
 use std::fmt;
 
-pub use crate::server::sequence::{self, Sequence, NoteValue, Note, Trig, Subdivision};
+pub use crate::server::sequence::{self, Note, NoteValue, Sequence, Subdivision, Trig};
 
 impl fmt::Display for Subdivision {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -31,8 +31,7 @@ impl fmt::Display for NoteValue {
 
 impl fmt::Display for Note {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let note_value = NoteValue::try_from(self.value)
-            .unwrap_or(NoteValue::UnknownNote);
+        let note_value = NoteValue::try_from(self.value).unwrap_or(NoteValue::UnknownNote);
         write!(f, "{}{} (vel: {})", note_value, self.octave, self.velocity)
     }
 }

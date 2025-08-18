@@ -1,6 +1,6 @@
-pub mod types;
 pub mod sequencer;
 pub mod server;
+pub mod types;
 
-pub use types::{Trig, Note, NoteValue, Subdivision};
 pub use sequencer::Sequencer;
+pub use types::{Note, NoteValue, Subdivision, Trig};

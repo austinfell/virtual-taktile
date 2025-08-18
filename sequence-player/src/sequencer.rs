@@ -1,18 +1,18 @@
+use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
+use spin_sleep::LoopHelper;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use spin_sleep::LoopHelper;
-use crate::server::sequence::Note as SequenceNote;
 
+// General sequencer data structure definition.
 pub trait StepHandler: Send + Sync + 'static {
     fn handle_notes_on(&self, trigs: Vec<&Trig>);
     fn handle_notes_off(&self, trigs: Vec<&Trig>);
 }
 
-// Generic sequencer that accepts any step handler
 #[derive(Debug)]
 pub struct Sequencer<H: StepHandler> {
     state: Arc<Mutex<SequencerState>>,
@@ -28,6 +28,7 @@ struct SequencerState {
     current_step: u32,
 }
 
+// Public interface for performing actions upon the sequencer.
 #[derive(Debug)]
 enum PlaybackCommand {
     Start(Sequence),
@@ -36,13 +37,31 @@ enum PlaybackCommand {
     Shutdown,
 }
 
-// Your existing result types remain the same
-#[derive(Debug, Clone)]
-pub struct OperationResult<T = ()> {
-    pub success: bool,
-    pub data: Option<T>,
+// Error types for sequencer operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SequencerError {
+    PlaybackNotInitialized,
+    CommandSendFailed,
+    NoSequenceCued,
+    Other(String),
 }
 
+impl std::fmt::Display for SequencerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SequencerError::PlaybackNotInitialized => write!(f, "Playback system not initialized"),
+            SequencerError::CommandSendFailed => {
+                write!(f, "Failed to send command to playback thread")
+            }
+            SequencerError::NoSequenceCued => write!(f, "No sequence cued"),
+            SequencerError::Other(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
+impl std::error::Error for SequencerError {}
+
+// Metadata types for successful operations
 #[derive(Debug, Clone)]
 pub struct CueMetadata {
     pub replaced_existing: bool,
@@ -59,41 +78,10 @@ pub struct StopMetadata {
     pub trig_count: Option<usize>,
 }
 
-pub type CueResult = OperationResult<CueMetadata>;
-pub type StartResult = OperationResult<()>;
-pub type StopResult = OperationResult<StopMetadata>;
-pub type SwapResult = OperationResult<SwapMetadata>;
-
-impl<T> OperationResult<T> {
-    pub fn success(data: T) -> Self {
-        Self {
-            success: true,
-            data: Some(data),
-        }
-    }
-
-    pub fn success_empty() -> OperationResult<()> {
-        OperationResult {
-            success: true,
-            data: Some(()),
-        }
-    }
-
-    pub fn failure() -> Self {
-        Self {
-            success: false,
-            data: None,
-        }
-    }
-
-    pub fn is_success(&self) -> bool {
-        self.success
-    }
-
-    pub fn is_failure(&self) -> bool {
-        !self.success
-    }
-}
+pub type CueResult = Result<CueMetadata, SequencerError>;
+pub type StartResult = Result<(), SequencerError>;
+pub type StopResult = Result<StopMetadata, SequencerError>;
+pub type SwapResult = Result<SwapMetadata, SequencerError>;
 
 impl<H: StepHandler> Sequencer<H> {
     pub fn new(step_handler: H) -> Self {
@@ -371,7 +359,7 @@ impl<H: StepHandler> Sequencer<H> {
             println!("Cued new sequence");
         }
 
-        OperationResult::success(CueMetadata {
+        Ok(CueMetadata {
             replaced_existing,
             remaining_steps,
         })
@@ -390,20 +378,21 @@ impl<H: StepHandler> Sequencer<H> {
         if let Some(cued_sequence) = state.cued_sequence.take() {
             drop(state); // Release lock before sending command
 
-            if let Some(ref tx) = self.playback_control {
-                if tx.send(PlaybackCommand::Start(cued_sequence)).is_ok() {
-                    OperationResult::<StartResult>::success_empty()
-                } else {
+            let tx = self
+                .playback_control
+                .as_ref()
+                .ok_or(SequencerError::PlaybackNotInitialized)?;
+
+            tx.send(PlaybackCommand::Start(cued_sequence))
+                .map_err(|_| {
                     println!("❌ Failed to send start command");
-                    OperationResult::failure()
-                }
-            } else {
-                println!("❌ Playback system not initialized");
-                OperationResult::failure()
-            }
+                    SequencerError::CommandSendFailed
+                })?;
+
+            Ok(())
         } else {
             println!("❌ No sequence cued - cannot start");
-            OperationResult::failure()
+            Err(SequencerError::NoSequenceCued)
         }
     }
 
@@ -413,20 +402,21 @@ impl<H: StepHandler> Sequencer<H> {
             state.current_sequence.as_ref().map(|seq| seq.trigs.len())
         };
 
-        if let Some(ref tx) = self.playback_control {
-            if tx.send(PlaybackCommand::Stop).is_ok() {
-                if let Some(count) = trig_count {
-                    println!("Stopped sequence had {} trigs", count);
-                }
-                OperationResult::success(StopMetadata { trig_count })
-            } else {
-                println!("❌ Failed to send stop command");
-                OperationResult::failure()
-            }
-        } else {
-            println!("❌ Playback system not initialized");
-            OperationResult::failure()
+        let tx = self
+            .playback_control
+            .as_ref()
+            .ok_or(SequencerError::PlaybackNotInitialized)?;
+
+        tx.send(PlaybackCommand::Stop).map_err(|_| {
+            println!("❌ Failed to send stop command");
+            SequencerError::CommandSendFailed
+        })?;
+
+        if let Some(count) = trig_count {
+            println!("Stopped sequence had {} trigs", count);
         }
+
+        Ok(StopMetadata { trig_count })
     }
 
     pub fn swap_sequence(&self, sequence: Sequence) -> SwapResult {
@@ -437,17 +427,17 @@ impl<H: StepHandler> Sequencer<H> {
             state.current_sequence.is_some()
         };
 
-        if let Some(ref tx) = self.playback_control {
-            if tx.send(PlaybackCommand::Swap(sequence)).is_ok() {
-                OperationResult::success(SwapMetadata { replaced_existing })
-            } else {
-                println!("❌ Failed to send swap command");
-                OperationResult::failure()
-            }
-        } else {
-            println!("❌ Playback system not initialized");
-            OperationResult::failure()
-        }
+        let tx = self
+            .playback_control
+            .as_ref()
+            .ok_or(SequencerError::PlaybackNotInitialized)?;
+
+        tx.send(PlaybackCommand::Swap(sequence)).map_err(|_| {
+            println!("❌ Failed to send swap command");
+            SequencerError::CommandSendFailed
+        })?;
+
+        Ok(SwapMetadata { replaced_existing })
     }
 
     pub fn is_playing(&self) -> bool {
@@ -482,13 +472,13 @@ impl<H: StepHandler> Drop for Sequencer<H> {
 }
 
 pub struct MidiStepHandler {
-    midi_connection: Mutex<MidiOutputConnection>
+    midi_connection: Mutex<MidiOutputConnection>,
 }
 
 impl MidiStepHandler {
     pub fn new(midi_connection: MidiOutputConnection) -> Self {
         Self {
-            midi_connection: Mutex::new(midi_connection)
+            midi_connection: Mutex::new(midi_connection),
         }
     }
 }
@@ -509,14 +499,18 @@ impl StepHandler for MidiStepHandler {
                             Ok(_) => {
                                 let note_name = note_value_to_string(note.value);
 
-                                println!("   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
-                                        trig.track, note_name, note.octave, midi_note, note.velocity);
+                                println!(
+                                    "   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
+                                    trig.track, note_name, note.octave, midi_note, note.velocity
+                                );
                             }
 
                             Err(e) => {
                                 let note_name = note_value_to_string(note.value);
-                                println!("   Track {}: Failed to send note on for {}{}: {}",
-                                        trig.track, note_name, note.octave, e);
+                                println!(
+                                    "   Track {}: Failed to send note on for {}{}: {}",
+                                    trig.track, note_name, note.octave, e
+                                );
                             }
                         }
                     }
@@ -541,13 +535,17 @@ impl StepHandler for MidiStepHandler {
                         match connection.send(&note_off_msg) {
                             Ok(_) => {
                                 let note_name = note_value_to_string(note.value);
-                                println!("   Track {}: Off {}{} (MIDI: {})",
-                                        trig.track, note_name, note.octave, midi_note);
+                                println!(
+                                    "   Track {}: Off {}{} (MIDI: {})",
+                                    trig.track, note_name, note.octave, midi_note
+                                );
                             }
                             Err(e) => {
                                 let note_name = note_value_to_string(note.value);
-                                println!("   Track {}: Failed to send note off for {}{}: {}",
-                                        trig.track, note_name, note.octave, e);
+                                println!(
+                                    "   Track {}: Failed to send note off for {}{}: {}",
+                                    trig.track, note_name, note.octave, e
+                                );
                             }
                         }
                     }
@@ -561,7 +559,7 @@ impl StepHandler for MidiStepHandler {
 }
 
 fn parse_note_to_midi(note: &SequenceNote) -> u8 {
-   ((note.octave * 12) + note.value as i32).try_into().unwrap()
+    ((note.octave * 12) + note.value as i32).try_into().unwrap()
 }
 
 fn note_value_to_string(value: i32) -> &'static str {
@@ -581,6 +579,5 @@ fn note_value_to_string(value: i32) -> &'static str {
         _ => "?",
     }
 }
-
 
 pub type ConsoleSequencer = Sequencer<MidiStepHandler>;
