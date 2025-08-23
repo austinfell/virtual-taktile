@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use std::rc::Rc;
 
 // General sequencer data structure definition.
 pub trait StepHandler: Send + Sync + 'static {
@@ -14,10 +15,9 @@ pub trait StepHandler: Send + Sync + 'static {
 }
 
 #[derive(Debug)]
-pub struct Sequencer<H: StepHandler> {
+pub struct Sequencer {
     state: Arc<Mutex<SequencerState>>,
     playback_control: Option<mpsc::Sender<PlaybackCommand>>,
-    step_handler: Arc<H>,
 }
 
 #[derive(Debug, Default)]
@@ -84,35 +84,32 @@ pub type StopResult = Result<StopMetadata, SequencerError>;
 pub type SwapResult = Result<SwapMetadata, SequencerError>;
 
 // Core sequencer implementation.
-impl<H: StepHandler> Sequencer<H> {
-    pub fn new(step_handler: H) -> Self {
+impl Sequencer {
+    pub fn new<T: StepHandler>(step_handler: T) -> Self {
         let (tx, rx) = mpsc::channel();
         let state = Arc::new(Mutex::new(SequencerState::default()));
-        let step_handler = Arc::new(step_handler);
 
         // Cloning all of these references to our playback loop.
         let state_clone = Arc::clone(&state);
-        let step_handler_clone = Arc::clone(&step_handler);
         let _handle = thread::Builder::new()
             .name("sequencer-playback".to_string())
             .spawn(move || {
                 println!("🎵 Sequencer thread started!");
-                Self::playback_loop(state_clone, rx, step_handler_clone);
+                Self::playback_loop(state_clone, rx, step_handler);
             })
             .expect("Failed to spawn playback thread");
 
         Self {
             state,
-            playback_control: Some(tx),
-            step_handler,
+            playback_control: Some(tx)
         }
     }
 
     /// High-precision playback loop running on dedicated thread
-    fn playback_loop(
+    fn playback_loop<T: StepHandler>(
         state: Arc<Mutex<SequencerState>>,
         command_rx: mpsc::Receiver<PlaybackCommand>,
-        step_handler: Arc<H>,
+        step_handler: T,
     ) {
         let mut current_sequence: Option<Sequence> = None;
         let mut current_step = 0u32;
@@ -120,6 +117,7 @@ impl<H: StepHandler> Sequencer<H> {
         let mut active_note_off_events = HashMap::new();
         let mut last_step_time = Instant::now();
         let mut loop_helper = LoopHelper::builder().build_with_target_rate(60.0);
+        let step_handler = Rc::new(step_handler);
 
         loop {
             let loop_start = Instant::now();
@@ -276,10 +274,10 @@ impl<H: StepHandler> Sequencer<H> {
         Duration::from_millis(milliseconds_per_step as u64)
     }
 
-    fn process_note_on_events(
+    fn process_note_on_events<T: StepHandler>(
         sequence: &Sequence,
         step: u32,
-        step_handler: &Arc<H>,
+        step_handler: &Rc<T>,
         active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
     ) {
         println!("🎵 Step {} of {}:", step, sequence.sequence_length);
@@ -310,9 +308,9 @@ impl<H: StepHandler> Sequencer<H> {
     }
 
     /// New helper function to process note off events
-    fn process_note_off_events(
+    fn process_note_off_events<T: StepHandler>(
         active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
-        step_handler: &Arc<H>,
+        step_handler: &Rc<T>,
         current_time: Instant,
     ) {
         // Collect all note-off events that should trigger now or earlier
@@ -465,7 +463,7 @@ impl<H: StepHandler> Sequencer<H> {
     }
 }
 
-impl<H: StepHandler> Drop for Sequencer<H> {
+impl Drop for Sequencer {
     fn drop(&mut self) {
         self.shutdown();
     }
@@ -579,5 +577,3 @@ fn note_value_to_string(value: i32) -> &'static str {
         _ => "?",
     }
 }
-
-pub type ConsoleSequencer = Sequencer<MidiStepHandler>;

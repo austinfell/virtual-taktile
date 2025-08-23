@@ -1,4 +1,4 @@
-use crate::sequencer::{Sequencer, SequencerError, StepHandler};
+use crate::sequencer::{Sequencer, SequencerError};
 use sequence::sequencer_service_server::SequencerService;
 use sequence::{CueResponse, Empty, Sequence};
 use tonic::{Request, Response, Status};
@@ -11,17 +11,16 @@ pub use sequence::sequencer_service_server::SequencerServiceServer;
 pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("sequence_descriptor");
 
 #[derive(Debug)]
-pub struct SequencerServiceImpl<H: StepHandler> {
-    sequencer: Sequencer<H>,
+pub struct SequencerServiceImpl {
+    sequencer: Sequencer,
 }
 
-impl<H: StepHandler> SequencerServiceImpl<H> {
-    pub fn new(sequencer: Sequencer<H>) -> Self {
+impl SequencerServiceImpl {
+    pub fn new(sequencer: Sequencer) -> Self {
         Self { sequencer }
     }
 }
 
-// Helper function to convert SequencerError to tonic::Status
 impl From<SequencerError> for Status {
     fn from(error: SequencerError) -> Self {
         match error {
@@ -40,7 +39,7 @@ impl From<SequencerError> for Status {
 }
 
 #[tonic::async_trait]
-impl<H: StepHandler> SequencerService for SequencerServiceImpl<H> {
+impl SequencerService for SequencerServiceImpl {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
         println!("Received a SwapSequence message");
 
