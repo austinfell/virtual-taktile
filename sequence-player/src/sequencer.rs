@@ -17,7 +17,7 @@ pub trait StepHandler: Send + Sync + 'static {
 #[derive(Debug)]
 pub struct Sequencer {
     state: Arc<Mutex<SequencerState>>,
-    playback_control: Option<mpsc::Sender<PlaybackCommand>>,
+    playback_control: mpsc::Sender<PlaybackCommand>,
 }
 
 #[derive(Debug, Default)]
@@ -101,7 +101,7 @@ impl Sequencer {
 
         Self {
             state,
-            playback_control: Some(tx)
+            playback_control: tx
         }
     }
 
@@ -376,12 +376,7 @@ impl Sequencer {
         if let Some(cued_sequence) = state.cued_sequence.take() {
             drop(state); // Release lock before sending command
 
-            let tx = self
-                .playback_control
-                .as_ref()
-                .ok_or(SequencerError::PlaybackNotInitialized)?;
-
-            tx.send(PlaybackCommand::Start(cued_sequence))
+            self.playback_control.send(PlaybackCommand::Start(cued_sequence))
                 .map_err(|_| {
                     println!("❌ Failed to send start command");
                     SequencerError::CommandSendFailed
@@ -400,12 +395,7 @@ impl Sequencer {
             state.current_sequence.as_ref().map(|seq| seq.trigs.len())
         };
 
-        let tx = self
-            .playback_control
-            .as_ref()
-            .ok_or(SequencerError::PlaybackNotInitialized)?;
-
-        tx.send(PlaybackCommand::Stop).map_err(|_| {
+        self.playback_control.send(PlaybackCommand::Stop).map_err(|_| {
             println!("❌ Failed to send stop command");
             SequencerError::CommandSendFailed
         })?;
@@ -425,12 +415,7 @@ impl Sequencer {
             state.current_sequence.is_some()
         };
 
-        let tx = self
-            .playback_control
-            .as_ref()
-            .ok_or(SequencerError::PlaybackNotInitialized)?;
-
-        tx.send(PlaybackCommand::Swap(sequence)).map_err(|_| {
+        self.playback_control.send(PlaybackCommand::Swap(sequence)).map_err(|_| {
             println!("❌ Failed to send swap command");
             SequencerError::CommandSendFailed
         })?;
@@ -457,9 +442,10 @@ impl Sequencer {
     }
 
     pub fn shutdown(&mut self) {
-        if let Some(ref tx) = self.playback_control {
-            let _ = tx.send(PlaybackCommand::Shutdown);
-        }
+        self.playback_control.send(PlaybackCommand::Shutdown).map_err(|_| {
+            println!("❌ Failed to shutdown sequencer");
+            SequencerError::CommandSendFailed
+        });
     }
 }
 
