@@ -11,12 +11,12 @@ pub use sequence::sequencer_service_server::SequencerServiceServer;
 pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("sequence_descriptor");
 
 #[derive(Debug)]
-pub struct SequencerServiceImpl {
-    sequencer: Sequencer,
+pub struct SequencerServiceImpl<T: Sequencer> {
+    sequencer: T,
 }
 
-impl SequencerServiceImpl {
-    pub fn new(sequencer: Sequencer) -> Self {
+impl <T: Sequencer>SequencerServiceImpl<T> {
+    pub fn new(sequencer: T) -> Self {
         Self { sequencer }
     }
 }
@@ -39,13 +39,11 @@ impl From<SequencerError> for Status {
 }
 
 #[tonic::async_trait]
-impl SequencerService for SequencerServiceImpl {
+impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
         println!("Received a SwapSequence message");
 
-        // Convert the result directly using ? operator
         self.sequencer.swap_sequence(request.into_inner())?;
-
         Ok(Response::new(Empty {}))
     }
 
@@ -55,7 +53,6 @@ impl SequencerService for SequencerServiceImpl {
     ) -> Result<Response<CueResponse>, Status> {
         println!("Received a CueSequence message");
 
-        // Use the ? operator and pattern matching on the success case
         let metadata = self.sequencer.cue_sequence(request.into_inner())?;
 
         Ok(Response::new(CueResponse {
@@ -67,7 +64,6 @@ impl SequencerService for SequencerServiceImpl {
     async fn start_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         println!("Got a StartSequence message");
 
-        // Simple conversion using ? operator
         self.sequencer.start_sequence()?;
 
         Ok(Response::new(Empty {}))
@@ -76,7 +72,6 @@ impl SequencerService for SequencerServiceImpl {
     async fn stop_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         println!("Got a StopSequence request");
 
-        // Convert the result using ? operator
         self.sequencer.stop_sequence()?;
 
         Ok(Response::new(Empty {}))

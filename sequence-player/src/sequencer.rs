@@ -14,18 +14,8 @@ pub trait StepHandler: Send + Sync + 'static {
     fn handle_notes_off(&self, trigs: Vec<&Trig>);
 }
 
-#[derive(Debug)]
-pub struct Sequencer {
-    state: Arc<Mutex<SequencerState>>,
-    playback_control: mpsc::Sender<PlaybackCommand>,
-}
-
 #[derive(Debug, Default)]
 struct SequencerState {
-    current_sequence: Option<Sequence>,
-    cued_sequence: Option<Sequence>,
-    playing: bool,
-    current_step: u32,
 }
 
 // Public interface for performing actions upon the sequencer.
@@ -83,375 +73,39 @@ pub type StartResult = Result<(), SequencerError>;
 pub type StopResult = Result<StopMetadata, SequencerError>;
 pub type SwapResult = Result<SwapMetadata, SequencerError>;
 
-// Core sequencer implementation.
-impl Sequencer {
-    pub fn new<T: StepHandler>(step_handler: T) -> Self {
-        let (tx, rx) = mpsc::channel();
-        let state = Arc::new(Mutex::new(SequencerState::default()));
+pub trait Sequencer : Send + Sync + 'static {
+    fn start_sequence(&self) -> StartResult;
+    fn stop_sequence(&self) -> StopResult;
+    fn swap_sequence(&self, s: Sequence) -> SwapResult;
+    fn cue_sequence(&self, s: Sequence) -> CueResult;
+}
 
-        // Cloning all of these references to our playback loop.
-        let state_clone = Arc::clone(&state);
-        let _handle = thread::Builder::new()
-            .name("sequencer-playback".to_string())
-            .spawn(move || {
-                println!("🎵 Sequencer thread started!");
-                Self::playback_loop(state_clone, rx, step_handler);
-            })
-            .expect("Failed to spawn playback thread");
+pub struct CoreSequencer {
+}
 
-        Self {
-            state,
-            playback_control: tx
+impl CoreSequencer {
+    pub fn new<T: StepHandler>(s: T) -> Self {
+        CoreSequencer {
         }
-    }
-
-    /// High-precision playback loop running on dedicated thread
-    fn playback_loop<T: StepHandler>(
-        state: Arc<Mutex<SequencerState>>,
-        command_rx: mpsc::Receiver<PlaybackCommand>,
-        step_handler: T,
-    ) {
-        let mut current_sequence: Option<Sequence> = None;
-        let mut current_step = 0u32;
-        let mut playing = false;
-        let mut active_note_off_events = HashMap::new();
-        let mut last_step_time = Instant::now();
-        let mut loop_helper = LoopHelper::builder().build_with_target_rate(60.0);
-        let step_handler = Rc::new(step_handler);
-
-        loop {
-            let loop_start = Instant::now();
-
-            // Handle any incoming commands
-            if Self::handle_playback_commands(
-                &command_rx,
-                &state,
-                &mut current_sequence,
-                &mut current_step,
-                &mut playing,
-                &mut active_note_off_events,
-                &mut last_step_time,
-            ) {
-                // Command handler returned true, indicating shutdown
-                return;
-            }
-
-            if playing {
-                if let Some(ref sequence) = current_sequence {
-                    let elapsed = last_step_time.elapsed();
-                    let actual_step_duration = Self::calculate_step_duration(sequence);
-
-                    if elapsed >= actual_step_duration {
-                        Self::process_note_off_events(
-                            &mut active_note_off_events,
-                            &step_handler,
-                            loop_start,
-                        );
-                        Self::process_note_on_events(
-                            sequence,
-                            current_step,
-                            &step_handler,
-                            &mut active_note_off_events,
-                        );
-
-                        // Advance to next step
-                        current_step = (current_step + 1) % sequence.sequence_length;
-                        last_step_time = Instant::now();
-
-                        // Update shared state with new step
-                        if let Ok(mut state_guard) = state.lock() {
-                            state_guard.current_step = current_step;
-                            if current_step == 0 {
-                                if let Some(cued_seq) = state_guard.cued_sequence.take() {
-                                    println!("Swap registered!");
-                                    // TODO Massively hacky
-                                    state_guard.current_sequence = Some(cued_seq.clone());
-                                    current_sequence = Some(cued_seq);
-                                    state_guard.cued_sequence = None;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            loop_helper.loop_sleep();
-        }
-    }
-
-    /// Handle incoming playback commands with minimal latency
-    /// Returns true if shutdown was requested, false otherwise
-    fn handle_playback_commands(
-        command_rx: &mpsc::Receiver<PlaybackCommand>,
-        state: &Arc<Mutex<SequencerState>>,
-        current_sequence: &mut Option<Sequence>,
-        current_step: &mut u32,
-        playing: &mut bool,
-        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
-        last_step_time: &mut Instant,
-    ) -> bool {
-        match command_rx.try_recv() {
-            Ok(command) => {
-                match command {
-                    PlaybackCommand::Start(sequence) => {
-                        println!("Starting playback");
-                        *current_sequence = Some(sequence);
-                        *current_step = 0;
-                        // TODO - This playing variable is redundant.
-                        *playing = true;
-                        *last_step_time = Instant::now(); // Reset timing
-
-                        // Update shared state
-                        if let Ok(mut state_guard) = state.lock() {
-                            state_guard.playing = true;
-                            state_guard.current_step = 0;
-                            state_guard.current_sequence = current_sequence.clone();
-                        }
-                    }
-                    PlaybackCommand::Stop => {
-                        println!("Stopping playback");
-                        *playing = false;
-                        active_note_off_events.clear();
-
-                        // Update shared state
-                        if let Ok(mut state_guard) = state.lock() {
-                            state_guard.playing = false;
-                        }
-                    }
-                    PlaybackCommand::Swap(sequence) => {
-                        println!("Swapping sequence");
-                        *current_sequence = Some(sequence);
-                        // Keep current step position, but clamp to new sequence length
-                        if let Some(ref seq) = current_sequence {
-                            if *current_step >= seq.sequence_length {
-                                *current_step = 0;
-                                *last_step_time = Instant::now(); // Reset timing on wrap
-                            }
-                        }
-
-                        // Update shared state
-                        if let Ok(mut state_guard) = state.lock() {
-                            state_guard.current_sequence = current_sequence.clone();
-                            state_guard.current_step = *current_step;
-                        }
-                    }
-                    PlaybackCommand::Shutdown => {
-                        println!("Shutting down playback thread");
-                        return true; // Signal shutdown
-                    }
-                }
-            }
-            Err(mpsc::TryRecvError::Empty) => {
-                // No command, continue with timing loop
-            }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                println!("Command channel disconnected");
-                return true; // Signal shutdown
-            }
-        }
-
-        false // Continue running
-    }
-
-    /// Calculate step duration based on BPM and subdivision
-    fn calculate_step_duration(sequence: &Sequence) -> Duration {
-        let bpm = sequence.bpm.max(60).min(300); // Clamp BPM to reasonable range
-
-        // Default to 16th notes if no subdivision specified
-        let subdivision = sequence
-            .trig_subdivision
-            .as_ref()
-            .map(|s| s.denominator as f64)
-            .unwrap_or(16.0);
-
-        // Calculate milliseconds per step
-        let beats_per_minute = bpm as f64;
-        let beats_per_second = beats_per_minute / 60.0;
-        let steps_per_beat = subdivision / 4.0; // Assuming quarter note = 1 beat
-        let steps_per_second = beats_per_second * steps_per_beat;
-        let milliseconds_per_step = 1000.0 / steps_per_second;
-
-        Duration::from_millis(milliseconds_per_step as u64)
-    }
-
-    fn process_note_on_events<T: StepHandler>(
-        sequence: &Sequence,
-        step: u32,
-        step_handler: &Rc<T>,
-        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
-    ) {
-        println!("🎵 Step {} of {}:", step, sequence.sequence_length);
-
-        // Find all trigs for this step
-        let step_trigs: Vec<&Trig> = sequence
-            .trigs
-            .iter()
-            .filter(|trig| trig.step == step)
-            .collect();
-
-        let now = Instant::now();
-        // TODO - We should really statically calculate this once.
-        let step_duration = Self::calculate_step_duration(sequence);
-
-        for trig in &step_trigs {
-            if let Some(_note) = &trig.note {
-                let note_off_time = now + (step_duration * trig.length.ceil() as u32);
-
-                active_note_off_events
-                    .entry(note_off_time)
-                    .or_insert_with(Vec::new)
-                    .push((*trig).clone());
-            }
-        }
-
-        step_handler.handle_notes_on(step_trigs);
-    }
-
-    /// New helper function to process note off events
-    fn process_note_off_events<T: StepHandler>(
-        active_note_off_events: &mut HashMap<Instant, Vec<Trig>>,
-        step_handler: &Rc<T>,
-        current_time: Instant,
-    ) {
-        // Collect all note-off events that should trigger now or earlier
-        let mut events_to_remove = Vec::new();
-        let mut trigs_to_turn_off = Vec::new();
-
-        for (event_time, trigs) in active_note_off_events.iter() {
-            if *event_time <= current_time {
-                // TODO Weird. Just use a data structure.
-                events_to_remove.push(*event_time);
-                trigs_to_turn_off.extend(trigs.iter().cloned());
-            }
-        }
-
-        // Remove processed events
-        for time in events_to_remove {
-            active_note_off_events.remove(&time);
-        }
-
-        step_handler.handle_notes_off(trigs_to_turn_off.iter().collect());
-    }
-
-    pub fn cue_sequence(&self, sequence: Sequence) -> CueResult {
-        println!("Cueing sequence: {}", sequence);
-
-        let mut state = self.state.lock().unwrap();
-        let replaced_existing = state.cued_sequence.is_some();
-
-        let remaining_steps = if state.playing {
-            if let Some(current_seq) = &state.current_sequence {
-                current_seq.sequence_length - state.current_step
-            } else {
-                0
-            }
-        } else {
-            sequence.sequence_length
-        };
-
-        state.cued_sequence = Some(sequence);
-
-        if replaced_existing {
-            println!("Replaced existing cued sequence");
-        } else {
-            println!("Cued new sequence");
-        }
-
-        Ok(CueMetadata {
-            replaced_existing,
-            remaining_steps,
-        })
-    }
-
-    pub fn start_sequence(&self) -> StartResult {
-        let mut state = self.state.lock().unwrap();
-        // TODO - One thing we can do to remove an entire conditional check:
-        // playback thread doesn't do anything if it isn't... playing.
-        // So why don't we only spin up the thread when the sequencer is running
-        // and otherwise we will tear it down.
-        //
-        // No constant evaluation of command state while the sequencer is running,
-        // and it will be more performant!
-
-        if let Some(cued_sequence) = state.cued_sequence.take() {
-            drop(state); // Release lock before sending command
-
-            self.playback_control.send(PlaybackCommand::Start(cued_sequence))
-                .map_err(|_| {
-                    println!("❌ Failed to send start command");
-                    SequencerError::CommandSendFailed
-                })?;
-
-            Ok(())
-        } else {
-            println!("❌ No sequence cued - cannot start");
-            Err(SequencerError::NoSequenceCued)
-        }
-    }
-
-    pub fn stop_sequence(&self) -> StopResult {
-        let trig_count = {
-            let state = self.state.lock().unwrap();
-            state.current_sequence.as_ref().map(|seq| seq.trigs.len())
-        };
-
-        self.playback_control.send(PlaybackCommand::Stop).map_err(|_| {
-            println!("❌ Failed to send stop command");
-            SequencerError::CommandSendFailed
-        })?;
-
-        if let Some(count) = trig_count {
-            println!("Stopped sequence had {} trigs", count);
-        }
-
-        Ok(StopMetadata { trig_count })
-    }
-
-    pub fn swap_sequence(&self, sequence: Sequence) -> SwapResult {
-        println!("Swapping sequence: {}", sequence);
-
-        let replaced_existing = {
-            let state = self.state.lock().unwrap();
-            state.current_sequence.is_some()
-        };
-
-        self.playback_control.send(PlaybackCommand::Swap(sequence)).map_err(|_| {
-            println!("❌ Failed to send swap command");
-            SequencerError::CommandSendFailed
-        })?;
-
-        Ok(SwapMetadata { replaced_existing })
-    }
-
-    pub fn is_playing(&self) -> bool {
-        let state = self.state.lock().unwrap();
-        state.playing
-    }
-
-    pub fn current_step(&self) -> u32 {
-        let state = self.state.lock().unwrap();
-        state.current_step
-    }
-
-    pub fn current_sequence_info(&self) -> Option<(u32, usize)> {
-        let state = self.state.lock().unwrap();
-        state
-            .current_sequence
-            .as_ref()
-            .map(|seq| (seq.sequence_length, seq.trigs.len()))
-    }
-
-    pub fn shutdown(&mut self) {
-        self.playback_control.send(PlaybackCommand::Shutdown).map_err(|_| {
-            println!("❌ Failed to shutdown sequencer");
-            SequencerError::CommandSendFailed
-        });
     }
 }
 
-impl Drop for Sequencer {
-    fn drop(&mut self) {
-        self.shutdown();
+// Core sequencer implementation.
+impl Sequencer for CoreSequencer {
+    fn start_sequence(&self) -> StartResult {
+        Result::Ok(())
+    }
+
+    fn stop_sequence(&self) -> StopResult {
+        Result::Ok(StopMetadata { trig_count: Option::from(0) })
+    }
+
+    fn swap_sequence(&self, s: Sequence) -> SwapResult {
+        Result::Ok(SwapMetadata { replaced_existing: true })
+    }
+
+    fn cue_sequence(&self, s: Sequence) -> CueResult {
+        Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
     }
 }
 

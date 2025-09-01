@@ -1,6 +1,6 @@
 use helloworld_tonic::sequencer::MidiStepHandler;
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
-use helloworld_tonic::Sequencer;
+use helloworld_tonic::CoreSequencer;
 use midir::MidiOutput;
 use tonic::transport::Server;
 use tonic_reflection::server::Builder;
@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let step_handler = MidiStepHandler::new(conn);
 
     // Wiring up sequencer
-    let sequencer = Sequencer::new(step_handler);
+    let sequencer = CoreSequencer::new(step_handler);
     let sequencer_service = SequencerServiceImpl::new(sequencer);
 
     // Wiring up server
