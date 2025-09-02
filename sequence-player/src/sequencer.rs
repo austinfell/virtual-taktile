@@ -81,12 +81,13 @@ pub trait Sequencer : Send + Sync + 'static {
     fn cue_sequence(&self, s: Sequence) -> CueResult;
 }
 
-pub struct CoreSequencer {
-    running: Arc<AtomicBool>
+pub struct CoreSequencer<T: StepHandler> {
+    running: Arc<AtomicBool>,
+    step_handler: T
 }
 
-impl CoreSequencer {
-    pub fn new<T: StepHandler>(s: T) -> Self {
+impl<T: StepHandler> CoreSequencer<T> {
+    pub fn new(step_handler: T) -> Self {
         let running = Arc::new(AtomicBool::new(false));
 
         let running_clone = Arc::clone(&running);
@@ -95,7 +96,8 @@ impl CoreSequencer {
         });
 
         CoreSequencer {
-            running
+            running,
+            step_handler
         }
     }
 
@@ -113,7 +115,7 @@ fn sequencer_loop(running: Arc<AtomicBool>) {
 }
 
 // Core sequencer implementation.
-impl Sequencer for CoreSequencer {
+impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     fn start_sequence(&self) -> StartResult {
         self.running.swap(true, Ordering::Relaxed);
         Result::Ok(())
