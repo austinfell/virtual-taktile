@@ -4,6 +4,7 @@ use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 use std::rc::Rc;
@@ -81,22 +82,45 @@ pub trait Sequencer : Send + Sync + 'static {
 }
 
 pub struct CoreSequencer {
+    running: Arc<AtomicBool>
 }
 
 impl CoreSequencer {
     pub fn new<T: StepHandler>(s: T) -> Self {
+        let running = Arc::new(AtomicBool::new(false));
+
+        let running_clone = Arc::clone(&running);
+        thread::spawn(move || {
+            sequencer_loop(running_clone);
+        });
+
         CoreSequencer {
+            running
         }
+    }
+
+}
+
+fn sequencer_loop(running: Arc<AtomicBool>) {
+    loop {
+        if running.load(Ordering::Relaxed) {
+            println!("On.");
+        } else {
+            println!("Off.");
+        }
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
 // Core sequencer implementation.
 impl Sequencer for CoreSequencer {
     fn start_sequence(&self) -> StartResult {
+        self.running.swap(true, Ordering::Relaxed);
         Result::Ok(())
     }
 
     fn stop_sequence(&self) -> StopResult {
+        self.running.swap(false, Ordering::Relaxed);
         Result::Ok(StopMetadata { trig_count: Option::from(0) })
     }
 
