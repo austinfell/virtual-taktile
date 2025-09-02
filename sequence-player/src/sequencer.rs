@@ -104,13 +104,28 @@ impl<T: StepHandler> CoreSequencer<T> {
 }
 
 fn sequencer_loop(running: Arc<AtomicBool>) {
+    let mut loop_helper = LoopHelper::builder()
+        .build_with_target_rate(120.0);
+
+    let mut accumulated_time = Duration::ZERO;
+    let print_interval = Duration::from_secs(1);
+
     loop {
-        if running.load(Ordering::Relaxed) {
-            println!("On.");
-        } else {
-            println!("Off.");
+        let delta = loop_helper.loop_start();
+
+        accumulated_time += delta;
+
+        if accumulated_time >= print_interval {
+            if running.load(Ordering::Relaxed) {
+                println!("On.");
+            } else {
+                println!("Off.");
+            }
+
+            accumulated_time -= print_interval;
         }
-        thread::sleep(Duration::from_millis(500));
+
+        loop_helper.loop_sleep();
     }
 }
 
