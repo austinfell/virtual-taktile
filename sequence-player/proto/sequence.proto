@@ -9,7 +9,7 @@ message Subdivision {
 message Sequence {
   uint32 sequence_length = 1;
   Subdivision trig_subdivision = 2;
-  uint32 bpm = 3;
+  float bpm = 3;
   repeated Trig trigs = 4;
 }
 
@@ -17,8 +17,8 @@ message Trig {
   optional Note note = 1;
   uint32 track = 2;
   uint32 step = 3;
-  float offset = 4;
-  float length = 5;
+  int32 offset = 4;
+  optional float length = 5;
 }
 
 enum NoteValue {

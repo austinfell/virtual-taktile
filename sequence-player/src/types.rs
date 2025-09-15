@@ -44,7 +44,7 @@ impl fmt::Display for Trig {
         };
         write!(
             f,
-            "Track {}, Step {}: {} [offset: {:.2}, length: {:.2}]",
+            "Track {}, Step {}: {} [offset: {:.2}, length: {:?}]",
             self.track, self.step, note_str, self.offset, self.length
         )
     }

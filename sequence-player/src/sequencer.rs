@@ -3,6 +3,7 @@ use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
 use std::collections::HashMap;
+use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -83,29 +84,32 @@ pub trait Sequencer : Send + Sync + 'static {
 
 pub struct CoreSequencer<T: StepHandler> {
     running: Arc<AtomicBool>,
-    step_handler: T
+    step_handler: T,
+    bpm_tx: mpsc::Sender<f32>
 }
 
 impl<T: StepHandler> CoreSequencer<T> {
     pub fn new(step_handler: T) -> Self {
         let running = Arc::new(AtomicBool::new(false));
+        let (bpm_tx, bpm_rx) = mpsc::channel();
 
         let running_clone = Arc::clone(&running);
         thread::spawn(move || {
-            sequencer_loop(running_clone);
+            sequencer_loop(running_clone, bpm_rx);
         });
 
         CoreSequencer {
             running,
-            step_handler
+            step_handler,
+            bpm_tx
         }
     }
 
 }
 
-fn sequencer_loop(running: Arc<AtomicBool>) {
+fn sequencer_loop(running: Arc<AtomicBool>, bpm_rx: Receiver<f32>) {
     let mut loop_helper = LoopHelper::builder()
-        .build_with_target_rate(120.0);
+        .build_with_target_rate(1000.0);
 
     let mut accumulated_time = Duration::ZERO;
     let print_interval = Duration::from_secs(1);
@@ -114,6 +118,17 @@ fn sequencer_loop(running: Arc<AtomicBool>) {
         let delta = loop_helper.loop_start();
 
         accumulated_time += delta;
+
+        match bpm_rx.try_recv() {
+            Ok(bpm) => {
+                let tps = (bpm * 256.0) / 60.0;
+                loop_helper.set_target_rate(tps);
+                println!("Set new TPS: {tps}");
+            }
+            _ => {
+                // TODO - implement error handling.
+            }
+        }
 
         if accumulated_time >= print_interval {
             if running.load(Ordering::Relaxed) {
@@ -142,10 +157,12 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     }
 
     fn swap_sequence(&self, s: Sequence) -> SwapResult {
+        self.bpm_tx.send(s.bpm);
         Result::Ok(SwapMetadata { replaced_existing: true })
     }
 
     fn cue_sequence(&self, s: Sequence) -> CueResult {
+        self.bpm_tx.send(s.bpm);
         Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
     }
 }
