@@ -189,6 +189,9 @@ This file provides a basic way to test our service using gRPC. It expects that g
     ]
   }' [::1]:50051 sequence.SequencerService/SwapSequence
 #+END_SRC
+
+#+RESULTS:
+
 * Cue Bach Prelude Bars 1 + 2
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
@@ -380,15 +383,12 @@ This file provides a basic way to test our service using gRPC. It expects that g
 #+END_SRC
 
 #+RESULTS:
-| {          |      |
-| "success": | true |
-| }          |      |
 
 * Cue Bach Prelude Bars 3 + 4
 #+BEGIN_SRC bash
 grpcurl -plaintext -d '{
     "sequence_length": 16,
-    "bpm": 200,
+    "bpm": 100,
     "trig_subdivision": {
       "numerator": 1,
       "denominator": 16

@@ -2,13 +2,10 @@ use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
-use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use std::time::{Duration, Instant};
-use std::rc::Rc;
 
 // General sequencer data structure definition.
 pub trait StepHandler: Send + Sync + 'static {
@@ -110,14 +107,10 @@ impl<T: StepHandler> CoreSequencer<T> {
 fn sequencer_loop(running: Arc<AtomicBool>, bpm_rx: Receiver<f32>) {
     let mut loop_helper = LoopHelper::builder()
         .build_with_target_rate(1000.0);
-
-    let mut accumulated_time = Duration::ZERO;
-    let print_interval = Duration::from_secs(1);
+    let mut tick = 0;
 
     loop {
-        let delta = loop_helper.loop_start();
-
-        accumulated_time += delta;
+        loop_helper.loop_start();
 
         match bpm_rx.try_recv() {
             Ok(bpm) => {
@@ -130,15 +123,24 @@ fn sequencer_loop(running: Arc<AtomicBool>, bpm_rx: Receiver<f32>) {
             }
         }
 
-        if accumulated_time >= print_interval {
-            if running.load(Ordering::Relaxed) {
-                println!("On.");
-            } else {
-                println!("Off.");
-            }
 
-            accumulated_time -= print_interval;
+        if running.load(Ordering::Relaxed) {
+            // TODO - Tick needs to be more precisely controlled to handle jitter.
+            tick += 1;
+
+            // TODO - we should actually loop based on sequence length (quarters * 256 = length)
+            // that way we can precompute our trig positions ahead of time, store them in a hashmap
+            // or circular linked list, and then play them...
+            if tick >= 255 {
+                tick = 0;
+                println!("Beat.");
+            }
         }
+
+        // TODO - Fetch current notes.
+        // Interface &[usize...] => &[Trig...]
+
+        // TODO - Use handle notes on to play notes.
 
         loop_helper.loop_sleep();
     }
