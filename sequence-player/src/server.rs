@@ -2,6 +2,7 @@ use crate::sequencer::{Sequencer, SequencerError};
 use sequence::sequencer_service_server::SequencerService;
 use sequence::{CueResponse, Empty, Sequence};
 use tonic::{Request, Response, Status};
+use std::sync::Mutex;
 
 pub mod sequence {
     tonic::include_proto!("sequence");
@@ -12,12 +13,15 @@ pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("sequ
 
 #[derive(Debug)]
 pub struct SequencerServiceImpl<T: Sequencer> {
-    sequencer: T,
+    sequencer: Mutex<T>,
 }
 
 impl <T: Sequencer>SequencerServiceImpl<T> {
     pub fn new(sequencer: T) -> Self {
-        Self { sequencer }
+        let boxed_sequencer = Mutex::new(sequencer);
+        Self {
+            sequencer: boxed_sequencer
+        }
     }
 }
 
@@ -43,7 +47,7 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
     async fn swap_sequence(&self, request: Request<Sequence>) -> Result<Response<Empty>, Status> {
         println!("Received a SwapSequence message");
 
-        self.sequencer.swap_sequence(request.into_inner())?;
+        self.sequencer.lock().unwrap().swap_sequence(request.into_inner())?;
         Ok(Response::new(Empty {}))
     }
 
@@ -53,7 +57,7 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
     ) -> Result<Response<CueResponse>, Status> {
         println!("Received a CueSequence message");
 
-        let metadata = self.sequencer.cue_sequence(request.into_inner())?;
+        let metadata = self.sequencer.lock().unwrap().cue_sequence(request.into_inner())?;
 
         Ok(Response::new(CueResponse {
             success: true, // Always true if we get here (no error)
@@ -64,7 +68,7 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
     async fn start_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         println!("Got a StartSequence message");
 
-        self.sequencer.start_sequence()?;
+        self.sequencer.lock().unwrap().start_sequence()?;
 
         Ok(Response::new(Empty {}))
     }
@@ -72,7 +76,7 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
     async fn stop_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
         println!("Got a StopSequence request");
 
-        self.sequencer.stop_sequence()?;
+        self.sequencer.lock().unwrap().stop_sequence()?;
 
         Ok(Response::new(Empty {}))
     }

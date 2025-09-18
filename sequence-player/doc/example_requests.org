@@ -18,8 +18,8 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 0,
-        "offset": 0.0,
-        "length": 1.0
+        "offset": 0,
+        "length": 1
       },
       {
         "note": {
@@ -29,7 +29,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 1,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -40,7 +40,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 2,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -51,7 +51,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 3,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -62,7 +62,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 4,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -73,7 +73,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 5,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -84,7 +84,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 6,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -95,7 +95,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 7,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -106,7 +106,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 8,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -117,7 +117,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 9,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -128,7 +128,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 10,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -139,7 +139,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 11,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -150,7 +150,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 12,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -161,7 +161,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 13,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -172,7 +172,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 14,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -183,7 +183,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 15,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       }
     ]
@@ -210,7 +210,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 0,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -221,7 +221,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 1,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -232,7 +232,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 2,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -243,7 +243,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 3,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -254,7 +254,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 4,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -265,7 +265,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 5,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -276,7 +276,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 6,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -287,7 +287,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 7,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -298,7 +298,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 8,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -309,7 +309,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 9,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -320,7 +320,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 10,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -331,7 +331,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 11,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -342,7 +342,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 12,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -353,7 +353,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 13,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -364,7 +364,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 14,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       },
       {
@@ -375,7 +375,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
         },
         "track": 1,
         "step": 15,
-        "offset": 0.0,
+        "offset": 0,
         "length": 1.0
       }
     ]
@@ -388,7 +388,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
 #+BEGIN_SRC bash
 grpcurl -plaintext -d '{
     "sequence_length": 16,
-    "bpm": 100,
+    "bpm": 400,
     "trig_subdivision": {
       "numerator": 1,
       "denominator": 16
