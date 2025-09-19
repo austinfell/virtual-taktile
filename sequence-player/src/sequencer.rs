@@ -18,11 +18,15 @@ enum Event {
 type Events = Vec<(Event, usize), 2000>;
 
 struct EventRing {
-    // TODO - We'll want to make this a swappable pair so that once we get to a position, if the
-    // other events buffer is populated, it clears out the old one and switches to the new one...
-    events: Events,
-    position: usize,
-    tick_length: usize
+    events_0: Events,
+    tick_length_0: usize,
+
+    events_1: Events,
+    tick_length_1: usize,
+
+    current_buffer: u8,
+    cued_buffer: u8,
+    position: usize
 }
 
 fn parse_note_to_midi(note: &SequenceNote) -> u8 {
@@ -32,9 +36,15 @@ fn parse_note_to_midi(note: &SequenceNote) -> u8 {
 impl EventRing {
     fn new() -> Self {
         Self {
-            events: Vec::new(),
+            events_0: Vec::new(),
+            tick_length_0: 0,
+
+            events_1: Vec::new(),
+            tick_length_1: 0,
+
+            current_buffer: 0,
+            cued_buffer: 0,
             position: 0,
-            tick_length: 0
         }
     }
 
@@ -55,27 +65,77 @@ impl EventRing {
 
         events.sort_by_key(|(_, tick)| *tick);
 
-        self.events = events;
-        self.position = 0;
-        self.tick_length = sequence_length_ticks;
+        if self.current_buffer == 0 {
+            self.events_1 = events;
+            self.tick_length_1 = sequence_length_ticks;
+            self.cued_buffer = 1;
+        } else {
+            self.events_0 = events;
+            self.tick_length_0 = sequence_length_ticks;
+            self.cued_buffer = 0;
+        }
     }
 
-    fn peek(&self) -> Option<&(Event, usize)> {
-        if self.events.is_empty() {
-            return None;
-        }
+    fn peek(&mut self) -> Option<&(Event, usize)> {
+        if self.current_buffer == 0 {
+            if self.position == 0 && self.cued_buffer == 1 {
+                self.current_buffer = 1;
 
-        Some(&self.events[self.position])
+                if self.events_1.is_empty() {
+                    return None;
+                }
+
+
+                return Some(&self.events_1[self.position]);
+            } else if self.events_0.is_empty() {
+                return None;
+            }
+
+            Some(&self.events_0[self.position])
+        } else {
+            if self.position == 0 && self.cued_buffer == 0 {
+                self.current_buffer = 0;
+
+                if self.events_0.is_empty() {
+                    return None;
+                }
+
+
+                return Some(&self.events_0[self.position]);
+            } else if self.events_1.is_empty() {
+                return None;
+            }
+
+            Some(&self.events_1[self.position])
+        }
     }
 
     fn take(&mut self) -> Option<&(Event, usize)> {
-        if self.events.is_empty() {
-            return None;
-        }
+        if self.current_buffer == 0 {
+            if self.events_0.is_empty() {
+                return None;
+            }
 
-        let r = Some(&self.events[self.position]);
-        self.position = (self.position + 1) % self.events.len();
-        r
+            let r = Some(&self.events_0[self.position]);
+            self.position = (self.position + 1) % self.events_0.len();
+            r
+        } else {
+            if self.events_1.is_empty() {
+                return None;
+            }
+
+            let r = Some(&self.events_1[self.position]);
+            self.position = (self.position + 1) % self.events_1.len();
+            r
+        }
+    }
+
+    fn tick_len(&self) -> usize {
+        if self.current_buffer == 0 {
+            self.tick_length_0
+        } else {
+            self.tick_length_1
+        }
     }
 }
 
@@ -187,6 +247,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32
 
         // Handle BPM changes
         match bpm_rx.try_recv() {
+            // TODO Issue - this can get out of sync with the sequence.
             Ok(bpm) => {
                 let tps = (bpm * 256.0) / 60.0;
                 loop_helper.set_target_rate(tps);
@@ -265,7 +326,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32
             // Handle sequence looping
             {
                 let event_ring = seq.lock().unwrap();
-                if tick >= event_ring.tick_length {
+                if tick >= event_ring.tick_len() {
                     tick = 0;
                     println!("Sequence loop - back to tick 0");
                 }
