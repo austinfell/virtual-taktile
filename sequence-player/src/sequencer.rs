@@ -7,6 +7,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
 use std::thread;
+use heapless::Vec;
 
 #[derive(Debug)]
 enum Event {
@@ -14,7 +15,7 @@ enum Event {
     NoteOff(u8)
 }
 
-type Events = Vec<(Event, usize)>;
+type Events = Vec<(Event, usize), 2000>;
 
 struct EventRing {
     // TODO - We'll want to make this a swappable pair so that once we get to a position, if the
@@ -31,14 +32,14 @@ fn parse_note_to_midi(note: &SequenceNote) -> u8 {
 impl EventRing {
     fn new() -> Self {
         Self {
-            events: Vec::with_capacity(0),
+            events: Vec::new(),
             position: 0,
             tick_length: 0
         }
     }
 
     fn swap_sequence(&mut self, sequence: &Sequence) {
-        let mut events = Vec::with_capacity(sequence.trigs.len() * 2);
+        let mut events: Vec<(Event, usize), 2000> = Vec::new();
 
         let sequence_length_ticks = (sequence.sequence_length * 256) as usize;
 
@@ -142,8 +143,8 @@ pub trait Sequencer : Send + Sync + 'static {
 
 // General sequencer data structure definition.
 pub trait StepHandler: Send + Sync + 'static {
-    fn handle_notes_on(&self, trigs: Vec<&Trig>);
-    fn handle_notes_off(&self, trigs: Vec<&Trig>);
+    fn handle_notes_on(&self, trigs: Vec<&Trig, 100>);
+    fn handle_notes_off(&self, trigs: Vec<&Trig, 100>);
 }
 
 pub struct CoreSequencer<T: StepHandler> {
@@ -198,8 +199,8 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32
 
         if running.load(Ordering::Relaxed) {
             // Collect notes on and off events for this tick
-            let mut notes_on = Vec::new();
-            let mut notes_off = Vec::new();
+            let mut notes_on : Vec<Trig, 100> = Vec::new();
+            let mut notes_off : Vec<Trig, 100> = Vec::new();
 
             {
                 let mut event_ring = seq.lock().unwrap();
@@ -250,12 +251,12 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32
 
             // Handle the collected events
             if !notes_on.is_empty() {
-                let trig_refs: Vec<&Trig> = notes_on.iter().collect();
+                let trig_refs: Vec<&Trig, 100> = notes_on.iter().collect();
                 step_handler.handle_notes_on(trig_refs);
             }
 
             if !notes_off.is_empty() {
-                let trig_refs: Vec<&Trig> = notes_off.iter().collect();
+                let trig_refs: Vec<&Trig, 100> = notes_off.iter().collect();
                 step_handler.handle_notes_off(trig_refs);
             }
 
@@ -313,7 +314,7 @@ impl MidiStepHandler {
 }
 
 impl StepHandler for MidiStepHandler {
-    fn handle_notes_on(&self, trigs: Vec<&Trig>) {
+    fn handle_notes_on(&self, trigs: Vec<&Trig, 100>) {
         let mut connection = self.midi_connection.lock().unwrap();
         if trigs.is_empty() {
             println!("   (silence)");
@@ -351,7 +352,7 @@ impl StepHandler for MidiStepHandler {
         }
     }
 
-    fn handle_notes_off(&self, trigs: Vec<&Trig>) {
+    fn handle_notes_off(&self, trigs: Vec<&Trig, 100>) {
         let mut connection = self.midi_connection.lock().unwrap();
         if !trigs.is_empty() {
             for trig in trigs {
