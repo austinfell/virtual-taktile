@@ -20,9 +20,11 @@ type Events = Vec<(Event, usize), 2000>;
 struct EventRing {
     events_0: Events,
     tick_length_0: usize,
+    bpm_0: f32,
 
     events_1: Events,
     tick_length_1: usize,
+    bpm_1: f32,
 
     current_buffer: u8,
     cued_buffer: u8,
@@ -38,9 +40,11 @@ impl EventRing {
         Self {
             events_0: Vec::new(),
             tick_length_0: 0,
+            bpm_0: 120.0,
 
             events_1: Vec::new(),
             tick_length_1: 0,
+            bpm_1: 120.0,
 
             current_buffer: 0,
             cued_buffer: 0,
@@ -68,10 +72,12 @@ impl EventRing {
         if self.current_buffer == 0 {
             self.events_1 = events;
             self.tick_length_1 = sequence_length_ticks;
+            self.bpm_1 = sequence.bpm;
             self.cued_buffer = 1;
         } else {
             self.events_0 = events;
             self.tick_length_0 = sequence_length_ticks;
+            self.bpm_0 = sequence.bpm;
             self.cued_buffer = 0;
         }
     }
@@ -135,6 +141,14 @@ impl EventRing {
             self.tick_length_0
         } else {
             self.tick_length_1
+        }
+    }
+
+    fn current_bpm(&self) -> f32 {
+        if self.current_buffer == 0 {
+            self.bpm_0
+        } else {
+            self.bpm_1
         }
     }
 }
@@ -209,7 +223,6 @@ pub trait StepHandler: Send + Sync + 'static {
 
 pub struct CoreSequencer<T: StepHandler> {
     running: Arc<AtomicBool>,
-    bpm_tx: mpsc::Sender<f32>,
     event_ring: Arc<Mutex<EventRing>>,
     _phantom: std::marker::PhantomData<T>
 }
@@ -217,19 +230,17 @@ pub struct CoreSequencer<T: StepHandler> {
 impl<T: StepHandler> CoreSequencer<T> {
     pub fn new(step_handler: T) -> Self {
         let running = Arc::new(AtomicBool::new(false));
-        let (bpm_tx, bpm_rx) = mpsc::channel();
 
         let event_ring = Arc::new(Mutex::new(EventRing::new()));
         let event_ring_clone = event_ring.clone();
 
         let running_clone = Arc::clone(&running);
         thread::spawn(move || {
-            sequencer_loop(running_clone, bpm_rx, event_ring_clone, step_handler);
+            sequencer_loop(running_clone, event_ring_clone, step_handler);
         });
 
         CoreSequencer {
             running,
-            bpm_tx,
             event_ring,
             _phantom: PhantomData
         }
@@ -237,26 +248,14 @@ impl<T: StepHandler> CoreSequencer<T> {
 
 }
 
-fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32>, seq: Arc<Mutex<EventRing>>, step_handler: T) {
-    let mut loop_helper = LoopHelper::builder()
-        .build_with_target_rate(1000.0);
+fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<EventRing>>, step_handler: T) {
+    let mut curr_bpm = 120.0;
     let mut tick = 0;
+    let mut loop_helper = LoopHelper::builder()
+        .build_with_target_rate((curr_bpm * 256.0) / 60.0);
 
     loop {
         loop_helper.loop_start();
-
-        // Handle BPM changes
-        match bpm_rx.try_recv() {
-            // TODO Issue - this can get out of sync with the sequence.
-            Ok(bpm) => {
-                let tps = (bpm * 256.0) / 60.0;
-                loop_helper.set_target_rate(tps);
-                println!("Set new TPS: {tps}");
-            }
-            _ => {
-                // TODO - implement error handling.
-            }
-        }
 
         if running.load(Ordering::Relaxed) {
             // Collect notes on and off events for this tick
@@ -270,6 +269,10 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, bpm_rx: Receiver<f32
                 // We need to check if we have events and if the next event is for this tick
                 while let Some((event, event_tick)) = event_ring.peek() {
                     if *event_tick == tick {
+                        if (curr_bpm != event_ring.current_bpm()) {
+                            curr_bpm = event_ring.current_bpm();
+                            loop_helper.set_target_rate((curr_bpm * 256.0) / 60.0);
+                        }
                         // This event is for the current tick - take it and process
                         if let Some((event, _)) = event_ring.take() {
                             match event {
@@ -350,13 +353,11 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     }
 
     fn swap_sequence(&mut self, s: Sequence) -> SwapResult {
-        self.bpm_tx.send(s.bpm);
         self.event_ring.lock().unwrap().swap_sequence(&s);
         Result::Ok(SwapMetadata { replaced_existing: true })
     }
 
     fn cue_sequence(&mut self, s: Sequence) -> CueResult {
-        self.bpm_tx.send(s.bpm);
         self.event_ring.lock().unwrap().swap_sequence(&s);
         Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
     }
