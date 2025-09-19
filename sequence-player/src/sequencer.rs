@@ -2,8 +2,7 @@ use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
-use std::sync::mpsc::Receiver;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
 use std::thread;
@@ -11,8 +10,8 @@ use heapless::Vec;
 
 #[derive(Debug)]
 enum Event {
-    NoteOn(u8),
-    NoteOff(u8)
+    NoteOn(u8, u32, u32),
+    NoteOff(u8, u32, u32)
 }
 
 type Events = Vec<(Event, usize), 2000>;
@@ -76,9 +75,9 @@ impl EventRing {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = (trig.step * 256) as usize % sequence_length_ticks;
-                events.push((Event::NoteOn(midi_pitch), note_on_tick));
+                events.push((Event::NoteOn(midi_pitch, note.velocity, trig.track), note_on_tick));
                 let note_off_tick = (note_on_tick + 64) as usize % sequence_length_ticks;
-                events.push((Event::NoteOff(midi_pitch), note_off_tick));
+                events.push((Event::NoteOff(midi_pitch, note.velocity, trig.track), note_off_tick));
             }
         }
 
@@ -261,28 +260,28 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<Event
                         // This event is for the current tick - take it and process
                         if let Some((event, _)) = event_ring.take() {
                             match event {
-                                Event::NoteOn(pitch) => {
+                                Event::NoteOn(pitch, velocity, track) => {
                                     let trig = Trig {
                                         note: Some(SequenceNote {
                                             octave: (*pitch as i32 / 12) - 1,
                                             value: (*pitch as i32) % 12,
-                                            velocity: 100,
+                                            velocity: *velocity,
                                         }),
-                                        track: 0,
+                                        track: *track,
                                         step: 0,
                                         offset: 0,
                                         length: None,
                                     };
                                     notes_on.push(trig);
                                 }
-                                Event::NoteOff(pitch) => {
+                                Event::NoteOff(pitch, velocity, track) => {
                                     let trig = Trig {
                                         note: Some(SequenceNote {
                                             octave: (*pitch as i32 / 12) - 1,
                                             value: (*pitch as i32) % 12,
-                                            velocity: 0,
+                                            velocity: *velocity,
                                         }),
-                                        track: 0,
+                                        track: *track,
                                         step: 0,
                                         offset: 0,
                                         length: None,
