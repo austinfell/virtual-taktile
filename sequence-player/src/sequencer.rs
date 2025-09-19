@@ -17,18 +17,41 @@ enum Event {
 
 type Events = Vec<(Event, usize), 2000>;
 
+#[derive(Debug)]
+struct EventBuffer {
+    events: Events,
+    tick_length: usize,
+    bpm: f32,
+}
+
+impl EventBuffer {
+    fn new() -> Self {
+        Self {
+            events: Vec::new(),
+            tick_length: 0,
+            bpm: 120.0,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.events.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.events.len()
+    }
+
+    fn get(&self, index: usize) -> Option<&(Event, usize)> {
+        self.events.get(index)
+    }
+}
+
+#[derive(Debug)]
 struct EventRing {
-    events_0: Events,
-    tick_length_0: usize,
-    bpm_0: f32,
-
-    events_1: Events,
-    tick_length_1: usize,
-    bpm_1: f32,
-
-    current_buffer: u8,
-    cued_buffer: u8,
-    position: usize
+    buffers: [EventBuffer; 2],
+    current_buffer: usize,
+    cued_buffer: usize,
+    position: usize,
 }
 
 fn parse_note_to_midi(note: &SequenceNote) -> u8 {
@@ -38,14 +61,7 @@ fn parse_note_to_midi(note: &SequenceNote) -> u8 {
 impl EventRing {
     fn new() -> Self {
         Self {
-            events_0: Vec::new(),
-            tick_length_0: 0,
-            bpm_0: 120.0,
-
-            events_1: Vec::new(),
-            tick_length_1: 0,
-            bpm_1: 120.0,
-
+            buffers: [EventBuffer::new(), EventBuffer::new()],
             current_buffer: 0,
             cued_buffer: 0,
             position: 0,
@@ -54,7 +70,6 @@ impl EventRing {
 
     fn swap_sequence(&mut self, sequence: &Sequence) {
         let mut events: Vec<(Event, usize), 2000> = Vec::new();
-
         let sequence_length_ticks = (sequence.sequence_length * 256) as usize;
 
         for trig in &sequence.trigs {
@@ -69,87 +84,58 @@ impl EventRing {
 
         events.sort_by_key(|(_, tick)| *tick);
 
-        if self.current_buffer == 0 {
-            self.events_1 = events;
-            self.tick_length_1 = sequence_length_ticks;
-            self.bpm_1 = sequence.bpm;
-            self.cued_buffer = 1;
-        } else {
-            self.events_0 = events;
-            self.tick_length_0 = sequence_length_ticks;
-            self.bpm_0 = sequence.bpm;
-            self.cued_buffer = 0;
+        let target_buffer = 1 - self.current_buffer;
+        self.buffers[target_buffer] = EventBuffer {
+            events,
+            tick_length: sequence_length_ticks,
+            bpm: sequence.bpm
+        };
+        self.cued_buffer = target_buffer;
+    }
+
+    fn current_buffer_ref(&self) -> &EventBuffer {
+        &self.buffers[self.current_buffer]
+    }
+
+    fn should_switch_buffer(&self) -> bool {
+        self.position == 0 && self.cued_buffer != self.current_buffer
+    }
+
+    fn switch_to_cued_buffer(&mut self) {
+        if self.should_switch_buffer() {
+            self.current_buffer = self.cued_buffer;
         }
     }
 
     fn peek(&mut self) -> Option<&(Event, usize)> {
-        if self.current_buffer == 0 {
-            if self.position == 0 && self.cued_buffer == 1 {
-                self.current_buffer = 1;
+        self.switch_to_cued_buffer();
 
-                if self.events_1.is_empty() {
-                    return None;
-                }
-
-
-                return Some(&self.events_1[self.position]);
-            } else if self.events_0.is_empty() {
-                return None;
-            }
-
-            Some(&self.events_0[self.position])
-        } else {
-            if self.position == 0 && self.cued_buffer == 0 {
-                self.current_buffer = 0;
-
-                if self.events_0.is_empty() {
-                    return None;
-                }
-
-
-                return Some(&self.events_0[self.position]);
-            } else if self.events_1.is_empty() {
-                return None;
-            }
-
-            Some(&self.events_1[self.position])
+        let current_buffer = self.current_buffer_ref();
+        if current_buffer.is_empty() {
+            return None;
         }
+
+        current_buffer.get(self.position)
     }
 
     fn take(&mut self) -> Option<&(Event, usize)> {
-        if self.current_buffer == 0 {
-            if self.events_0.is_empty() {
-                return None;
-            }
-
-            let r = Some(&self.events_0[self.position]);
-            self.position = (self.position + 1) % self.events_0.len();
-            r
-        } else {
-            if self.events_1.is_empty() {
-                return None;
-            }
-
-            let r = Some(&self.events_1[self.position]);
-            self.position = (self.position + 1) % self.events_1.len();
-            r
+        if self.current_buffer_ref().is_empty() {
+            return None;
         }
+
+        let current_pos = self.position;
+        let buffer_len = self.current_buffer_ref().len();
+        self.position = (self.position + 1) % buffer_len;
+
+        self.current_buffer_ref().get(current_pos)
     }
 
     fn tick_len(&self) -> usize {
-        if self.current_buffer == 0 {
-            self.tick_length_0
-        } else {
-            self.tick_length_1
-        }
+        self.current_buffer_ref().tick_length
     }
 
     fn current_bpm(&self) -> f32 {
-        if self.current_buffer == 0 {
-            self.bpm_0
-        } else {
-            self.bpm_1
-        }
+        self.current_buffer_ref().bpm
     }
 }
 
@@ -245,7 +231,6 @@ impl<T: StepHandler> CoreSequencer<T> {
             _phantom: PhantomData
         }
     }
-
 }
 
 fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<EventRing>>, step_handler: T) {
