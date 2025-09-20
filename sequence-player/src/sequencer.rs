@@ -2,13 +2,14 @@ use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
+use wmidi::Velocity;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
 use std::thread;
 use heapless::Vec;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Event {
     NoteOn(u8, u32, u32),
     NoteOff(u8, u32, u32)
@@ -202,8 +203,7 @@ pub trait Sequencer : Send + Sync + 'static {
 
 // General sequencer data structure definition.
 pub trait StepHandler: Send + Sync + 'static {
-    fn handle_notes_on(&self, trigs: Vec<&Trig, 100>);
-    fn handle_notes_off(&self, trigs: Vec<&Trig, 100>);
+    fn handle_events(&self, trigs: Vec<Event, 100>);
 }
 
 pub struct CoreSequencer<T: StepHandler> {
@@ -243,8 +243,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<Event
 
         if running.load(Ordering::Relaxed) {
             // Collect notes on and off events for this tick
-            let mut notes_on : Vec<Trig, 100> = Vec::new();
-            let mut notes_off : Vec<Trig, 100> = Vec::new();
+            let mut events : Vec<Event, 100> = Vec::new();
 
             {
                 let mut event_ring = seq.lock().unwrap();
@@ -257,65 +256,26 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<Event
                             curr_bpm = event_ring.current_bpm();
                             loop_helper.set_target_rate((curr_bpm * 256.0) / 60.0);
                         }
-                        // This event is for the current tick - take it and process
                         if let Some((event, _)) = event_ring.take() {
-                            match event {
-                                Event::NoteOn(pitch, velocity, track) => {
-                                    let trig = Trig {
-                                        note: Some(SequenceNote {
-                                            octave: (*pitch as i32 / 12) - 1,
-                                            value: (*pitch as i32) % 12,
-                                            velocity: *velocity,
-                                        }),
-                                        track: *track,
-                                        step: 0,
-                                        offset: 0,
-                                        length: None,
-                                    };
-                                    notes_on.push(trig);
-                                }
-                                Event::NoteOff(pitch, velocity, track) => {
-                                    let trig = Trig {
-                                        note: Some(SequenceNote {
-                                            octave: (*pitch as i32 / 12) - 1,
-                                            value: (*pitch as i32) % 12,
-                                            velocity: *velocity,
-                                        }),
-                                        track: *track,
-                                        step: 0,
-                                        offset: 0,
-                                        length: None,
-                                    };
-                                    notes_off.push(trig);
-                                }
-                            }
+                            events.push(event.clone());
                         }
                     } else {
-                        // Next event is not for this tick, stop processing
                         break;
                     }
                 }
             }
 
-            // Handle the collected events
-            if !notes_on.is_empty() {
-                let trig_refs: Vec<&Trig, 100> = notes_on.iter().collect();
-                step_handler.handle_notes_on(trig_refs);
-            }
-
-            if !notes_off.is_empty() {
-                let trig_refs: Vec<&Trig, 100> = notes_off.iter().collect();
-                step_handler.handle_notes_off(trig_refs);
+            if !events.is_empty() {
+                step_handler.handle_events(events);
             }
 
             tick += 1;
 
-            // Handle sequence looping
             {
                 let event_ring = seq.lock().unwrap();
                 if tick >= event_ring.tick_len() {
                     tick = 0;
-                    println!("Sequence loop - back to tick 0");
+                    println!("Loop");
                 }
             }
         }
@@ -360,94 +320,33 @@ impl MidiStepHandler {
 }
 
 impl StepHandler for MidiStepHandler {
-    fn handle_notes_on(&self, trigs: Vec<&Trig, 100>) {
+    fn handle_events(&self, events: Vec<Event, 100>) {
+        if events.is_empty() {
+            return;
+        }
+
         let mut connection = self.midi_connection.lock().unwrap();
-        if trigs.is_empty() {
-            println!("   (silence)");
-        } else {
-            for trig in trigs {
-                match &trig.note {
-                    Some(note) => {
-                        let midi_note = parse_note_to_midi(note);
-                        let channel = (trig.track % 16) as u8;
-                        let note_on_msg = [0x90 | channel, midi_note, note.velocity as u8];
-                        match connection.send(&note_on_msg) {
-                            Ok(_) => {
-                                let note_name = note_value_to_string(note.value);
 
-                                println!(
-                                    "   Track {}: Play {}{} (MIDI: {}, Velocity: {})",
-                                    trig.track, note_name, note.octave, midi_note, note.velocity
-                                );
-                            }
+        for event in events {
+            let (status_byte, note, velocity, channel, event_name) = match event {
+                Event::NoteOff(note, velocity, channel) => {
+                    (0x80, note, velocity, channel, "NoteOff")
+                },
+                Event::NoteOn(note, velocity, channel) => {
+                    (0x90, note, velocity, channel, "NoteOn")
+                }
+            };
 
-                            Err(e) => {
-                                let note_name = note_value_to_string(note.value);
-                                println!(
-                                    "   Track {}: Failed to send note on for {}{}: {}",
-                                    trig.track, note_name, note.octave, e
-                                );
-                            }
-                        }
-                    }
-                    None => {
-                        println!("   Track {}: REST", trig.track);
-                    }
+            let midi_msg = [status_byte | channel as u8, note, velocity as u8];
+
+            println!("{} - Ch:{} Note:{} Vel:{} -> {:02X?}", event_name, channel, note, velocity, midi_msg);
+            match connection.send(&midi_msg) {
+                Ok(_) => {
+                },
+                Err(e) => {
+                    println!("Failed to send MIDI message {:02X?}: {}", midi_msg, e);
                 }
             }
         }
-    }
-
-    fn handle_notes_off(&self, trigs: Vec<&Trig, 100>) {
-        let mut connection = self.midi_connection.lock().unwrap();
-        if !trigs.is_empty() {
-            for trig in trigs {
-                match &trig.note {
-                    Some(note) => {
-                        let midi_note = parse_note_to_midi(note);
-                        let channel = (trig.track % 16) as u8;
-                        let note_off_msg = [0x80 | channel, midi_note, 0];
-
-                        match connection.send(&note_off_msg) {
-                            Ok(_) => {
-                                let note_name = note_value_to_string(note.value);
-                                println!(
-                                    "   Track {}: Off {}{} (MIDI: {})",
-                                    trig.track, note_name, note.octave, midi_note
-                                );
-                            }
-                            Err(e) => {
-                                let note_name = note_value_to_string(note.value);
-                                println!(
-                                    "   Track {}: Failed to send note off for {}{}: {}",
-                                    trig.track, note_name, note.octave, e
-                                );
-                            }
-                        }
-                    }
-                    None => {
-                        // No note to turn off for rests
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn note_value_to_string(value: i32) -> &'static str {
-    match value {
-        0 => "C",
-        1 => "C#",
-        2 => "D",
-        3 => "D#",
-        4 => "E",
-        5 => "F",
-        6 => "F#",
-        7 => "G",
-        8 => "G#",
-        9 => "A",
-        10 => "A#",
-        11 => "B",
-        _ => "?",
     }
 }

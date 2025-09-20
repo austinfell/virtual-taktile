@@ -388,7 +388,7 @@ This file provides a basic way to test our service using gRPC. It expects that g
 #+BEGIN_SRC bash
 grpcurl -plaintext -d '{
     "sequence_length": 16,
-    "bpm": 600,
+    "bpm": 100,
     "trig_subdivision": {
       "numerator": 1,
       "denominator": 16
@@ -734,7 +734,6 @@ grpcurl -plaintext -d '{
 | {          |      |
 | "success": | true |
 | }          |      |
-|            |      |
 
 
 * B Section
