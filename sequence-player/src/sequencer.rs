@@ -11,8 +11,8 @@ use heapless::Vec;
 
 #[derive(Debug, Clone)]
 enum Event {
-    NoteOn(u8, u32, u32),
-    NoteOff(u8, u32, u32)
+    NoteOn(u8, u8, u8),
+    NoteOff(u8, u8, u8)
 }
 
 type Events = Vec<(Event, usize), 2000>;
@@ -76,9 +76,9 @@ impl EventRing {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = (trig.step * 256) as usize % sequence_length_ticks;
-                events.push((Event::NoteOn(midi_pitch, note.velocity, trig.track), note_on_tick));
+                events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
                 let note_off_tick = (note_on_tick + 64) as usize % sequence_length_ticks;
-                events.push((Event::NoteOff(midi_pitch, note.velocity, trig.track), note_off_tick));
+                events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
             }
         }
 
@@ -337,7 +337,7 @@ impl StepHandler for MidiStepHandler {
                 }
             };
 
-            let midi_msg = [status_byte | channel as u8, note, velocity as u8];
+            let midi_msg = [status_byte | channel, note, velocity];
 
             println!("{} - Ch:{} Note:{} Vel:{} -> {:02X?}", event_name, channel, note, velocity, midi_msg);
             match connection.send(&midi_msg) {
