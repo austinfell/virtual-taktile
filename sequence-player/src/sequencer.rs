@@ -3,7 +3,7 @@ use crate::server::sequence::{Sequence, Trig};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
 use wmidi::Velocity;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
 use std::thread;
@@ -41,7 +41,7 @@ impl EventBuffer {
         self.events.len()
     }
 
-    fn get_events_matching_tick(&self, start_index: usize) -> Option<&[(Event, usize)]> {
+    fn get_events_at_index_matching_tick(&self, start_index: usize) -> Option<&[(Event, usize)]> {
         let Some(start_el) = self.events.get(start_index) else {
             return None
         };
@@ -53,6 +53,10 @@ impl EventBuffer {
         }
 
         Some(&self.events[start_index..end_index])
+    }
+
+    fn get_first_event_at_index(&self, start_index: usize) -> Option<&(Event, usize)> {
+        self.events.get(start_index)
     }
 }
 
@@ -102,6 +106,7 @@ impl EventRing {
             bpm: sequence.bpm
         };
         self.cued_buffer = target_buffer;
+        println!("Success.");
     }
 
     fn current_buffer_ref(&self) -> &EventBuffer {
@@ -118,11 +123,17 @@ impl EventRing {
         }
     }
 
-    fn next(&mut self) -> Option<&'_[(Event, usize)]> {
-        // Make sure we are at the correct internal buffer (This is a swappable
-        // circular queue)
-        self.switch_to_cued_buffer();
+    fn read_next_first(&self) -> Option<&(Event, usize)> {
+        //  Get the current buffer.
+        let current_buffer = &self.buffers[self.current_buffer];
+        if current_buffer.is_empty() {
+            return None;
+        }
 
+        current_buffer.get_first_event_at_index(self.position)
+    }
+
+    fn read_next_all(&self) -> Option<&'_[(Event, usize)]> {
         //  Get the current buffer.
         let current_buffer = &self.buffers[self.current_buffer];
         if current_buffer.is_empty() {
@@ -130,14 +141,27 @@ impl EventRing {
         }
 
         // Get all events at the current position.
-        let Some(events) = current_buffer.get_events_matching_tick(self.position) else {
+        let Some(events) = current_buffer.get_events_at_index_matching_tick(self.position) else {
             return None;
+        };
+
+        Some(events)
+    }
+
+    fn inc(&mut self) {
+        //  Get the current buffer.
+        let current_buffer = &self.buffers[self.current_buffer];
+        if current_buffer.is_empty() {
+            return
+        }
+
+        // Get all events at the current position.
+        let Some(events) = current_buffer.get_events_at_index_matching_tick(self.position) else {
+            return
         };
 
         // Increment to the next position.
         self.position = (self.position + (events.len())) % current_buffer.len();
-
-        Some(events)
     }
 
     fn tick_len(&self) -> usize {
@@ -218,7 +242,7 @@ pub trait StepHandler: Send + Sync + 'static {
 
 pub struct CoreSequencer<T: StepHandler> {
     running: Arc<AtomicBool>,
-    event_ring: Arc<Mutex<EventRing>>,
+    event_ring: Arc<RwLock<EventRing>>,
     _phantom: std::marker::PhantomData<T>
 }
 
@@ -226,7 +250,7 @@ impl<T: StepHandler> CoreSequencer<T> {
     pub fn new(step_handler: T) -> Self {
         let running = Arc::new(AtomicBool::new(false));
 
-        let event_ring = Arc::new(Mutex::new(EventRing::new()));
+        let event_ring = Arc::new(RwLock::new(EventRing::new()));
         let event_ring_clone = event_ring.clone();
 
         let running_clone = Arc::clone(&running);
@@ -242,36 +266,44 @@ impl<T: StepHandler> CoreSequencer<T> {
     }
 }
 
-fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, seq: Arc<Mutex<EventRing>>, step_handler: T) {
-    let mut curr_bpm = 600.0;
+fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<EventRing>>, step_handler: T) {
+    let mut curr_bpm = 500.0;
     let mut tick = 0;
+
+    let mut next_tick_cache = 0;
+    let mut tick_len_cache = 0;
+
     let mut loop_helper = LoopHelper::builder()
         .build_with_target_rate((curr_bpm * 256.0) / 60.0);
 
-
     loop {
-
         if running.load(Ordering::Relaxed) {
-            // Implementation goes here.
-            let mut event_ring = seq.lock().unwrap();
+            {
+                let mut event_ring = ring.write().unwrap();
+                event_ring.switch_to_cued_buffer();
+                next_tick_cache = event_ring.read_next_first().unwrap().1;
+                tick_len_cache = event_ring.tick_len();
+            }
+            {
+                loop {
+                    loop_helper.loop_start();
 
-            let tick_len = event_ring.tick_len();
-
-            let next_events = event_ring.next();
-
-            while next_events.is_some() {
-                loop_helper.loop_start();
-                tick = (tick + 1) % (tick_len + 1);
-
-                if tick == next_events.unwrap().first().unwrap().1 {
-                    step_handler.handle_events(next_events.unwrap());
-                    println!("{:?}", next_events);
-                    break;
+                    tick = (tick + 1) % (tick_len_cache + 1);
+                    if tick == next_tick_cache {
+                        let event_ring = ring.read().unwrap();
+                        let next_events = event_ring.read_next_all().unwrap();
+                        step_handler.handle_events(next_events);
+                        println!("{:?}", next_events);
+                        break;
+                    }
+                    loop_helper.loop_sleep();
                 }
-                loop_helper.loop_sleep();
+            }
+            {
+                let mut event_ring = ring.write().unwrap();
+                event_ring.inc();
             }
         }
-
     }
 }
 
@@ -288,12 +320,12 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     }
 
     fn swap_sequence(&mut self, s: Sequence) -> SwapResult {
-        self.event_ring.lock().unwrap().swap_sequence(&s);
+        self.event_ring.write().unwrap().swap_sequence(&s);
         Result::Ok(SwapMetadata { replaced_existing: true })
     }
 
     fn cue_sequence(&mut self, s: Sequence) -> CueResult {
-        self.event_ring.lock().unwrap().swap_sequence(&s);
+        self.event_ring.write().unwrap().swap_sequence(&s);
         Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
     }
 }

@@ -607,7 +607,7 @@ grpcurl -plaintext -d '{
     "trigs": [
       {
         "note": {
-          "octave": 2,
+          "octave": 1,
           "value": 0,
           "velocity": 90
         },
@@ -735,7 +735,6 @@ grpcurl -plaintext -d '{
 | "success": | true |
 | }          |      |
 
-
 * B Section
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
@@ -748,7 +747,7 @@ grpcurl -plaintext -d '{
   "trigs": [
     {
       "note": {
-        "octave": 2,
+        "octave": 1,
         "value": 7,
         "velocity": 85
       },
