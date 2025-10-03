@@ -9,6 +9,10 @@ use std::marker::PhantomData;
 use std::thread;
 use heapless::Vec;
 
+const INIT_BPM: f64 = 120.0;
+const TICKS_PER_BEAT: f64 = 256.0;
+const SECONDS_PER_MINUTE: f64 = 60.0;
+
 #[derive(Debug, Clone)]
 enum Event {
     NoteOn(u8, u8, u8),
@@ -113,12 +117,8 @@ impl EventRing {
         &self.buffers[self.current_buffer]
     }
 
-    fn should_switch_buffer(&self) -> bool {
-        self.position == 0 && self.cued_buffer != self.current_buffer
-    }
-
     fn switch_to_cued_buffer(&mut self) {
-        if self.should_switch_buffer() {
+        if self.position == 0 && self.cued_buffer != self.current_buffer {
             self.current_buffer = self.cued_buffer;
         }
     }
@@ -267,43 +267,57 @@ impl<T: StepHandler> CoreSequencer<T> {
 }
 
 fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<EventRing>>, step_handler: T) {
-    let mut curr_bpm = 500.0;
     let mut tick = 0;
 
-    let mut next_tick_cache = 0;
-    let mut tick_len_cache = 0;
-
     let mut loop_helper = LoopHelper::builder()
-        .build_with_target_rate((curr_bpm * 256.0) / 60.0);
+        .build_with_target_rate((INIT_BPM * TICKS_PER_BEAT) / SECONDS_PER_MINUTE);
 
     loop {
-        if running.load(Ordering::Relaxed) {
-            {
-                let mut event_ring = ring.write().unwrap();
-                event_ring.switch_to_cued_buffer();
-                next_tick_cache = event_ring.read_next_first().unwrap().1;
-                tick_len_cache = event_ring.tick_len();
-            }
-            {
-                loop {
-                    loop_helper.loop_start();
-
-                    tick = (tick + 1) % (tick_len_cache + 1);
-                    if tick == next_tick_cache {
-                        let event_ring = ring.read().unwrap();
-                        let next_events = event_ring.read_next_all().unwrap();
-                        step_handler.handle_events(next_events);
-                        println!("{:?}", next_events);
-                        break;
-                    }
-                    loop_helper.loop_sleep();
-                }
-            }
-            {
-                let mut event_ring = ring.write().unwrap();
-                event_ring.inc();
-            }
+        if !running.load(Ordering::Relaxed) {
+            loop_helper.loop_start();
+            loop_helper.loop_sleep();
+            continue;
         }
+
+        let (next_event_tick, sequence_length, prev_bpm) = {
+            let mut event_ring = ring.write().unwrap();
+            let bpm = event_ring.current_bpm();
+
+            // If we are supposed to be on the cued sequence (and we are at pos 0 in the sequence)
+            // then switch immediately before doing anything.
+            event_ring.switch_to_cued_buffer();
+            let next = event_ring.read_next_first().unwrap();
+            (
+                // Figure out what the next event tick is.
+                next.1,
+                event_ring.tick_len(),
+                bpm
+            )
+        };
+        {
+            // Tick until we get to the next event.
+            while tick != next_event_tick {
+                loop_helper.loop_start();
+                tick = (tick + 1) % (sequence_length+ 1);
+                loop_helper.loop_sleep();
+            }
+
+            // Grab all of the events with the same tick and trigger hardware.
+            let event_ring = ring.read().unwrap();
+            let curr_bpm = event_ring.current_bpm();
+            if curr_bpm != prev_bpm {
+                loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT * 4.0) / SECONDS_PER_MINUTE);
+            }
+            let next_events = event_ring.read_next_all().unwrap();
+            step_handler.handle_events(next_events);
+            println!("{:?}", next_events);
+        }
+        {
+            // Increment the ring so that next set of events can be read.
+            let mut event_ring = ring.write().unwrap();
+            event_ring.inc();
+        }
+
     }
 }
 

@@ -599,7 +599,7 @@ grpcurl -plaintext -d '{
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
     "sequence_length": 16,
-    "bpm": 500,
+    "bpm": 150,
     "trig_subdivision": {
       "numerator": 1,
       "denominator": 16
