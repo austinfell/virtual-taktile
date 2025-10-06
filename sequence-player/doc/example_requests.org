@@ -613,8 +613,8 @@ grpcurl -plaintext -d '{
         },
         "track": 0,
         "step": 0,
-        "offset": -65,
-        "length": 0.5
+        "offset": 0,
+        "length": 69
       },
       {
         "note": {
@@ -625,7 +625,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 3,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       },
       {
         "note": {
@@ -636,7 +636,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 6,
         "offset": 0,
-        "length": 0.75
+        "length": 64
       },
       {
         "note": {
@@ -647,7 +647,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 8,
         "offset": 0,
-        "length": 0.5
+        "length": 64
       },
       {
         "note": {
@@ -658,7 +658,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 10,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       },
       {
         "note": {
@@ -669,7 +669,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 12,
         "offset": 0,
-        "length": 1.0
+        "length": 64
       },
       {
         "note": {
@@ -680,7 +680,7 @@ grpcurl -plaintext -d '{
         "track": 0,
         "step": 15,
         "offset": 0,
-        "length": 0.5
+        "length": 64
       },
       {
         "note": {
@@ -691,7 +691,7 @@ grpcurl -plaintext -d '{
         "track": 1,
         "step": 0,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       },
       {
         "note": {
@@ -702,7 +702,7 @@ grpcurl -plaintext -d '{
         "track": 1,
         "step": 4,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       },
       {
         "note": {
@@ -713,7 +713,7 @@ grpcurl -plaintext -d '{
         "track": 1,
         "step": 8,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       },
       {
         "note": {
@@ -724,7 +724,7 @@ grpcurl -plaintext -d '{
         "track": 1,
         "step": 12,
         "offset": 0,
-        "length": 0.25
+        "length": 64
       }
     ]
   }' [::1]:50051 sequence.SequencerService/CueSequence

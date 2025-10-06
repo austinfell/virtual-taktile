@@ -95,8 +95,7 @@ impl EventRing {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = ((trig.step as i32 * 256) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
-                // TODO Need to use note length instead...
-                let note_off_tick = ((trig.step as i32 * 256) + trig.offset + 64).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                let note_off_tick = ((trig.step as i32 * 256) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
             }
         }
