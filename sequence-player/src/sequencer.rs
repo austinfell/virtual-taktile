@@ -10,7 +10,7 @@ use std::thread;
 use heapless::Vec;
 
 const INIT_BPM: f64 = 120.0;
-const TICKS_PER_BEAT: f64 = 256.0;
+const TICKS_PER_BEAT: f64 = 768.0;
 const SECONDS_PER_MINUTE: f64 = 60.0;
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ type Events = Vec<(Event, usize), 2000>;
 struct EventBuffer {
     events: Events,
     tick_length: usize,
-    bpm: f32,
+    bpm: f64,
 }
 
 impl EventBuffer {
@@ -88,14 +88,14 @@ impl EventRing {
 
     fn swap_sequence(&mut self, sequence: &Sequence) {
         let mut events: Vec<(Event, usize), 2000> = Vec::new();
-        let sequence_length_ticks = (sequence.sequence_length * 256) as usize;
+        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
 
         for trig in &sequence.trigs {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
-                let note_on_tick = ((trig.step as i32 * 256) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
-                let note_off_tick = ((trig.step as i32 * 256) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
             }
         }
@@ -105,20 +105,20 @@ impl EventRing {
         self.buffers[self.current_buffer] = EventBuffer {
             events,
             tick_length: sequence_length_ticks,
-            bpm: sequence.bpm
+            bpm: sequence.bpm as f64
         };
     }
 
     fn cue_sequence(&mut self, sequence: &Sequence) {
         let mut events: Vec<(Event, usize), 2000> = Vec::new();
-        let sequence_length_ticks = (sequence.sequence_length * 256) as usize;
+        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
 
         for trig in &sequence.trigs {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
-                let note_on_tick = ((trig.step as i32 * 256) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
-                let note_off_tick = ((trig.step as i32 * 256) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
                 events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
             }
         }
@@ -129,7 +129,7 @@ impl EventRing {
         self.buffers[target_buffer] = EventBuffer {
             events,
             tick_length: sequence_length_ticks,
-            bpm: sequence.bpm
+            bpm: sequence.bpm as f64
         };
         self.cued_buffer = target_buffer;
     }
@@ -189,7 +189,7 @@ impl EventRing {
         self.current_buffer_ref().tick_length
     }
 
-    fn current_bpm(&self) -> f32 {
+    fn current_bpm(&self) -> f64 {
         self.current_buffer_ref().bpm
     }
 }
@@ -300,9 +300,8 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             continue;
         }
 
-        let (next_event_tick, sequence_length, prev_bpm) = {
+        let (next_event_tick, sequence_length) = {
             let mut event_ring = ring.write().unwrap();
-            let bpm = event_ring.current_bpm();
 
             // If we are supposed to be on the cued sequence (and we are at pos 0 in the sequence)
             // then switch immediately before doing anything.
@@ -311,8 +310,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             (
                 // Figure out what the next event tick is.
                 next.1,
-                event_ring.tick_len(),
-                bpm
+                event_ring.tick_len()
             )
         };
         {
@@ -326,7 +324,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             // Grab all of the events with the same tick and trigger hardware.
             let event_ring = ring.read().unwrap();
             let curr_bpm = event_ring.current_bpm();
-            if curr_bpm != prev_bpm {
+            if curr_bpm != loop_helper.target_rate() {
                 loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT * 4.0) / SECONDS_PER_MINUTE);
             }
             let next_events = event_ring.read_next_all().unwrap();

@@ -599,7 +599,7 @@ grpcurl -plaintext -d '{
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
     "sequence_length": 16,
-    "bpm": 150,
+    "bpm": 120,
     "trig_subdivision": {
       "numerator": 1,
       "denominator": 16
@@ -727,13 +727,11 @@ grpcurl -plaintext -d '{
         "length": 64
       }
     ]
-  }' [::1]:50051 sequence.SequencerService/CueSequence
+  }' [::1]:50051 sequence.SequencerService/SwapSequence
 #+END_SRC
 
 #+RESULTS:
-| {          |      |
-| "success": | true |
-| }          |      |
+: {}
 
 * B Section
 #+BEGIN_SRC bash
