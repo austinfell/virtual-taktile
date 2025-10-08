@@ -102,6 +102,29 @@ impl EventRing {
 
         events.sort_by_key(|(_, tick)| *tick);
 
+        self.buffers[self.current_buffer] = EventBuffer {
+            events,
+            tick_length: sequence_length_ticks,
+            bpm: sequence.bpm
+        };
+    }
+
+    fn cue_sequence(&mut self, sequence: &Sequence) {
+        let mut events: Vec<(Event, usize), 2000> = Vec::new();
+        let sequence_length_ticks = (sequence.sequence_length * 256) as usize;
+
+        for trig in &sequence.trigs {
+            if let Some(note) = &trig.note {
+                let midi_pitch = parse_note_to_midi(note);
+                let note_on_tick = ((trig.step as i32 * 256) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
+                let note_off_tick = ((trig.step as i32 * 256) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
+                events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
+            }
+        }
+
+        events.sort_by_key(|(_, tick)| *tick);
+
         let target_buffer = 1 - self.current_buffer;
         self.buffers[target_buffer] = EventBuffer {
             events,
@@ -109,7 +132,6 @@ impl EventRing {
             bpm: sequence.bpm
         };
         self.cued_buffer = target_buffer;
-        println!("Success.");
     }
 
     fn current_buffer_ref(&self) -> &EventBuffer {
@@ -338,7 +360,7 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     }
 
     fn cue_sequence(&mut self, s: Sequence) -> CueResult {
-        self.event_ring.write().unwrap().swap_sequence(&s);
+        self.event_ring.write().unwrap().cue_sequence(&s);
         Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
     }
 }
