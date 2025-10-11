@@ -29,14 +29,6 @@ struct EventBuffer {
 }
 
 impl EventBuffer {
-    fn new() -> Self {
-        Self {
-            events: Vec::new(),
-            tick_length: 0,
-            bpm: 120.0,
-        }
-    }
-
     fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
@@ -66,7 +58,7 @@ impl EventBuffer {
 
 #[derive(Debug)]
 struct EventRing {
-    buffers: [EventBuffer; 2],
+    buffers: [Option<EventBuffer>; 2],
     current_buffer: usize,
     cued_buffer: usize,
     position: usize,
@@ -79,7 +71,7 @@ fn parse_note_to_midi(note: &SequenceNote) -> u8 {
 impl EventRing {
     fn new() -> Self {
         Self {
-            buffers: [EventBuffer::new(), EventBuffer::new()],
+            buffers: [None, None],
             current_buffer: 0,
             cued_buffer: 0,
             position: 0,
@@ -102,11 +94,13 @@ impl EventRing {
 
         events.sort_by_key(|(_, tick)| *tick);
 
-        self.buffers[self.current_buffer] = EventBuffer {
-            events,
-            tick_length: sequence_length_ticks,
-            bpm: sequence.bpm as f64
-        };
+        self.buffers[self.current_buffer] = Some(
+            EventBuffer {
+                events,
+                tick_length: sequence_length_ticks,
+                bpm: sequence.bpm as f64
+            }
+        );
     }
 
     fn cue_sequence(&mut self, sequence: &Sequence) {
@@ -126,15 +120,17 @@ impl EventRing {
         events.sort_by_key(|(_, tick)| *tick);
 
         let target_buffer = 1 - self.current_buffer;
-        self.buffers[target_buffer] = EventBuffer {
-            events,
-            tick_length: sequence_length_ticks,
-            bpm: sequence.bpm as f64
-        };
+        self.buffers[target_buffer] = Some(
+            EventBuffer {
+                events,
+                tick_length: sequence_length_ticks,
+                bpm: sequence.bpm as f64
+            }
+        );
         self.cued_buffer = target_buffer;
     }
 
-    fn current_buffer_ref(&self) -> &EventBuffer {
+    fn current_buffer_ref(&self) -> &Option<EventBuffer> {
         &self.buffers[self.current_buffer]
     }
 
@@ -145,8 +141,10 @@ impl EventRing {
     }
 
     fn read_next_first(&self) -> Option<&(Event, usize)> {
-        //  Get the current buffer.
-        let current_buffer = &self.buffers[self.current_buffer];
+        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+            return None;
+        };
+
         if current_buffer.is_empty() {
             return None;
         }
@@ -155,8 +153,10 @@ impl EventRing {
     }
 
     fn read_next_all(&self) -> Option<&'_[(Event, usize)]> {
-        //  Get the current buffer.
-        let current_buffer = &self.buffers[self.current_buffer];
+        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+            return None;
+        };
+
         if current_buffer.is_empty() {
             return None;
         }
@@ -171,7 +171,10 @@ impl EventRing {
 
     fn inc(&mut self) {
         //  Get the current buffer.
-        let current_buffer = &self.buffers[self.current_buffer];
+        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+            return;
+        };
+
         if current_buffer.is_empty() {
             return
         }
@@ -185,12 +188,18 @@ impl EventRing {
         self.position = (self.position + (events.len())) % current_buffer.len();
     }
 
-    fn tick_len(&self) -> usize {
-        self.current_buffer_ref().tick_length
+    fn tick_len(&self) -> Option<usize> {
+        let Some(current_buffer) = self.current_buffer_ref() else {
+            return None;
+        };
+        Some(current_buffer.tick_length)
     }
 
-    fn current_bpm(&self) -> f64 {
-        self.current_buffer_ref().bpm
+    fn current_bpm(&self) -> Option<f64> {
+        let Some(current_buffer) = self.current_buffer_ref() else {
+            return None;
+        };
+        Some(current_buffer.bpm)
     }
 }
 
@@ -310,20 +319,20 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             (
                 // Figure out what the next event tick is.
                 next.1,
-                event_ring.tick_len()
+                event_ring.tick_len().or(Some(0)).unwrap()
             )
         };
         {
             // Tick until we get to the next event.
             while tick != next_event_tick {
                 loop_helper.loop_start();
-                tick = (tick + 1) % (sequence_length+ 1);
+                tick = (tick + 1) % (sequence_length + 1);
                 loop_helper.loop_sleep();
             }
 
             // Grab all of the events with the same tick and trigger hardware.
             let event_ring = ring.read().unwrap();
-            let curr_bpm = event_ring.current_bpm();
+            let curr_bpm = event_ring.current_bpm().or(Some(9999.0)).unwrap();
             if curr_bpm != loop_helper.target_rate() {
                 loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT * 4.0) / SECONDS_PER_MINUTE);
             }
