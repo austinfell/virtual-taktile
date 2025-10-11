@@ -13,6 +13,12 @@ const INIT_BPM: f64 = 120.0;
 const TICKS_PER_BEAT: f64 = 768.0;
 const SECONDS_PER_MINUTE: f64 = 60.0;
 
+/// A MIDI-Like note message containing relevant data linking a played note to a particular track.
+///
+/// # Fields
+/// * `track` - The MIDI track number (0-15)
+/// * `note` - The MIDI note number (0-127, where 60 is middle C)
+/// * `velocity` - The note velocity (0-127, where 0 is silent and 127 is maximum)
 #[derive(Debug)]
 pub struct NoteMessage {
     track: u8,
@@ -20,9 +26,12 @@ pub struct NoteMessage {
     velocity: u8
 }
 
+/// A MIDI-Like event that can be scheduled in our looping sequencer.
 #[derive(Debug)]
 pub enum Event {
+    /// Note on event - triggers a note to start playing.
     NoteOn(NoteMessage),
+    /// Note off event - triggers a note to stop playing.
     NoteOff(NoteMessage)
 }
 
