@@ -45,17 +45,20 @@ struct EventBuffer {
 
 impl EventBuffer {
     fn from_sequence(sequence: &Sequence) -> Self {
-        let mut events: Vec<(Event, usize), 2000> = Vec::new();
         let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
 
+        let mut events: Vec<(Event, usize), 2000> = Vec::new();
         for trig in &sequence.trigs {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = ((trig.step as i32 * 768) + trig.offset)
                     .rem_euclid(sequence_length_ticks as i32) as usize;
 
+                // TODO - need robust error handling... I'm thinking any notes this point onwards
+                // without stack will not be included an a warning message logged.
                 events.push((
                     Event::NoteOn(NoteMessage {
+                        // TODO - Why can't this and velocity not be u8?
                         track: trig.track as u8,
                         note: midi_pitch,
                         velocity: note.velocity as u8
@@ -63,6 +66,7 @@ impl EventBuffer {
                     note_on_tick
                 ));
 
+                // TODO - Reduce all the casting going on across this module.
                 let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32))
                     .rem_euclid(sequence_length_ticks as i32) as usize;
 
@@ -76,7 +80,6 @@ impl EventBuffer {
                 ));
             }
         }
-
         events.sort_by_key(|(_, tick)| *tick);
 
         Self {
@@ -87,6 +90,7 @@ impl EventBuffer {
     }
 
     fn get_events_at_index_matching_tick(&self, start_index: usize) -> Option<&[(Event, usize)]> {
+        // TODO - I think this algorithm might actually be massively inefficient.
         let start_el = self.events.get(start_index)?;
 
         let mut end_index = start_index;
