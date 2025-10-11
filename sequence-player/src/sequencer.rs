@@ -257,15 +257,6 @@ impl EventRing {
     }
 }
 
-// Public interface for performing actions upon the sequencer.
-#[derive(Debug)]
-enum PlaybackCommand {
-    Start(Sequence),
-    Stop,
-    Swap(Sequence),
-    Shutdown,
-}
-
 // Error types for sequencer operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SequencerError {
