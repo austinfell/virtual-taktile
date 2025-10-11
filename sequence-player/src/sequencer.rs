@@ -2,7 +2,6 @@ use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
-use wmidi::Velocity;
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
@@ -45,30 +44,61 @@ struct EventBuffer {
 }
 
 impl EventBuffer {
-    fn is_empty(&self) -> bool {
-        self.events.is_empty()
-    }
+    fn from_sequence(sequence: &Sequence) -> Self {
+        let mut events: Vec<(Event, usize), 2000> = Vec::new();
+        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
 
-    fn len(&self) -> usize {
-        self.events.len()
+        for trig in &sequence.trigs {
+            if let Some(note) = &trig.note {
+                let midi_pitch = parse_note_to_midi(note);
+                let note_on_tick = ((trig.step as i32 * 768) + trig.offset)
+                    .rem_euclid(sequence_length_ticks as i32) as usize;
+
+                events.push((
+                    Event::NoteOn(NoteMessage {
+                        track: trig.track as u8,
+                        note: midi_pitch,
+                        velocity: note.velocity as u8
+                    }),
+                    note_on_tick
+                ));
+
+                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32))
+                    .rem_euclid(sequence_length_ticks as i32) as usize;
+
+                events.push((
+                    Event::NoteOff(NoteMessage {
+                        track: trig.track as u8,
+                        note: midi_pitch,
+                        velocity: note.velocity as u8
+                    }),
+                    note_off_tick
+                ));
+            }
+        }
+
+        events.sort_by_key(|(_, tick)| *tick);
+
+        Self {
+            events,
+            tick_length: sequence_length_ticks,
+            bpm: sequence.bpm,
+        }
     }
 
     fn get_events_at_index_matching_tick(&self, start_index: usize) -> Option<&[(Event, usize)]> {
-        let Some(start_el) = self.events.get(start_index) else {
-            return None
-        };
+        let start_el = self.events.get(start_index)?;
 
-        let mut end_index = start_index + 1;
+        let mut end_index = start_index;
+        if self.events.len() > 1 {
+            end_index += 1;
+        }
 
         while start_index != end_index && start_el.1 == self.events[end_index % self.events.len()].1 {
             end_index += 1
         }
 
         Some(&self.events[start_index..end_index])
-    }
-
-    fn get_first_event_at_index(&self, start_index: usize) -> Option<&(Event, usize)> {
-        self.events.get(start_index)
     }
 }
 
@@ -95,92 +125,12 @@ impl EventRing {
     }
 
     fn swap_sequence(&mut self, sequence: &Sequence) {
-        let mut events: Vec<(Event, usize), 2000> = Vec::new();
-        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
-
-        for trig in &sequence.trigs {
-            if let Some(note) = &trig.note {
-                let midi_pitch = parse_note_to_midi(note);
-                let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push(
-                    (
-                        Event::NoteOn(NoteMessage {
-                            track: trig.track as u8,
-                            note: midi_pitch,
-                            velocity: note.velocity as u8
-                        }),
-                        note_on_tick
-                    )
-                );
-
-                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push(
-                    (
-                        Event::NoteOff(NoteMessage {
-                            track: trig.track as u8,
-                            note: midi_pitch,
-                            velocity: note.velocity as u8
-                        }),
-                        note_off_tick
-                    )
-                );
-            }
-        }
-
-        events.sort_by_key(|(_, tick)| *tick);
-
-        self.buffers[self.current_buffer] = Some(
-            EventBuffer {
-                events,
-                tick_length: sequence_length_ticks,
-                bpm: sequence.bpm as f64
-            }
-        );
+        self.buffers[self.current_buffer] = Some(EventBuffer::from_sequence(sequence));
     }
 
     fn cue_sequence(&mut self, sequence: &Sequence) {
-        let mut events: Vec<(Event, usize), 2000> = Vec::new();
-        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
-
-        for trig in &sequence.trigs {
-            if let Some(note) = &trig.note {
-                let midi_pitch = parse_note_to_midi(note);
-                let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push(
-                    (
-                        Event::NoteOn(NoteMessage {
-                            track: trig.track as u8,
-                            note: midi_pitch,
-                            velocity: note.velocity as u8
-                        }),
-                        note_on_tick
-                    )
-
-                );
-                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push(
-                    (
-                        Event::NoteOff(NoteMessage {
-                            track: trig.track as u8,
-                            note: midi_pitch,
-                            velocity: note.velocity as u8
-                        }),
-                        note_off_tick
-                    )
-                );
-            }
-        }
-
-        events.sort_by_key(|(_, tick)| *tick);
-
         let target_buffer = 1 - self.current_buffer;
-        self.buffers[target_buffer] = Some(
-            EventBuffer {
-                events,
-                tick_length: sequence_length_ticks,
-                bpm: sequence.bpm as f64
-            }
-        );
+        self.buffers[target_buffer] = Some(EventBuffer::from_sequence(sequence));
         self.cued_buffer = target_buffer;
     }
 
@@ -199,11 +149,11 @@ impl EventRing {
             return None;
         };
 
-        if current_buffer.is_empty() {
+        if current_buffer.events.is_empty() {
             return None;
         }
 
-        current_buffer.get_first_event_at_index(self.position)
+        current_buffer.events.get(self.position)
     }
 
     fn read_next_all(&self) -> Option<&'_[(Event, usize)]> {
@@ -211,7 +161,7 @@ impl EventRing {
             return None;
         };
 
-        if current_buffer.is_empty() {
+        if current_buffer.events.is_empty() {
             return None;
         }
 
@@ -229,7 +179,7 @@ impl EventRing {
             return;
         };
 
-        if current_buffer.is_empty() {
+        if current_buffer.events.is_empty() {
             return
         }
 
@@ -239,7 +189,7 @@ impl EventRing {
         };
 
         // Increment to the next position.
-        self.position = (self.position + (events.len())) % current_buffer.len();
+        self.position = (self.position + (events.len())) % current_buffer.events.len();
     }
 
     fn tick_len(&self) -> Option<usize> {
