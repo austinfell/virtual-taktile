@@ -1,5 +1,5 @@
 use crate::server::sequence::Note as SequenceNote;
-use crate::server::sequence::{Sequence, Trig};
+use crate::server::sequence::{Sequence};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
 use wmidi::Velocity;
@@ -13,10 +13,17 @@ const INIT_BPM: f64 = 120.0;
 const TICKS_PER_BEAT: f64 = 768.0;
 const SECONDS_PER_MINUTE: f64 = 60.0;
 
-#[derive(Debug, Clone)]
-enum Event {
-    NoteOn(u8, u8, u8),
-    NoteOff(u8, u8, u8)
+#[derive(Debug)]
+pub struct NoteMessage {
+    track: u8,
+    note: u8,
+    velocity: u8
+}
+
+#[derive(Debug)]
+pub enum Event {
+    NoteOn(NoteMessage),
+    NoteOff(NoteMessage)
 }
 
 type Events = Vec<(Event, usize), 2000>;
@@ -86,9 +93,28 @@ impl EventRing {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
+                events.push(
+                    (
+                        Event::NoteOn(NoteMessage {
+                            track: trig.track as u8,
+                            note: midi_pitch,
+                            velocity: note.velocity as u8
+                        }),
+                        note_on_tick
+                    )
+                );
+
                 let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
+                events.push(
+                    (
+                        Event::NoteOff(NoteMessage {
+                            track: trig.track as u8,
+                            note: midi_pitch,
+                            velocity: note.velocity as u8
+                        }),
+                        note_off_tick
+                    )
+                );
             }
         }
 
@@ -111,9 +137,28 @@ impl EventRing {
             if let Some(note) = &trig.note {
                 let midi_pitch = parse_note_to_midi(note);
                 let note_on_tick = ((trig.step as i32 * 768) + trig.offset).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push((Event::NoteOn(midi_pitch, note.velocity as u8, trig.track as u8), note_on_tick));
+                events.push(
+                    (
+                        Event::NoteOn(NoteMessage {
+                            track: trig.track as u8,
+                            note: midi_pitch,
+                            velocity: note.velocity as u8
+                        }),
+                        note_on_tick
+                    )
+
+                );
                 let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32)).rem_euclid(sequence_length_ticks.try_into().unwrap()) as usize;
-                events.push((Event::NoteOff(midi_pitch, note.velocity as u8, trig.track as u8), note_off_tick));
+                events.push(
+                    (
+                        Event::NoteOff(NoteMessage {
+                            track: trig.track as u8,
+                            note: midi_pitch,
+                            velocity: note.velocity as u8
+                        }),
+                        note_off_tick
+                    )
+                );
             }
         }
 
@@ -393,12 +438,12 @@ impl StepHandler for MidiStepHandler {
         let mut connection = self.midi_connection.lock().unwrap();
 
         for event in events {
-            let (status_byte, note, velocity, channel, event_name) = match event.0 {
-                Event::NoteOff(note, velocity, channel) => {
-                    (0x80, note, velocity, channel, "NoteOff")
+            let (status_byte, note, velocity, channel, event_name) = match &event.0 {
+                Event::NoteOff(note_message) => {
+                    (0x80, note_message.note, note_message.velocity, note_message.track, "NoteOff")
                 },
-                Event::NoteOn(note, velocity, channel) => {
-                    (0x90, note, velocity, channel, "NoteOn")
+                Event::NoteOn(note_message) => {
+                    (0x90, note_message.note, note_message.velocity, note_message.track, "NoteOn")
                 }
             };
 
