@@ -62,7 +62,7 @@ impl EventBuffer {
 
                 // Make sure the user isn't breaking MIDI.
                 let Some(note): Option<u8> = ((note_data.octave * 12) + note_data.value).try_into().ok() else {
-                    println!("Got a note outside of 8 bit range allowed by midi.");
+                    println!("Got a note outside of 8 bit range allowed by MIDI.");
                     continue;
                 };
                 let Some(track) = trig.track.try_into().ok() else {
@@ -97,16 +97,19 @@ impl EventBuffer {
         }
     }
 
+    /// Returns a slice of all events that occur at the same tick as the event at `start_index`.
+    ///
+    /// Scans forward from `start_index` to find all consecutive events with matching tick values.
+    /// Returns `None` if `start_index` is out of bounds.
     fn get_events_at_index_matching_tick(&self, start_index: usize) -> Option<&[(Event, usize)]> {
-        // TODO - I think this algorithm might actually be massively inefficient.
-        let start_el = self.events.get(start_index)?;
-
+        let tick = self.events.get(start_index)?.1;
         let mut end_index = start_index;
+
         if self.events.len() > 1 {
             end_index += 1;
         }
 
-        while start_index != end_index && start_el.1 == self.events[end_index % self.events.len()].1 {
+        while end_index != self.events.len() && tick == self.events[end_index].1 {
             end_index += 1
         }
 

@@ -575,9 +575,6 @@ grpcurl -plaintext -d '{
 #+END_SRC
 
 #+RESULTS:
-| {          |      |
-| "success": | true |
-| }          |      |
 
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
