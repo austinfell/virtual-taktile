@@ -1,4 +1,3 @@
-use crate::server::sequence::Note as SequenceNote;
 use crate::server::sequence::{Sequence};
 use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
@@ -9,7 +8,8 @@ use std::thread;
 use heapless::Vec;
 
 const INIT_BPM: f64 = 120.0;
-const TICKS_PER_BEAT: f64 = 768.0;
+const TICKS_PER_BEAT_F: f64 = 768.0;
+const TICKS_PER_BEAT_U: u32 = 768;
 const SECONDS_PER_MINUTE: f64 = 60.0;
 
 /// A MIDI-Like note message containing relevant data linking a played note to a particular track.
@@ -44,40 +44,48 @@ struct EventBuffer {
 }
 
 impl EventBuffer {
+    /// Converts a `Sequence` into a `ScheduledSequence` by processing triggers into sorted MIDI events.
+    ///
+    /// Validates MIDI parameters (note, track, velocity must be 0-255) and skips invalid triggers.
+    /// Stops processing if event capacity (2000) is reached to avoid orphaned note-on events.
     fn from_sequence(sequence: &Sequence) -> Self {
-        let sequence_length_ticks = (sequence.sequence_length * 768) as usize;
+        let sequence_length_ticks = (sequence.sequence_length * TICKS_PER_BEAT_U) as usize;
 
-        let mut events: Vec<(Event, usize), 2000> = Vec::new();
+        let mut events: Events = Vec::new();
         for trig in &sequence.trigs {
-            if let Some(note) = &trig.note {
-                let midi_pitch = parse_note_to_midi(note);
-                let note_on_tick = ((trig.step as i32 * 768) + trig.offset)
-                    .rem_euclid(sequence_length_ticks as i32) as usize;
+            if let Some(note_data) = &trig.note {
+                // Make sure we have space.
+                if events.len() + 2 > events.capacity() {
+                    println!("Sequence is full - skipping remaining notes to avoid orphaned events.");
+                    break;
+                }
 
-                // TODO - need robust error handling... I'm thinking any notes this point onwards
-                // without stack will not be included an a warning message logged.
+                // Make sure the user isn't breaking MIDI.
+                let Some(note): Option<u8> = ((note_data.octave * 12) + note_data.value).try_into().ok() else {
+                    println!("Got a note outside of 8 bit range allowed by midi.");
+                    continue;
+                };
+                let Some(track) = trig.track.try_into().ok() else {
+                    println!("Track number {} is out of range (must be 0-255).", trig.track);
+                    continue;
+                };
+                let Some(velocity) = note_data.velocity.try_into().ok() else {
+                    println!("Velocity {} is out of range (must be 0-255).", note_data.velocity);
+                    continue;
+                };
+
+
+                // We can unwrap these because we already ran a check to make sure we have room in our vector.
                 events.push((
-                    Event::NoteOn(NoteMessage {
-                        // TODO - Why can't this and velocity not be u8?
-                        track: trig.track as u8,
-                        note: midi_pitch,
-                        velocity: note.velocity as u8
-                    }),
-                    note_on_tick
-                ));
-
-                // TODO - Reduce all the casting going on across this module.
-                let note_off_tick = ((trig.step as i32 * 768) + trig.offset + (trig.length as i32))
-                    .rem_euclid(sequence_length_ticks as i32) as usize;
-
+                    Event::NoteOff(NoteMessage {track, note, velocity}),
+                    ((trig.step * TICKS_PER_BEAT_U) as i32 + trig.offset + trig.length as i32)
+                        .rem_euclid(sequence_length_ticks as i32) as usize
+                )).unwrap();
                 events.push((
-                    Event::NoteOff(NoteMessage {
-                        track: trig.track as u8,
-                        note: midi_pitch,
-                        velocity: note.velocity as u8
-                    }),
-                    note_off_tick
-                ));
+                    Event::NoteOn(NoteMessage {track, note, velocity}),
+                    ((trig.step * TICKS_PER_BEAT_U) as i32 + trig.offset)
+                        .rem_euclid(sequence_length_ticks as i32) as usize
+                )).unwrap();
             }
         }
         events.sort_by_key(|(_, tick)| *tick);
@@ -112,10 +120,6 @@ struct EventRing {
     current_buffer: usize,
     cued_buffer: usize,
     position: usize,
-}
-
-fn parse_note_to_midi(note: &SequenceNote) -> u8 {
-    ((note.octave * 12) + note.value as i32).try_into().unwrap()
 }
 
 impl EventRing {
@@ -299,7 +303,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
     let mut tick = 0;
 
     let mut loop_helper = LoopHelper::builder()
-        .build_with_target_rate((INIT_BPM * TICKS_PER_BEAT) / SECONDS_PER_MINUTE);
+        .build_with_target_rate((INIT_BPM * TICKS_PER_BEAT_F) / SECONDS_PER_MINUTE);
 
     loop {
         if !running.load(Ordering::Relaxed) {
@@ -333,7 +337,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             let event_ring = ring.read().unwrap();
             let curr_bpm = event_ring.current_bpm().or(Some(9999.0)).unwrap();
             if curr_bpm != loop_helper.target_rate() {
-                loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT * 4.0) / SECONDS_PER_MINUTE);
+                loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT_F * 4.0) / SECONDS_PER_MINUTE);
             }
             let next_events = event_ring.read_next_all().unwrap();
             step_handler.handle_events(next_events);
