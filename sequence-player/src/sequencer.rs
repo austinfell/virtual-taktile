@@ -36,11 +36,22 @@ pub enum Event {
 
 type Events = Vec<(Event, usize), 2000>;
 
+/// Metadata describing the timing and tempo characteristics of an event buffer.
+#[derive(Debug, Clone, Copy)]
+struct EventBufferMetadata {
+    tick_length: usize,
+    bpm: f64
+}
+
+/// A container for musical events and their associated timing information.
+///
+/// Stores a sequence of events along with metadata about the sequence's
+/// timing and tempo. Events are stored with their tick positions, allowing
+/// for precise temporal placement within the sequence.
 #[derive(Debug)]
 struct EventBuffer {
     events: Events,
-    tick_length: usize,
-    bpm: f64,
+    metadata: EventBufferMetadata
 }
 
 impl EventBuffer {
@@ -92,8 +103,10 @@ impl EventBuffer {
 
         Self {
             events,
-            tick_length: sequence_length_ticks,
-            bpm: sequence.bpm,
+            metadata: EventBufferMetadata {
+                tick_length: sequence_length_ticks,
+                bpm: sequence.bpm,
+            }
         }
     }
 
@@ -117,25 +130,39 @@ impl EventBuffer {
     }
 }
 
+/// A double-buffered event sequencer that enables seamless sequence transitions.
+///
+/// `EventRing` manages two event buffers, allowing one sequence to play while another
+/// is cued for transition. This design enables gapless switching between musical
+/// sequences at loop boundaries, commonly used in live performance and DAW applications.
+///
+/// The ring maintains a position within the current sequence and automatically wraps
+/// around when reaching the end. When a new sequence is cued, it will take over
+/// at the next loop boundary.
 #[derive(Debug)]
 struct EventRing {
     buffers: [Option<EventBuffer>; 2],
     current_buffer: u8,
     cued_buffer: u8,
-    // TODO - when stopping sequence, this isn't stopped.
     position: usize,
 }
 
 impl EventRing {
+    /// Creates a new, empty `EventRing` with no loaded sequences.
     fn new() -> Self {
         Self {
             buffers: [None, None],
-            current_buffer: 0,
             cued_buffer: 0,
+            current_buffer: 0,
             position: 0,
         }
     }
 
+    /// Immediately replaces the current sequence with a new one.
+    ///
+    /// If the current position exceeds the new sequence length, it resets to 0.
+    /// This is typically used for immediate sequence changes without waiting
+    /// for a loop boundary.
     fn swap_sequence(&mut self, sequence: &Sequence) {
         if self.position as u32 > sequence.sequence_length {
             self.position = 0;
@@ -144,21 +171,31 @@ impl EventRing {
         self.buffers[self.current_buffer as usize] = Some(EventBuffer::from_sequence(sequence));
     }
 
+    /// Loads a sequence into the inactive buffer for transition at the next loop boundary.
+    ///
+    /// The cued sequence will become active when the current sequence reaches
+    /// position 0 (the loop point). This enables seamless transitions between
+    /// different patterns.
     fn cue_sequence(&mut self, sequence: &Sequence) {
         let target_buffer = 1 - self.current_buffer;
         self.buffers[target_buffer as usize] = Some(EventBuffer::from_sequence(sequence));
         self.cued_buffer = target_buffer;
     }
 
-    fn read_next_first(&self) -> Option<&(Event, usize)> {
+    /// Returns the tick value of the next event at the current position, if any.
+    fn next_events_tick(&self) -> Option<usize> {
         let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return None;
         };
 
-        current_buffer.events.get(self.position)
+        current_buffer.events.get(self.position).map(|e| e.1)
     }
 
-    fn read_next_all(&self) -> Option<&'_[(Event, usize)]> {
+    /// Returns all events at the current position that share the same tick value.
+    ///
+    /// Multiple events can occur at the same tick (e.g., a chord with multiple notes).
+    /// This method returns a slice containing all such simultaneous events.
+    fn next_events(&self) -> Option<&'_[(Event, usize)]> {
         let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return None;
         };
@@ -169,7 +206,12 @@ impl EventRing {
         Some(events)
     }
 
-    fn inc(&mut self) {
+    /// Advances the position to the next set of events in the sequence.
+    ///
+    /// Moves past all events at the current tick to the next distinct tick position.
+    /// When reaching the end of the sequence, wraps back to position 0.
+    /// If a new sequence is cued and position wraps to 0, switches to the cued sequence.
+    fn advance(&mut self) {
         //  Get the current buffer.
         let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return;
@@ -193,18 +235,12 @@ impl EventRing {
         }
     }
 
-    fn tick_len(&self) -> Option<usize> {
+    /// Returns the metadata (tick length and BPM) of the current sequence, if any.
+    fn metadata(&self) -> Option<EventBufferMetadata> {
         let Some(current_buffer) =  &self.buffers[self.current_buffer as usize] else {
             return None;
         };
-        Some(current_buffer.tick_length)
-    }
-
-    fn current_bpm(&self) -> Option<f64> {
-        let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
-            return None;
-        };
-        Some(current_buffer.bpm)
+        Some(current_buffer.metadata)
     }
 }
 
@@ -212,7 +248,7 @@ impl EventRing {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SequencerError {
     PlaybackNotInitialized,
-    CommandSendFailed,
+
     NoSequenceCued,
     Other(String),
 }
@@ -305,39 +341,37 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
             continue;
         }
 
-        let (next_event_tick, sequence_length) = {
+        let (next_events_tick, metadata) = {
             let event_ring = ring.write().unwrap();
-            let next = event_ring.read_next_first().unwrap();
             (
                 // Figure out what the next event tick is.
-                next.1,
-                event_ring.tick_len().or(Some(0)).unwrap()
+                event_ring.next_events_tick().unwrap(),
+                event_ring.metadata()
             )
         };
         {
             // Tick until we get to the next event.
-            while tick != next_event_tick {
+            while tick != next_events_tick {
                 loop_helper.loop_start();
-                tick = (tick + 1) % (sequence_length + 1);
+                tick = (tick + 1) % (metadata.unwrap().tick_length + 1);
                 loop_helper.loop_sleep();
             }
 
             // Grab all of the events with the same tick and trigger hardware.
             let event_ring = ring.read().unwrap();
-            let curr_bpm = event_ring.current_bpm().or(Some(9999.0)).unwrap();
+            let curr_bpm = metadata.unwrap().bpm;
             if curr_bpm != loop_helper.target_rate() {
-                loop_helper.set_target_rate(((curr_bpm as f64) * TICKS_PER_BEAT_F * 4.0) / SECONDS_PER_MINUTE);
+                loop_helper.set_target_rate((curr_bpm * TICKS_PER_BEAT_F * 4.0) / SECONDS_PER_MINUTE);
             }
-            let next_events = event_ring.read_next_all().unwrap();
+            let next_events = event_ring.next_events().unwrap();
             step_handler.handle_events(next_events);
             println!("{:?}", next_events);
         }
         {
-            // Increment the ring so that next set of events can be read.
+            // Advance to next events in the ring so that next set of events can be read.
             let mut event_ring = ring.write().unwrap();
-            event_ring.inc();
+            event_ring.advance();
         }
-
     }
 }
 
