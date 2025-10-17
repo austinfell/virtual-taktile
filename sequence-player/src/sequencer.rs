@@ -120,8 +120,9 @@ impl EventBuffer {
 #[derive(Debug)]
 struct EventRing {
     buffers: [Option<EventBuffer>; 2],
-    current_buffer: usize,
-    cued_buffer: usize,
+    current_buffer: u8,
+    cued_buffer: u8,
+    // TODO - when stopping sequence, this isn't stopped.
     position: usize,
 }
 
@@ -136,57 +137,41 @@ impl EventRing {
     }
 
     fn swap_sequence(&mut self, sequence: &Sequence) {
-        self.buffers[self.current_buffer] = Some(EventBuffer::from_sequence(sequence));
+        if self.position as u32 > sequence.sequence_length {
+            self.position = 0;
+        }
+
+        self.buffers[self.current_buffer as usize] = Some(EventBuffer::from_sequence(sequence));
     }
 
     fn cue_sequence(&mut self, sequence: &Sequence) {
         let target_buffer = 1 - self.current_buffer;
-        self.buffers[target_buffer] = Some(EventBuffer::from_sequence(sequence));
+        self.buffers[target_buffer as usize] = Some(EventBuffer::from_sequence(sequence));
         self.cued_buffer = target_buffer;
     }
 
-    fn current_buffer_ref(&self) -> &Option<EventBuffer> {
-        &self.buffers[self.current_buffer]
-    }
-
-    fn switch_to_cued_buffer(&mut self) {
-        if self.position == 0 && self.cued_buffer != self.current_buffer {
-            self.current_buffer = self.cued_buffer;
-        }
-    }
-
     fn read_next_first(&self) -> Option<&(Event, usize)> {
-        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+        let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return None;
         };
-
-        if current_buffer.events.is_empty() {
-            return None;
-        }
 
         current_buffer.events.get(self.position)
     }
 
     fn read_next_all(&self) -> Option<&'_[(Event, usize)]> {
-        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+        let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return None;
         };
-
-        if current_buffer.events.is_empty() {
-            return None;
-        }
 
         // Get all events at the current position.
-        let Some(events) = current_buffer.get_events_at_index_matching_tick(self.position) else {
-            return None;
-        };
+        let events = current_buffer.get_events_at_index_matching_tick(self.position)?;
 
         Some(events)
     }
 
     fn inc(&mut self) {
         //  Get the current buffer.
-        let Some(current_buffer) = &self.buffers[self.current_buffer] else {
+        let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return;
         };
 
@@ -201,17 +186,22 @@ impl EventRing {
 
         // Increment to the next position.
         self.position = (self.position + (events.len())) % current_buffer.events.len();
+
+        // If we are at the zero position and a new sequence is cued, switch to it.
+        if self.position == 0 && self.cued_buffer != self.current_buffer {
+            self.current_buffer = self.cued_buffer;
+        }
     }
 
     fn tick_len(&self) -> Option<usize> {
-        let Some(current_buffer) = self.current_buffer_ref() else {
+        let Some(current_buffer) =  &self.buffers[self.current_buffer as usize] else {
             return None;
         };
         Some(current_buffer.tick_length)
     }
 
     fn current_bpm(&self) -> Option<f64> {
-        let Some(current_buffer) = self.current_buffer_ref() else {
+        let Some(current_buffer) = &self.buffers[self.current_buffer as usize] else {
             return None;
         };
         Some(current_buffer.bpm)
@@ -316,11 +306,7 @@ fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<Eve
         }
 
         let (next_event_tick, sequence_length) = {
-            let mut event_ring = ring.write().unwrap();
-
-            // If we are supposed to be on the cued sequence (and we are at pos 0 in the sequence)
-            // then switch immediately before doing anything.
-            event_ring.switch_to_cued_buffer();
+            let event_ring = ring.write().unwrap();
             let next = event_ring.read_next_first().unwrap();
             (
                 // Figure out what the next event tick is.
