@@ -1,6 +1,6 @@
-use helloworld_tonic::sequencer::MidiStepHandler;
 use helloworld_tonic::server::{SequencerServiceImpl, SequencerServiceServer, FILE_DESCRIPTOR_SET};
 use helloworld_tonic::CoreSequencer;
+use helloworld_tonic::midi::{MidiStepHandler};
 use midir::MidiOutput;
 use tonic::transport::Server;
 use tonic_reflection::server::Builder;

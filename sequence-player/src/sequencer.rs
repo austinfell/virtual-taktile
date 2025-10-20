@@ -1,7 +1,6 @@
 use crate::server::sequence::{Sequence};
-use midir::MidiOutputConnection;
 use spin_sleep::LoopHelper;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::marker::PhantomData;
 use std::thread;
@@ -20,9 +19,9 @@ const SECONDS_PER_MINUTE: f64 = 60.0;
 /// * `velocity` - The note velocity (0-127, where 0 is silent and 127 is maximum)
 #[derive(Debug)]
 pub struct NoteMessage {
-    track: u8,
-    note: u8,
-    velocity: u8
+    pub track: u8,
+    pub note: u8,
+    pub velocity: u8
 }
 
 /// A MIDI-Like event that can be scheduled in our looping sequencer.
@@ -395,49 +394,5 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     fn cue_sequence(&mut self, s: Sequence) -> CueResult {
         self.event_ring.write().unwrap().cue_sequence(&s);
         Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
-    }
-}
-
-pub struct MidiStepHandler {
-    midi_connection: Mutex<MidiOutputConnection>,
-}
-
-impl MidiStepHandler {
-    pub fn new(midi_connection: MidiOutputConnection) -> Self {
-        Self {
-            midi_connection: Mutex::new(midi_connection),
-        }
-    }
-}
-
-impl StepHandler for MidiStepHandler {
-    fn handle_events(&self, events: &[(Event, usize)]) {
-        if events.is_empty() {
-            return;
-        }
-
-        let mut connection = self.midi_connection.lock().unwrap();
-
-        for event in events {
-            let (status_byte, note, velocity, channel, event_name) = match &event.0 {
-                Event::NoteOff(note_message) => {
-                    (0x80, note_message.note, note_message.velocity, note_message.track, "NoteOff")
-                },
-                Event::NoteOn(note_message) => {
-                    (0x90, note_message.note, note_message.velocity, note_message.track, "NoteOn")
-                }
-            };
-
-            let midi_msg = [status_byte | channel, note, velocity];
-
-            println!("{} - Ch:{} Note:{} Vel:{} -> {:02X?}", event_name, channel, note, velocity, midi_msg);
-            match connection.send(&midi_msg) {
-                Ok(_) => {
-                },
-                Err(e) => {
-                    println!("Failed to send MIDI message {:02X?}: {}", midi_msg, e);
-                }
-            }
-        }
     }
 }
