@@ -59,9 +59,11 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
 
         let metadata = self.sequencer.lock().unwrap().cue_sequence(request.into_inner())?;
 
+        println!("{:?}", metadata);
+
         Ok(Response::new(CueResponse {
             success: true, // Always true if we get here (no error)
-            remaining_steps: metadata.remaining_steps,
+            remaining_steps: metadata.remaining_steps as u32,
         }))
     }
 

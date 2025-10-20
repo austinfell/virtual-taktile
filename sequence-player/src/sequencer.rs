@@ -58,6 +58,7 @@ impl EventBuffer {
     ///
     /// Validates MIDI parameters (note, track, velocity must be 0-255) and skips invalid triggers.
     /// Stops processing if event capacity (2000) is reached to avoid orphaned note-on events.
+    // TODO - Needs to return a result.
     fn from_sequence(sequence: &Sequence) -> Self {
         let sequence_length_ticks = (sequence.sequence_length * TICKS_PER_BEAT_U) as usize;
 
@@ -129,6 +130,59 @@ impl EventBuffer {
     }
 }
 
+// Error types for sequencer operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SequencerError {
+    PlaybackNotInitialized,
+    CommandSendFailed,
+    NoSequenceCued,
+    Other(String),
+}
+
+impl std::fmt::Display for SequencerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SequencerError::PlaybackNotInitialized => write!(f, "Playback system not initialized"),
+            SequencerError::CommandSendFailed => {
+                write!(f, "Failed to send command to playback thread")
+            }
+            SequencerError::NoSequenceCued => write!(f, "No sequence cued"),
+            SequencerError::Other(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
+impl std::error::Error for SequencerError {}
+
+// Metadata types for successful operations
+#[derive(Debug, Clone)]
+pub struct CueMetadata {
+    pub replaced_existing: bool,
+    pub remaining_steps: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct SwapMetadata {
+    pub replaced_existing: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct StopMetadata {
+    pub trig_count: Option<usize>,
+}
+
+pub type CueResult = Result<CueMetadata, SequencerError>;
+pub type StartResult = Result<(), SequencerError>;
+pub type StopResult = Result<StopMetadata, SequencerError>;
+pub type SwapResult = Result<SwapMetadata, SequencerError>;
+
+pub trait Sequencer : Send + Sync + 'static {
+    fn start_sequence(&self) -> StartResult;
+    fn stop_sequence(&self) -> StopResult;
+    fn swap_sequence(&mut self, s: Sequence) -> SwapResult;
+    fn cue_sequence(&mut self, s: Sequence) -> CueResult;
+}
+
 /// A double-buffered event sequencer that enables seamless sequence transitions.
 ///
 /// `EventRing` manages two event buffers, allowing one sequence to play while another
@@ -175,10 +229,20 @@ impl EventRing {
     /// The cued sequence will become active when the current sequence reaches
     /// position 0 (the loop point). This enables seamless transitions between
     /// different patterns.
-    fn cue_sequence(&mut self, sequence: &Sequence) {
+    fn cue_sequence(&mut self, sequence: &Sequence) -> CueResult {
         let target_buffer = 1 - self.current_buffer;
+
+        let replaced_existing = self.buffers[target_buffer as usize].is_some();
+        let remaining_steps = self.buffers[self.current_buffer as usize]
+            .as_ref()
+            .map_or(0, |buffer| buffer.events.len() - self.position);
+
         self.buffers[target_buffer as usize] = Some(EventBuffer::from_sequence(sequence));
         self.cued_buffer = target_buffer;
+        Result::Ok(CueMetadata {
+            replaced_existing,
+            remaining_steps
+        })
     }
 
     /// Returns the tick value of the next event at the current position, if any.
@@ -241,59 +305,6 @@ impl EventRing {
         };
         Some(current_buffer.metadata)
     }
-}
-
-// Error types for sequencer operations
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SequencerError {
-    PlaybackNotInitialized,
-    CommandSendFailed,
-    NoSequenceCued,
-    Other(String),
-}
-
-impl std::fmt::Display for SequencerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SequencerError::PlaybackNotInitialized => write!(f, "Playback system not initialized"),
-            SequencerError::CommandSendFailed => {
-                write!(f, "Failed to send command to playback thread")
-            }
-            SequencerError::NoSequenceCued => write!(f, "No sequence cued"),
-            SequencerError::Other(msg) => write!(f, "{}", msg),
-        }
-    }
-}
-
-impl std::error::Error for SequencerError {}
-
-// Metadata types for successful operations
-#[derive(Debug, Clone)]
-pub struct CueMetadata {
-    pub replaced_existing: bool,
-    pub remaining_steps: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct SwapMetadata {
-    pub replaced_existing: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct StopMetadata {
-    pub trig_count: Option<usize>,
-}
-
-pub type CueResult = Result<CueMetadata, SequencerError>;
-pub type StartResult = Result<(), SequencerError>;
-pub type StopResult = Result<StopMetadata, SequencerError>;
-pub type SwapResult = Result<SwapMetadata, SequencerError>;
-
-pub trait Sequencer : Send + Sync + 'static {
-    fn start_sequence(&self) -> StartResult;
-    fn stop_sequence(&self) -> StopResult;
-    fn swap_sequence(&mut self, s: Sequence) -> SwapResult;
-    fn cue_sequence(&mut self, s: Sequence) -> CueResult;
 }
 
 // General sequencer data structure definition.
@@ -392,7 +403,7 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
     }
 
     fn cue_sequence(&mut self, s: Sequence) -> CueResult {
-        self.event_ring.write().unwrap().cue_sequence(&s);
-        Result::Ok(CueMetadata { replaced_existing: true, remaining_steps: 0 })
+        let mut ring = self.event_ring.write().unwrap();
+        ring.cue_sequence(&s)
     }
 }
