@@ -248,7 +248,7 @@ impl EventRing {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SequencerError {
     PlaybackNotInitialized,
-
+    CommandSendFailed,
     NoSequenceCued,
     Other(String),
 }

@@ -3,6 +3,7 @@
    [re-frame.core :as re-frame]
    [re-com.core :as re-com :refer [at]]
    [vtakt-client.keyboard.views :as kb]
+   [vtakt-client.sequencing.views :as sq]
    [vtakt-client.project.views :as project]
    [vtakt-client.step-input.views :as step-input]
    [vtakt-client.project.pattern.views :as pattern]
@@ -91,12 +92,14 @@
                     [:div
                      [project/save-project-as]
                      [project/project-manager]])
+
                   (if (or (= @trigs-mode :keyboard) (= @trigs-mode :midi) (= @trigs-mode :project) (= @trigs-mode :track))
+                    [:div [sq/controls]
                     [:div
                      {:style {:display "flex"
                               :align-items "center"}}
                      [kb/keyboard]
-                     [track/track-select]])
+                     [track/track-select]]])
                   [:div
                    [:button {:on-click #(reset! trigs-mode :project)} "Project"]
                    [:button {:on-click #(reset! trigs-mode :midi)} "MIDI"]
