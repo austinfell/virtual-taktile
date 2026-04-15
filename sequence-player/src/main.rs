@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Wiring up MIDI
     let midi_out = MidiOutput::new("Sequencer").unwrap();
     let ports = midi_out.ports();
-    let last_port = ports.iter().filter(|x| midi_out.port_name(x).unwrap().contains("Digitone")).last().unwrap();
+    let last_port = ports.iter().last().unwrap();
     println!("Last Port: {:?}", midi_out.port_name(last_port));
     let conn = midi_out.connect(last_port, "seq").unwrap();
 

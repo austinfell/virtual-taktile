@@ -571,7 +571,7 @@ grpcurl -plaintext -d '{
         "length": 1.0
       }
     ]
-  }' [::1]:50051 sequence.SequencerService/CueSequence
+  }' [::1]:50051 sequence.SequencerService/SwapSequence
 #+END_SRC
 
 #+RESULTS:
