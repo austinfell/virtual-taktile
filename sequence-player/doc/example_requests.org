@@ -586,7 +586,7 @@ grpcurl -plaintext -d '{
 
 #+BEGIN_SRC bash
   grpcurl -plaintext -d '{
-}' [::1]:50051 sequence.SequencerService/StopSequence
+}' [::1]:50051 sequence.SequencerService/PauseSequence
 #+END_SRC
 
 #+RESULTS:

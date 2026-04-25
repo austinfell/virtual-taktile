@@ -64,4 +64,5 @@ service SequencerService {
   rpc CueSequence(Sequence) returns (CueResponse);
   rpc StartSequence(Empty) returns (Empty);
   rpc StopSequence(Empty) returns (Empty);
+  rpc PauseSequence(Empty) returns (Empty);
 }

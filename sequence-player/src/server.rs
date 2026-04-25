@@ -82,4 +82,12 @@ impl <T: Sequencer> SequencerService for SequencerServiceImpl<T> {
 
         Ok(Response::new(Empty {}))
     }
+
+    async fn pause_sequence(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
+        println!("Got a PauseSequence request");
+
+        self.sequencer.lock().unwrap().pause_sequence()?;
+
+        Ok(Response::new(Empty {}))
+    }
 }

@@ -171,14 +171,21 @@ pub struct StopMetadata {
     pub trig_count: Option<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub struct PauseMetadata {
+    pub trig_count: Option<usize>,
+}
+
 pub type CueResult = Result<CueMetadata, SequencerError>;
 pub type StartResult = Result<(), SequencerError>;
 pub type StopResult = Result<StopMetadata, SequencerError>;
+pub type PauseResult = Result<PauseMetadata, SequencerError>;
 pub type SwapResult = Result<SwapMetadata, SequencerError>;
 
 pub trait Sequencer : Send + Sync + 'static {
     fn start_sequence(&self) -> StartResult;
     fn stop_sequence(&self) -> StopResult;
+    fn pause_sequence(&self) -> PauseResult;
     fn swap_sequence(&mut self, s: Sequence) -> SwapResult;
     fn cue_sequence(&mut self, s: Sequence) -> CueResult;
 }
@@ -209,6 +216,10 @@ impl EventRing {
             current_buffer: 0,
             position: 0,
         }
+    }
+
+    fn reset(&mut self) {
+        self.position = 0;
     }
 
     /// Immediately replaces the current sequence with a new one.
@@ -314,6 +325,7 @@ pub trait StepHandler: Send + Sync + 'static {
 
 pub struct CoreSequencer<T: StepHandler> {
     running: Arc<AtomicBool>,
+    restart: Arc<AtomicBool>,
     event_ring: Arc<RwLock<EventRing>>,
     _phantom: std::marker::PhantomData<T>
 }
@@ -321,58 +333,73 @@ pub struct CoreSequencer<T: StepHandler> {
 impl<T: StepHandler> CoreSequencer<T> {
     pub fn new(step_handler: T) -> Self {
         let running = Arc::new(AtomicBool::new(false));
+        let restart = Arc::new(AtomicBool::new(false));
 
         let event_ring = Arc::new(RwLock::new(EventRing::new()));
         let event_ring_clone = event_ring.clone();
 
         let running_clone = Arc::clone(&running);
+        let restart_clone = Arc::clone(&restart);
+
         thread::spawn(move || {
-            sequencer_loop(running_clone, event_ring_clone, step_handler);
+            sequencer_loop(running_clone, restart_clone, event_ring_clone, step_handler);
         });
 
         CoreSequencer {
             running,
+            restart,
             event_ring,
             _phantom: PhantomData
         }
     }
 }
 
-fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, ring: Arc<RwLock<EventRing>>, step_handler: T) {
+fn sequencer_loop<T: StepHandler>(running: Arc<AtomicBool>, restart: Arc<AtomicBool>, ring: Arc<RwLock<EventRing>>, step_handler: T) {
     let mut tick = 0;
 
     let mut loop_helper = LoopHelper::builder()
         .build_with_target_rate((INIT_BPM * TICKS_PER_BEAT_F) / SECONDS_PER_MINUTE);
 
     loop {
-        if !running.load(Ordering::Relaxed) {
-            loop_helper.loop_start();
-            loop_helper.loop_sleep();
-            continue;
+        if (restart.load(Ordering::Relaxed)) {
+            ring.write().unwrap().reset();
+            tick = 0;
+            restart.swap(false, Ordering::Acquire);
         }
 
         let (next_events_tick, metadata) = {
             let event_ring = ring.write().unwrap();
             (
                 // Figure out what the next event tick is.
-                event_ring.next_events_tick().unwrap(),
+                event_ring.next_events_tick(),
                 event_ring.metadata()
             )
         };
         {
             // Tick until we get to the next event.
-            while tick != next_events_tick {
+            while next_events_tick.is_none() || tick != next_events_tick.unwrap() {
                 loop_helper.loop_start();
-                tick = (tick + 1) % (metadata.unwrap().tick_length + 1);
+
+                if running.load(Ordering::Relaxed) {
+                    match metadata {
+                        None => {
+                            break;
+                        },
+                        Some(m) => {
+                            tick = (tick + 1) % (m.tick_length + 1);
+                        }
+                    }
+                }
+
                 loop_helper.loop_sleep();
             }
 
             // Grab all of the events with the same tick and trigger hardware.
             let event_ring = ring.read().unwrap();
-            let curr_bpm = metadata.unwrap().bpm;
-            if curr_bpm != loop_helper.target_rate() {
-                loop_helper.set_target_rate((curr_bpm * TICKS_PER_BEAT_F * 4.0) / SECONDS_PER_MINUTE);
-            }
+            //let curr_bpm = metadata.unwrap().bpm;
+            //if curr_bpm != loop_helper.target_rate() {
+            //    loop_helper.set_target_rate((curr_bpm * TICKS_PER_BEAT_F * 4.0) / SECONDS_PER_MINUTE);
+            //}
             let next_events = event_ring.next_events().unwrap();
             step_handler.handle_events(next_events);
             println!("{:?}", next_events);
@@ -394,7 +421,13 @@ impl<T: StepHandler> Sequencer for CoreSequencer<T> {
 
     fn stop_sequence(&self) -> StopResult {
         self.running.swap(false, Ordering::Relaxed);
+        self.restart.swap(true, Ordering::Relaxed);
         Result::Ok(StopMetadata { trig_count: Option::from(0) })
+    }
+
+    fn pause_sequence(&self) -> PauseResult {
+        self.running.swap(false, Ordering::Relaxed);
+        Result::Ok(PauseMetadata { trig_count: Option::from(0) })
     }
 
     fn swap_sequence(&mut self, s: Sequence) -> SwapResult {
